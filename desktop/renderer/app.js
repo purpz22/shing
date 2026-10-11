@@ -1331,6 +1331,19 @@ function openChangelogModal() {
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
     {
+      version: '1.2.4',
+      releaseName: 'Shing Live v1.2.4 - Live Animated Overlay Demo Loops & Real-time Settings Sync',
+      releaseDate: '2026-10-11',
+      summary: 'Live animated demo loops across all 6 browser overlay cards with instant settings synchronization and zero idle CPU usage.',
+      highlights: [
+        'Live Animated Demo Loops: Replaced static badges with animated preview loops across all 6 overlay cards (Gift Jar, Companion Cats, Cute Chat, Lower 3rd Socials, Popup Alerts, Stream Timer)',
+        'Real-Time Theme Sync: Live demo feeds immediately reflect customized themes, colors, bubble radius, and avatar shapes as you modify them',
+        'Companion Stage Preview: Sandboxed companion iframe displaying pixel art chibi, walking cats, and interactive stage animations',
+        'Zero Background Overhead: Intelligent tab visibility detection that halts all animations when switching away from Overlays tab',
+        'Stream-Ready Countdown: Real-time digital clock with dynamic increment animations'
+      ]
+    },
+    {
       version: '1.2.3',
       releaseName: 'Shing Live v1.2.3 - Smooth In-App Toasts & Custom Alert Modals',
       releaseDate: '2026-10-11',
