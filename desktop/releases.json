@@ -7,7 +7,7 @@
                          "releaseDate":  "2026-10-11",
                          "type":  "feature",
                          "summary":  "8 custom visual themes for the cute speech bubble chat overlay with live preview syncing and stream auto-polling reconnect.",
-                         "downloadUrl":  "https://github.com/purpz22/shing/releases/download/v1.2.2/shing-live-v1.2.2.zip",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.2.2.zip",
                          "highlights":  [
                                             "Chat Overlay Themes: 8 themes (Pastel Purple, Dark Cyber Neon, Strawberry Milk, Matcha Latte, Sunset Peach, Frosted Glass, Midnight Dark, Retro Arcade)",
                                             "Live Dashboard Sync: Real-time visual updates in settings tab when switching themes",
@@ -16,7 +16,7 @@
                                         ],
                          "notes":  "Visual chat theme customization and streamer connection improvements.",
                          "packageSize":  "4.29 MB",
-                         "checksum":  "8392cbadceacedcbd08b8d12e28bddfd833fe9ee879e2ebdd02296851aead36c"
+                         "checksum":  "e33638cdd49c691ea007a6781c3e66ad326f9b20498f835c644dfbb45b5352c5"
                      },
                      {
                          "version":  "1.2.1",

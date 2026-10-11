@@ -173,48 +173,81 @@ class AppUpdater {
     this.isUpdating = true;
     this.stagedZipPath = null;
 
-    const downloadUrl = updateInfo?.release?.downloadUrl;
+    const ver = updateInfo?.latestVersion || this.getCurrentVersion();
+    const primaryUrl = updateInfo?.release?.downloadUrl;
+    const tempDir = app.getPath('temp');
+    const zipFileName = `shing-update-${ver}.zip`;
+    const zipDestPath = path.join(tempDir, zipFileName);
 
-    if (downloadUrl && typeof downloadUrl === 'string' && downloadUrl.startsWith('http')) {
-      // Genuine remote package download
-      if (typeof onProgress === 'function') {
-        onProgress({ percent: 5, msg: 'Connecting to update server...' });
-      }
+    // Build URL candidates list
+    const remoteCandidates = [];
+    if (primaryUrl && typeof primaryUrl === 'string' && primaryUrl.startsWith('http')) {
+      remoteCandidates.push(primaryUrl);
+    }
+    const rawRepoUrl = `https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v${ver}.zip`;
+    const githubRawUrl = `https://github.com/purpz22/shing/raw/main/desktop/updates/shing-live-v${ver}.zip`;
+    const releaseUrl = `https://github.com/purpz22/shing/releases/download/v${ver}/shing-live-v${ver}.zip`;
 
-      const tempDir = app.getPath('temp');
-      const zipFileName = `shing-update-${updateInfo?.latestVersion || Date.now()}.zip`;
-      const zipDestPath = path.join(tempDir, zipFileName);
+    if (!remoteCandidates.includes(rawRepoUrl)) remoteCandidates.push(rawRepoUrl);
+    if (!remoteCandidates.includes(githubRawUrl)) remoteCandidates.push(githubRawUrl);
+    if (!remoteCandidates.includes(releaseUrl)) remoteCandidates.push(releaseUrl);
 
+    let downloaded = false;
+    let lastError = null;
+
+    if (typeof onProgress === 'function') {
+      onProgress({ percent: 5, msg: 'Connecting to update server...' });
+    }
+
+    for (const url of remoteCandidates) {
       try {
-        await this.downloadFile(downloadUrl, zipDestPath, onProgress);
-        this.stagedZipPath = zipDestPath;
         if (typeof onProgress === 'function') {
-          onProgress({ percent: 100, msg: 'Download complete. Ready to install.' });
+          onProgress({ percent: 10, msg: `Connecting to ${new URL(url).hostname}...` });
+        }
+        await this.downloadFile(url, zipDestPath, onProgress);
+        if (fs.existsSync(zipDestPath) && fs.statSync(zipDestPath).size > 1000) {
+          this.stagedZipPath = zipDestPath;
+          downloaded = true;
+          break;
         }
       } catch (err) {
-        this.isUpdating = false;
-        throw new Error(`Failed to download update from ${downloadUrl}: ${err.message}`);
+        lastError = err;
+        console.warn(`Failed candidate ${url}:`, err.message);
       }
-    } else {
-      // Local/offline simulated verification
-      const stages = [
-        { percent: 15, msg: 'Connecting to update channel...' },
-        { percent: 35, msg: 'Verifying package integrity...' },
-        { percent: 60, msg: 'Downloading components...' },
-        { percent: 85, msg: 'Staging files for installation...' },
-        { percent: 100, msg: 'Download complete. Ready to install.' }
-      ];
+    }
 
-      for (const s of stages) {
-        await new Promise(r => setTimeout(r, 260));
-        if (typeof onProgress === 'function') {
-          onProgress(s);
+    // Local disk fallbacks if remote unreachable
+    if (!downloaded) {
+      const localCandidates = [
+        path.join(this.baseDir, 'updates', `shing-live-v${ver}.zip`),
+        path.join(this.baseDir, 'dist', `shing-live-v${ver}.zip`),
+        path.join(this.baseDir, `shing-live-v${ver}.zip`)
+      ];
+      for (const loc of localCandidates) {
+        if (fs.existsSync(loc) && fs.statSync(loc).size > 1000) {
+          try {
+            fs.copyFileSync(loc, zipDestPath);
+            this.stagedZipPath = zipDestPath;
+            downloaded = true;
+            console.log(`Using local update package from ${loc}`);
+            break;
+          } catch (e) {
+            console.warn(`Local copy failed for ${loc}:`, e.message);
+          }
         }
       }
     }
 
+    if (downloaded) {
+      if (typeof onProgress === 'function') {
+        onProgress({ percent: 100, msg: 'Download complete. Ready to install.' });
+      }
+      this.isUpdating = false;
+      return { success: true };
+    }
+
     this.isUpdating = false;
-    return { success: true };
+    throw new Error(`Failed to download update package: ${lastError ? lastError.message : 'All download mirrors unreachable'}`);
   }
 
   createSettingsBackup(tag = 'update') {

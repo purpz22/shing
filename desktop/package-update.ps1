@@ -41,6 +41,13 @@ Write-Host "  Path:    $zipPath"
 Write-Host "  Size:    $sizeMB MB"
 Write-Host "  SHA-256: $hash"
 
+# Also copy to desktop/updates directory for direct GitHub hosting
+$updatesDir = Join-Path $baseDir "updates"
+if (!(Test-Path $updatesDir)) {
+  New-Item -ItemType Directory -Path $updatesDir | Out-Null
+}
+Copy-Item $zipPath (Join-Path $updatesDir $zipName) -Force
+
 # Update releases.json
 $releasesPath = Join-Path $baseDir "releases.json"
 if (Test-Path $releasesPath) {
@@ -49,7 +56,7 @@ if (Test-Path $releasesPath) {
     $json.latest = $Version
     $rel = $json.releases | Where-Object { $_.version -eq $Version }
     if ($rel) {
-      $relUrl = "https://github.com/purpz22/shing/releases/download/v$Version/$zipName"
+      $relUrl = "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/$zipName"
       if ($rel.PSObject.Properties['downloadUrl']) { $rel.downloadUrl = $relUrl } else { $rel | Add-Member -NotePropertyName "downloadUrl" -NotePropertyValue $relUrl }
       if ($rel.PSObject.Properties['checksum']) { $rel.checksum = $hash } else { $rel | Add-Member -NotePropertyName "checksum" -NotePropertyValue $hash }
       if ($rel.PSObject.Properties['packageSize']) { $rel.packageSize = "$sizeMB MB" } else { $rel | Add-Member -NotePropertyName "packageSize" -NotePropertyValue "$sizeMB MB" }
