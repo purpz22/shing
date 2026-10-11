@@ -3,6 +3,9 @@
 const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+app.name = 'Shing Live';
+
 const OverlayServer = require('./server/overlayServer');
 const AppUpdater = require('./services/updater');
 
@@ -32,8 +35,8 @@ function createWindow() {
     height: 840,
     minWidth: 1040,
     minHeight: 680,
-    title: 'Shing Studio - TikTok Live Streamer Companion',
-    icon: path.join(__dirname, 'assets', 'app-icon.png'),
+    title: 'Shing Live',
+    icon: path.join(__dirname, 'assets', process.platform === 'win32' ? 'app-icon.ico' : 'app-icon.png'),
     backgroundColor: '#f6f0ff',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

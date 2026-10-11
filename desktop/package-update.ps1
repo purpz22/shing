@@ -1,9 +1,9 @@
 param(
-  [string]$Version = "1.1.0"
+  [string]$Version = "1.2.1"
 )
 
 Write-Host "===================================================="
-Write-Host "Shing Studio - Packaging Update v$Version"
+Write-Host "Shing Live - Packaging Update v$Version"
 Write-Host "===================================================="
 
 $baseDir = $PSScriptRoot
@@ -12,7 +12,7 @@ if (!(Test-Path $distDir)) {
   New-Item -ItemType Directory -Path $distDir | Out-Null
 }
 
-$zipName = "shing-studio-v$Version.zip"
+$zipName = "shing-live-v$Version.zip"
 $zipPath = Join-Path $distDir $zipName
 if (Test-Path $zipPath) {
   Remove-Item $zipPath -Force

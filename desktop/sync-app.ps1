@@ -1,5 +1,5 @@
 param(
-  [string]$CommitMessage = "Update Shing Studio - Full application sync",
+  [string]$CommitMessage = "Update Shing Live - Full application sync",
   [string]$Version = ""
 )
 
@@ -8,7 +8,7 @@ $desktopDir = $PSScriptRoot
 $rootDir = (Get-Item $desktopDir).Parent.FullName
 
 Write-Host "===================================================="
-Write-Host "Shing Studio - Full Application Sync & Packaging"
+Write-Host "Shing Live - Full Application Sync & Packaging"
 Write-Host "===================================================="
 
 # Determine Version

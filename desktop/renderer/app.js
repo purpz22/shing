@@ -785,7 +785,7 @@ async function checkAppUpdates(manual = true) {
         banner.classList.remove('hidden');
         if ($('update-banner-title')) $('update-banner-title').textContent = result.release?.releaseName || `New Update v${result.latestVersion} Available!`;
         if ($('update-badge-ver')) $('update-badge-ver').textContent = `v${result.latestVersion}`;
-        if ($('update-banner-desc')) $('update-banner-desc').textContent = result.release?.summary || 'A new version of Shing Studio is ready with improvements!';
+        if ($('update-banner-desc')) $('update-banner-desc').textContent = result.release?.summary || 'A new version of Shing Live is ready with improvements!';
       }
     } else {
       if (dot) dot.className = 'status-indicator-dot';
@@ -798,7 +798,7 @@ async function checkAppUpdates(manual = true) {
       if ($('update-banner')) $('update-banner').classList.add('hidden');
 
       if (manual) {
-        alert(`Shing Studio is up to date (v${result.currentVersion})!`);
+        alert(`Shing Live is up to date (v${result.currentVersion})!`);
       }
     }
   } catch (err) {
@@ -815,7 +815,6 @@ async function checkAppUpdates(manual = true) {
 async function downloadAndInstallUpdate() {
   if (updateState.isDownloading) return;
   updateState.isDownloading = true;
-
   const progContainer = $('update-progress-container');
   const progFill = $('progress-bar-fill');
   const progPercent = $('progress-percent-val');
@@ -837,7 +836,7 @@ async function downloadAndInstallUpdate() {
 
     // Show restart modal
     if ($('restart-dialog-msg')) {
-      $('restart-dialog-msg').textContent = `Shing Studio has been updated to v${updateState.latestVersion || '1.1.0'}. Please restart the app now to activate all new features.`;
+      $('restart-dialog-msg').textContent = `Shing Live has been updated to v${updateState.latestVersion || '1.2.1'}. Please restart the app now to activate all new features.`;
     }
     $('modal-restart').classList.add('active');
   } catch (e) {
