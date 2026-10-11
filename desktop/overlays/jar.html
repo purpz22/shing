@@ -79,29 +79,61 @@
     100% { transform: translateX(-50%) scale(1); }
   }
 
-  /* Gift Odometer Counter */
+  /* Biggest Gift Spotlight Badge */
   #gift-counter {
     position: absolute;
-    bottom: 38px;
+    bottom: 34px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 4;
-    background: rgba(46, 26, 82, 0.85);
+    z-index: 5;
+    background: linear-gradient(135deg, rgba(38, 18, 68, 0.94), rgba(76, 29, 149, 0.94));
     color: #fff;
-    padding: 8px 22px;
-    border-radius: 24px;
-    font-size: 15px;
+    padding: 8px 24px;
+    border-radius: 26px;
+    font-size: 14.5px;
     font-weight: 700;
-    letter-spacing: 0.5px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
-    border: 1.5px solid rgba(255, 255, 255, 0.35);
-    transition: opacity 0.3s, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    letter-spacing: 0.3px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 16px rgba(168, 85, 247, 0.3);
+    border: 1.5px solid rgba(255, 209, 102, 0.45);
+    display: flex;
+    align-items: center;
+    gap: 8px;
     pointer-events: none;
     opacity: 0;
+    transition: opacity 0.35s ease, transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
   }
   #gift-counter.visible { opacity: 1; }
   #gift-counter.counter-pop {
     transform: translateX(-50%) scale(1.12);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4), 0 0 24px rgba(255, 209, 102, 0.65);
+    border-color: rgba(255, 209, 102, 0.85);
+  }
+  .top-gift-icon {
+    display: inline-flex;
+    align-items: center;
+    color: #ffd166;
+    filter: drop-shadow(0 0 4px rgba(255, 209, 102, 0.6));
+  }
+  .top-gift-label {
+    color: #e9d5ff;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: 700;
+  }
+  .top-gift-sender {
+    color: #ffffff;
+    font-weight: 800;
+  }
+  .top-gift-sep {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 12px;
+  }
+  .top-gift-detail {
+    color: #fef08a;
+    font-weight: 700;
   }
 </style>
 <script src="/assets/matter.min.js"></script>
@@ -113,7 +145,17 @@
     <img id="jar-back" class="layer" src="/assets/jar/jar-back.png" alt="Jar Back">
     <canvas id="physics-canvas" width="764" height="1024"></canvas>
     <img id="jar-front" class="layer" src="/assets/jar/jar-front.png" alt="Jar Front">
-    <div id="gift-counter"><span id="count-num">0</span> gifts</div>
+    <div id="gift-counter">
+      <span class="top-gift-icon">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .55-.45 1-1 1H6c-.55 0-1-.45-1-1v-1h14v1z"/>
+        </svg>
+      </span>
+      <span class="top-gift-label">Top Gift:</span>
+      <span id="top-gift-sender" class="top-gift-sender">Awaiting...</span>
+      <span class="top-gift-sep">•</span>
+      <span id="top-gift-detail" class="top-gift-detail">0 coins</span>
+    </div>
   </div>
 </div>
 
@@ -123,7 +165,8 @@
 const jarStage = document.getElementById('jar-stage');
 const comboBadge = document.getElementById('combo-badge');
 const counterEl = document.getElementById('gift-counter');
-const countNumEl = document.getElementById('count-num');
+const topSenderEl = document.getElementById('top-gift-sender');
+const topDetailEl = document.getElementById('top-gift-detail');
 
 const GIFT_ICONS = {
   rose: '/assets/gifts/rose.png',
@@ -218,16 +261,61 @@ const canvas = document.getElementById('physics-canvas');
 const ctx = canvas.getContext('2d');
 const W = 764, H = 1024;
 
-// Build collision walls matching the glass jar curve
+// Top Gift record tracker
+let topGiftRecord = {
+  sender: '',
+  giftName: '',
+  coins: 0,
+  count: 0,
+  totalValue: 0
+};
+
+function recordTopGift(sender, giftName, coins, count = 1) {
+  const totalVal = Math.max(1, coins) * Math.max(1, count);
+  if (totalVal >= topGiftRecord.totalValue) {
+    topGiftRecord = {
+      sender: sender || 'Viewer',
+      giftName: giftName || 'Gift',
+      coins: coins,
+      count: count,
+      totalValue: totalVal
+    };
+
+    if (topSenderEl) topSenderEl.textContent = topGiftRecord.sender;
+    if (topDetailEl) {
+      topDetailEl.textContent = `${topGiftRecord.giftName} (${topGiftRecord.totalValue.toLocaleString()} coins)`;
+    }
+
+    if (counterEl) {
+      counterEl.classList.add('visible');
+      counterEl.classList.remove('counter-pop');
+      void counterEl.offsetWidth;
+      counterEl.classList.add('counter-pop');
+      setTimeout(() => counterEl.classList.remove('counter-pop'), 350);
+    }
+  }
+}
+
+// Build collision walls matching the glass jar curve plus outer floor for overflow
 function createJarWalls() {
   const walls = [];
   const wallThick = 26;
-  const wallOpts = { isStatic: true, friction: 0.1, restitution: 0.35, render: { visible: false } };
+  const innerWallOpts = { isStatic: true, friction: 0.1, restitution: 0.35, render: { visible: false } };
+  const outerWallOpts = { isStatic: true, friction: 0.45, restitution: 0.18, render: { visible: false } };
 
-  // Bottom floor
-  walls.push(Bodies.rectangle(382, 852, 420, wallThick, wallOpts));
+  // Bottom floor inside jar
+  walls.push(Bodies.rectangle(382, 852, 420, wallThick, innerWallOpts));
 
-  // Left curve segments
+  // Outer stage floor (catches overflowing gifts so they pile around the base and never disappear)
+  walls.push(Bodies.rectangle(382, 955, 764, 40, outerWallOpts));
+
+  // Outer left containment boundary
+  walls.push(Bodies.rectangle(12, 512, 24, 1024, outerWallOpts));
+
+  // Outer right containment boundary
+  walls.push(Bodies.rectangle(752, 512, 24, 1024, outerWallOpts));
+
+  // Left curve segments (double-sided collisions)
   const leftPoints = [
     [190, 240], [140, 320], [95, 420], [70, 520], [68, 620], [95, 720], [145, 800], [195, 845]
   ];
@@ -236,10 +324,10 @@ function createJarWalls() {
     const cx = (p1[0] + p2[0]) / 2, cy = (p1[1] + p2[1]) / 2;
     const len = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
     const angle = Math.atan2(p2[1] - p1[1], p2[0] - p1[0]);
-    walls.push(Bodies.rectangle(cx - wallThick * 0.4, cy, len + 2, wallThick, { ...wallOpts, angle }));
+    walls.push(Bodies.rectangle(cx - wallThick * 0.4, cy, len + 2, wallThick, { ...innerWallOpts, angle }));
   }
 
-  // Right curve segments
+  // Right curve segments (double-sided collisions)
   const rightPoints = [
     [574, 240], [624, 320], [669, 420], [694, 520], [696, 620], [669, 720], [619, 800], [569, 845]
   ];
@@ -248,7 +336,7 @@ function createJarWalls() {
     const cx = (p1[0] + p2[0]) / 2, cy = (p1[1] + p2[1]) / 2;
     const len = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
     const angle = Math.atan2(p2[1] - p1[1], p2[0] - p1[0]);
-    walls.push(Bodies.rectangle(cx + wallThick * 0.4, cy, len + 2, wallThick, { ...wallOpts, angle }));
+    walls.push(Bodies.rectangle(cx + wallThick * 0.4, cy, len + 2, wallThick, { ...innerWallOpts, angle }));
   }
 
   return walls;
@@ -353,14 +441,6 @@ function dropGift(type, sizeMul = 1.0, directImg = null, giftName = 'Gift', coin
   World.add(engine.world, giftBody);
 
   totalGiftCount++;
-  countNumEl.textContent = totalGiftCount;
-  counterEl.classList.add('visible');
-
-  // Trigger Spring Pulse on counter
-  counterEl.classList.remove('counter-pop');
-  void counterEl.offsetWidth;
-  counterEl.classList.add('counter-pop');
-  setTimeout(() => counterEl.classList.remove('counter-pop'), 200);
 
   // Enforce Max Gifts limit
   if (giftBodies.length > jarSettings.maxGifts) {
@@ -377,7 +457,10 @@ function clearJar() {
   giftBodies.forEach(b => World.remove(engine.world, b));
   giftBodies.length = 0;
   totalGiftCount = 0;
-  countNumEl.textContent = '0';
+  topGiftRecord = { sender: '', giftName: '', coins: 0, count: 0, totalValue: 0 };
+  if (topSenderEl) topSenderEl.textContent = 'None yet';
+  if (topDetailEl) topDetailEl.textContent = '0 coins';
+  if (counterEl) counterEl.classList.remove('visible', 'counter-pop');
   comboBadge.classList.remove('show');
 }
 
@@ -402,7 +485,7 @@ function render() {
   for (let i = giftBodies.length - 1; i >= 0; i--) {
     const b = giftBodies[i];
 
-    if (b.position.y > H + 100) {
+    if (b.position.y > H + 160) {
       World.remove(engine.world, b);
       giftBodies.splice(i, 1);
       continue;
@@ -422,13 +505,7 @@ function render() {
     ctx.scale(b.squashX, b.squashY);
     ctx.globalAlpha = b.alpha || 1.0;
 
-    // Soft drop shadow
-    ctx.beginPath();
-    ctx.arc(0, 3, r, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(20, 10, 35, 0.16)';
-    ctx.fill();
-
-    // Gift graphic or high-contrast 3D shiny gift badge
+    // Gift graphic without circular border disc artifact
     if (img && img.complete && img.naturalWidth > 0) {
       ctx.drawImage(img, -r, -r, r * 2, r * 2);
     } else {
@@ -531,6 +608,10 @@ function connectWS() {
         else if (coinVal >= 100) sizeMul = 1.25;
         else if (coinVal >= 10) sizeMul = 1.12;
 
+        // Record and display Biggest Gift Spotlight
+        const sender = data.nickname || data.uniqueId || data.user || 'Viewer';
+        recordTopGift(sender, giftName, coinVal, count);
+
         // Trigger combo badge
         triggerCombo(giftName);
 
@@ -560,7 +641,11 @@ connectWS();
 canvas.addEventListener('pointerdown', () => {
   const gifts = Object.keys(GIFT_ICONS);
   const rand = gifts[Math.floor(Math.random() * gifts.length)];
-  dropGift(rand, 1.0);
+  const randomCoins = Math.floor(Math.random() * 500 + 1);
+  const testSenders = ['Sakura', 'MochiCat', 'PixelStar', 'BobaQueen', 'CloudySky'];
+  const randSender = testSenders[Math.floor(Math.random() * testSenders.length)];
+  dropGift(rand, 1.0, null, rand.replace(/_/g, ' '), randomCoins);
+  recordTopGift(randSender, rand.replace(/_/g, ' '), randomCoins, 1);
   triggerCombo(rand.replace(/_/g, ' '));
 });
 </script>

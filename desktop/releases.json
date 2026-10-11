@@ -1,6 +1,23 @@
 {
-    "latest":  "1.2.4",
+    "latest":  "1.2.5",
     "releases":  [
+                     {
+                         "version":  "1.2.5",
+                         "releaseName":  "Shing Live v1.2.5 - Biggest Gift Spotlight, Overflow Physics \u0026 Jar Visuals",
+                         "releaseDate":  "2026-10-11",
+                         "type":  "feature",
+                         "summary":  "Enhanced glass jar overlay with crisp high-contrast signature typography, overflow containment, clean transparent gift silhouettes, and Top Gifter spotlight badge.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.2.5.zip",
+                         "highlights":  [
+                                            "Biggest Gift Spotlight: Replaced total count pill with real-time Top Gifter MVP badge highlighting the sender of the biggest stream gift",
+                                            "Overflow Physics: Added outer containment walls and floor so overflowing gifts tumble over the rim and cascade down the glass without despawning",
+                                            "Clean Gift Artwork: Removed artificial circular shadow discs so transparent gifts (galaxy spirals, roses, custom icons) render with natural silhouettes",
+                                            "High-Contrast Glass Typography: Re-crafted the shing cursive signature with pure white luminous fill, deep plum outline, and lavender halo for 100% legibility"
+                                        ],
+                         "notes":  "Visual enhancement and physics upgrade for the Physics Gift Jar overlay.",
+                         "packageSize":  "3.99 MB",
+                         "checksum":  "ee24ccbd6bbf9f5cc3d3a0ad108d982d4dadadfcba549fe24d4903c34fb043e3"
+                     },
                      {
                          "version":  "1.2.4",
                          "releaseName":  "Shing Live v1.2.4 - Live Animated Overlay Demo Loops \u0026 Real-time Settings Sync",

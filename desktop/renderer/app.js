@@ -501,8 +501,10 @@ const OverlayDemoManager = {
 
     this.jarItemCount = (this.jarItemCount >= 55) ? 42 : this.jarItemCount + 1;
     if (badge) {
-      const maxGifts = appSettings.jar?.maxGifts || 500;
-      badge.textContent = `${this.jarItemCount} / ${maxGifts}`;
+      const topSenders = ['Sakura', 'MochiCat', 'PixelStar', 'BobaQueen'];
+      const topGifts = ['Galaxy (1k)', 'Lion (10k)', 'Universe (34k)', 'Rose x100'];
+      const idx = Math.floor(this.jarItemCount / 4) % topSenders.length;
+      badge.textContent = `Top Gift: ${topSenders[idx]} • ${topGifts[idx]}`;
     }
 
     while (giftsLayer.children.length > 12) {
@@ -1330,6 +1332,18 @@ function openChangelogModal() {
   container.innerHTML = '';
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
+    {
+      version: '1.2.5',
+      releaseName: 'Shing Live v1.2.5 - Biggest Gift Spotlight, Overflow Physics & Jar Visuals',
+      releaseDate: '2026-10-11',
+      summary: 'Enhanced glass jar overlay with crisp high-contrast signature typography, overflow containment, clean transparent gift silhouettes, and Top Gifter spotlight badge.',
+      highlights: [
+        'Biggest Gift Spotlight: Replaced total count pill with real-time Top Gifter MVP badge highlighting the sender of the biggest stream gift',
+        'Overflow Physics: Added outer containment walls and floor so overflowing gifts tumble over the rim and cascade down the glass without despawning',
+        'Clean Gift Artwork: Removed artificial circular shadow discs so transparent gifts (galaxy spirals, roses, custom icons) render with natural silhouettes',
+        'High-Contrast Glass Typography: Re-crafted the shing cursive signature with pure white luminous fill, deep plum outline, and lavender halo for 100% legibility'
+      ]
+    },
     {
       version: '1.2.4',
       releaseName: 'Shing Live v1.2.4 - Live Animated Overlay Demo Loops & Real-time Settings Sync',
