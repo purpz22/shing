@@ -690,7 +690,20 @@ function applyTheme(themeName) {
   document.body.className = '';
   const cleanName = (themeName || 'Purple').toLowerCase().replace(/\s+/g, '-');
   document.body.classList.add(`theme-${cleanName}`);
+  try {
+    if (themeName) {
+      localStorage.setItem('shing_theme', themeName);
+    }
+  } catch (e) {}
 }
+
+// Apply cached theme immediately on script evaluation to prevent startup theme flash
+try {
+  const initialCachedTheme = localStorage.getItem('shing_theme');
+  if (initialCachedTheme) {
+    applyTheme(initialCachedTheme);
+  }
+} catch (e) {}
 
 // Session Telemetry Stats
 const sessionStats = {
@@ -761,6 +774,13 @@ function updateChatPreviewBox() {
 // Load & populate settings
 async function initSettings() {
   appSettings = await window.api.getSettings();
+  try {
+    const savedTheme = localStorage.getItem('shing_theme');
+    if (savedTheme && savedTheme !== appSettings.theme) {
+      appSettings.theme = savedTheme;
+      window.api.saveSettings(appSettings);
+    }
+  } catch (e) {}
   applyTheme(appSettings.theme);
 
   // Initial Modal status
@@ -1140,6 +1160,11 @@ function syncPresetSelect(selectId, hex) {
 }
 
 function saveCurrentSettings() {
+  try {
+    if (appSettings.theme) {
+      localStorage.setItem('shing_theme', appSettings.theme);
+    }
+  } catch (e) {}
   window.api.saveSettings(appSettings);
   if (typeof OverlayDemoManager !== 'undefined') {
     OverlayDemoManager.sync();
@@ -1178,7 +1203,7 @@ async function handleSearchUser() {
 
 // App Updater Manager Logic
 const updateState = {
-  currentVersion: '1.2.1',
+  currentVersion: '1.2.9',
   latestVersion: null,
   hasUpdate: false,
   release: null,
@@ -1199,16 +1224,16 @@ async function initUpdater() {
     console.warn('Failed to retrieve app version', e);
   }
 
-  // Auto-check on startup if enabled
+  // Only auto-update when the software is opened (startup)
   const autoCheck = appSettings.updates?.autoCheck !== false;
   if (autoCheck) {
     setTimeout(() => {
-      checkAppUpdates(false);
+      checkAppUpdates(false, true);
     }, 1200);
   }
 }
 
-async function checkAppUpdates(manual = true) {
+async function checkAppUpdates(manual = true, autoInstallOnStartup = false) {
   if (updateState.isChecking) return;
   updateState.isChecking = true;
 
@@ -1220,6 +1245,8 @@ async function checkAppUpdates(manual = true) {
   if (dot) dot.className = 'status-indicator-dot checking';
   if (txt) txt.textContent = 'Checking...';
   if (btnTxt) btnTxt.textContent = 'Checking...';
+
+  let shouldAutoInstall = false;
 
   try {
     const result = await window.api.checkForUpdates(feedUrl);
@@ -1255,6 +1282,10 @@ async function checkAppUpdates(manual = true) {
         if ($('update-badge-ver')) $('update-badge-ver').textContent = `v${result.latestVersion}`;
         if ($('update-banner-desc')) $('update-banner-desc').textContent = result.release?.summary || 'A new version of Shing Live is ready with improvements!';
       }
+
+      if (!manual && autoInstallOnStartup === true && appSettings.updates?.autoCheck !== false) {
+        shouldAutoInstall = true;
+      }
     } else {
       if (dot) dot.className = 'status-indicator-dot';
       if (txt) txt.textContent = 'Up to Date';
@@ -1278,9 +1309,14 @@ async function checkAppUpdates(manual = true) {
     updateState.isChecking = false;
     if (btnTxt) btnTxt.textContent = 'Check for Updates';
   }
+
+  if (shouldAutoInstall) {
+    downloadAndInstallUpdate(true);
+  }
 }
 
-async function downloadAndInstallUpdate() {
+async function downloadAndInstallUpdate(isAutoStartup = false) {
+  const autoStartup = isAutoStartup === true;
   if (updateState.isDownloading) return;
   updateState.isDownloading = true;
   const progContainer = $('update-progress-container');
@@ -1291,6 +1327,14 @@ async function downloadAndInstallUpdate() {
 
   if (progContainer) progContainer.classList.remove('hidden');
   if (installBtn) installBtn.disabled = true;
+
+  if (autoStartup && updateState.latestVersion) {
+    showToast(`Auto-updating Shing Live to v${updateState.latestVersion}...`, 'info', 'Auto Update');
+    if ($('header-version-badge')) {
+      $('header-version-badge').textContent = `Updating to v${updateState.latestVersion}...`;
+      $('header-version-badge').className = 'ver-badge-tag has-update';
+    }
+  }
 
   const unsubscribe = window.api.onUpdateProgress(p => {
     if (progPercent) progPercent.textContent = `${p.percent}%`;
@@ -1324,7 +1368,9 @@ async function downloadAndInstallUpdate() {
 
     // Show restart modal
     if ($('restart-dialog-msg')) {
-      $('restart-dialog-msg').textContent = `Shing Live has been updated to v${installedVer}. Please restart the app now to activate all new features.`;
+      $('restart-dialog-msg').textContent = autoStartup
+        ? `Shing Live automatically updated to v${installedVer} on startup. Please restart the app now to activate all new features.`
+        : `Shing Live has been updated to v${installedVer}. Please restart the app now to activate all new features.`;
     }
     $('modal-restart').classList.add('active');
   } catch (e) {
@@ -1358,6 +1404,17 @@ function openChangelogModal() {
   container.innerHTML = '';
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
+    {
+      version: '1.2.9',
+      releaseName: 'Shing Live v1.2.9 - Automatic Startup Updates & Persistent Theme Storage',
+      releaseDate: '2026-10-11',
+      summary: 'Added automatic update installation when the software opens and moved user configuration storage to AppData so themes and settings never reset across updates.',
+      highlights: [
+        'Auto-Update on Startup: Automatically downloads and installs available updates when Shing Live is opened without requiring manual update checks',
+        'Persistent Theme & Settings Storage: Moved settings.json and backups to user-writable AppData with localStorage theme synchronization so custom themes never reset on update or restart',
+        'Seamless Legacy Migration: Automatically migrates existing settings from the installation directory on first launch'
+      ]
+    },
     {
       version: '1.2.8',
       releaseName: 'Shing Live v1.2.8 - Companion Card Stage Scaling & Update Modal Alignment',

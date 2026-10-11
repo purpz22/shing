@@ -10,11 +10,27 @@ const { app } = require('electron');
 class AppUpdater {
   constructor(baseDir = path.resolve(__dirname, '..')) {
     this.baseDir = baseDir;
+    this.userDataDir = this.resolveUserDataDir();
     this.packagePath = path.join(this.baseDir, 'package.json');
     this.releasesPath = path.join(this.baseDir, 'releases.json');
-    this.settingsPath = path.join(this.baseDir, 'settings.json');
-    this.backupPath = path.join(this.baseDir, 'settings.json.bak');
+    this.settingsPath = path.join(this.userDataDir, 'settings.json');
+    this.backupPath = path.join(this.userDataDir, 'settings.json.bak');
     this.isUpdating = false;
+  }
+
+  resolveUserDataDir() {
+    const appData = process.env.APPDATA || (process.platform === 'darwin'
+      ? path.join(process.env.HOME || '', 'Library', 'Application Support')
+      : path.join(process.env.HOME || '', '.config'));
+    const dir = appData ? path.join(appData, 'Shing Live') : this.baseDir;
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    } catch (e) {
+      return this.baseDir;
+    }
+    return dir;
   }
 
   getCurrentVersion() {
@@ -256,7 +272,7 @@ class AppUpdater {
       if (fs.existsSync(this.settingsPath)) {
         fs.copyFileSync(this.settingsPath, this.backupPath);
 
-        const backupsDir = path.join(this.baseDir, 'backups');
+        const backupsDir = path.join(this.userDataDir, 'backups');
         if (!fs.existsSync(backupsDir)) fs.mkdirSync(backupsDir, { recursive: true });
 
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -285,7 +301,7 @@ class AppUpdater {
           fs.copyFileSync(this.backupPath, this.settingsPath);
           console.log('Restored settings.json from primary backup!');
         } else {
-          const backupsDir = path.join(this.baseDir, 'backups');
+          const backupsDir = path.join(this.userDataDir, 'backups');
           if (fs.existsSync(backupsDir)) {
             const files = fs.readdirSync(backupsDir)
               .filter(f => f.startsWith('settings-') && f.endsWith('.json'))

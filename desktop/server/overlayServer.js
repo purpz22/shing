@@ -10,17 +10,41 @@ class OverlayServer {
   constructor(port = 3333, baseDir = path.resolve(__dirname, '..')) {
     this.port = port;
     this.baseDir = baseDir;
+    this.userDataDir = this.resolveUserDataDir();
     this.server = null;
     this.wss = null;
     this.clients = new Set();
     this.settings = this.loadSettings();
   }
 
+  resolveUserDataDir() {
+    const appData = process.env.APPDATA || (process.platform === 'darwin'
+      ? path.join(process.env.HOME || '', 'Library', 'Application Support')
+      : path.join(process.env.HOME || '', '.config'));
+    const dir = appData ? path.join(appData, 'Shing Live') : this.baseDir;
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    } catch (e) {
+      return this.baseDir;
+    }
+    return dir;
+  }
+
   getSettingsPath() {
-    return path.join(this.baseDir, 'settings.json');
+    return path.join(this.userDataDir, 'settings.json');
   }
 
   getBackupPath() {
+    return path.join(this.userDataDir, 'settings.json.bak');
+  }
+
+  getLegacySettingsPath() {
+    return path.join(this.baseDir, 'settings.json');
+  }
+
+  getLegacyBackupPath() {
     return path.join(this.baseDir, 'settings.json.bak');
   }
 
@@ -45,11 +69,27 @@ class OverlayServer {
     const defaults = this.getDefaultSettings();
     const p = this.getSettingsPath();
     const bak = this.getBackupPath();
+    const legacyP = this.getLegacySettingsPath();
+    const legacyBak = this.getLegacyBackupPath();
+
+    // Migrate legacy settings.json from installation directory to user-writable AppData on first run
+    if (!fs.existsSync(p) && fs.existsSync(legacyP)) {
+      try {
+        fs.copyFileSync(legacyP, p);
+        if (fs.existsSync(legacyBak) && !fs.existsSync(bak)) {
+          fs.copyFileSync(legacyBak, bak);
+        }
+      } catch (e) {
+        console.warn('Could not migrate legacy settings.json:', e.message);
+      }
+    }
 
     let raw = null;
     try {
       if (fs.existsSync(p)) {
         raw = JSON.parse(fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, ''));
+      } else if (fs.existsSync(legacyP)) {
+        raw = JSON.parse(fs.readFileSync(legacyP, 'utf8').replace(/^\uFEFF/, ''));
       }
     } catch (e) {
       console.warn('Failed to parse settings.json, attempting recovery from backup:', e.message);
@@ -58,6 +98,9 @@ class OverlayServer {
           raw = JSON.parse(fs.readFileSync(bak, 'utf8').replace(/^\uFEFF/, ''));
           fs.copyFileSync(bak, p);
           console.log('Successfully recovered settings.json from backup!');
+        } else if (fs.existsSync(legacyBak)) {
+          raw = JSON.parse(fs.readFileSync(legacyBak, 'utf8').replace(/^\uFEFF/, ''));
+          fs.copyFileSync(legacyBak, p);
         }
       } catch (bakErr) {
         console.error('Backup recovery failed', bakErr.message);
@@ -74,15 +117,27 @@ class OverlayServer {
     this.settings = this.deepMerge(this.settings, newSettings);
     const p = this.getSettingsPath();
     const bak = this.getBackupPath();
+    const serialized = JSON.stringify(this.settings, null, 2);
     try {
       if (fs.existsSync(p)) {
         fs.copyFileSync(p, bak);
       }
-      fs.writeFileSync(p, JSON.stringify(this.settings, null, 2), 'utf8');
-      this.broadcast({ type: 'settings:update', settings: this.settings });
+      fs.writeFileSync(p, serialized, 'utf8');
     } catch (e) {
-      console.error('Failed to save settings.json', e.message);
+      console.error('Failed to save settings.json in userDataDir:', e.message);
     }
+
+    // Best-effort sync to baseDir when writable (e.g. portable or dev mode)
+    const legacyP = this.getLegacySettingsPath();
+    if (legacyP !== p) {
+      try {
+        fs.writeFileSync(legacyP, serialized, 'utf8');
+      } catch (e) {
+        // Ignore EPERM when installed in protected Program Files directory
+      }
+    }
+
+    this.broadcast({ type: 'settings:update', settings: this.settings });
     return this.settings;
   }
 

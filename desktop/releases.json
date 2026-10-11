@@ -1,6 +1,22 @@
 {
-    "latest":  "1.2.8",
+    "latest":  "1.2.9",
     "releases":  [
+                     {
+                         "version":  "1.2.9",
+                         "releaseName":  "Shing Live v1.2.9 - Automatic Startup Updates \u0026 Persistent Theme Storage",
+                         "releaseDate":  "2026-10-11",
+                         "type":  "feature",
+                         "summary":  "Added automatic update installation when the software opens and moved user configuration storage to AppData so themes and settings never reset across updates.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.2.9.zip",
+                         "highlights":  [
+                                            "Auto-Update on Startup: Automatically downloads and installs available updates when Shing Live is opened without requiring manual update checks",
+                                            "Persistent Theme \u0026 Settings Storage: Moved settings.json and backups to user-writable AppData with localStorage theme synchronization so custom themes never reset on update or restart",
+                                            "Seamless Legacy Migration: Automatically migrates existing settings from the installation directory on first launch"
+                                        ],
+                         "notes":  "Automatic startup updater and permanent user theme persistence.",
+                         "packageSize":  "3.99 MB",
+                         "checksum":  "62b5da91e45f1d98e8012baad77b0efd29684208fde8453b56684ad7aa7887c8"
+                     },
                      {
                          "version":  "1.2.8",
                          "releaseName":  "Shing Live v1.2.8 - Companion Card Stage Scaling \u0026 Update Modal Alignment",
