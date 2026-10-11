@@ -175,18 +175,38 @@ class OverlayServer {
         });
       });
 
-      this.server.listen(this.port, '0.0.0.0', () => {
-        console.log(`Overlay server running at http://localhost:${this.port}`);
-        resolve(this.port);
+      let retries = 0;
+      const tryListen = () => {
+        this.server.listen(this.port, '0.0.0.0', () => {
+          console.log(`Overlay server running at http://localhost:${this.port}`);
+          resolve(this.port);
+        });
+      };
+
+      this.server.on('error', err => {
+        if (err.code === 'EADDRINUSE' && retries < 8) {
+          retries++;
+          setTimeout(tryListen, 250);
+          return;
+        }
+        reject(err);
       });
 
-      this.server.on('error', err => reject(err));
+      tryListen();
     });
   }
 
   stop() {
-    if (this.wss) this.wss.close();
-    if (this.server) this.server.close();
+    for (const ws of this.clients) {
+      try { ws.terminate(); } catch (e) {}
+    }
+    this.clients.clear();
+    if (this.wss) {
+      try { this.wss.close(); } catch (e) {}
+    }
+    if (this.server) {
+      try { this.server.close(); } catch (e) {}
+    }
   }
 
   broadcast(msg) {

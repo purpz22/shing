@@ -1017,9 +1017,11 @@ function positionCatBubble() {
   const cat = catBubble.cat;
   const px = scale / dpr;
   const catHeadX = (cat.x + (cat.dir > 0 ? 16 : 10)) * px;
-  const top = innerHeight - (CH + 2 - cat.yOffset) * px - 4;
   const w = catBubble.w || (catBubble.w = catBubbleEl.offsetWidth);
-  const left = Math.min(innerWidth - w * 0.5 - 4, Math.max(w * 0.5 + 4, catHeadX));
+  const h = catBubbleEl.offsetHeight || 22;
+  const rawTop = innerHeight - (CH + 2 - cat.yOffset) * px - 4;
+  const top = Math.max(h + 6, rawTop);
+  const left = Math.min(innerWidth - w * 0.5 - 6, Math.max(w * 0.5 + 6, catHeadX));
   catBubbleEl.style.translate = left.toFixed(2) + 'px ' + top.toFixed(2) + 'px';
   const tail = Math.round(Math.min(w - 6, Math.max(6, w * 0.5 + (catHeadX - left))));
   if (tail !== catBubble.lastTail) {
@@ -1164,8 +1166,10 @@ const HEART_CANVAS = (() => {
 })();
 
 let scale = 4, dpr = 1, LW = 100, devW = 400, devH = 256;
+let hasValidFit = false, lastFitW = 0, lastFitH = 0, lastFitDpr = 0;
 const LH = 64;
 function fit() {
+  if (innerWidth < 20 || innerHeight < 20) return;
   dpr = window.devicePixelRatio || 1;
   scale = Math.max(1, Math.floor(innerHeight * dpr * 0.4 / LH));
   devW = Math.max(1, Math.round(innerWidth * dpr));
@@ -1175,12 +1179,21 @@ function fit() {
   canvas.style.width = (devW / dpr) + 'px';
   canvas.style.height = (devH / dpr) + 'px';
   ctx.imageSmoothingEnabled = false;
-  if (typeof char !== 'undefined') {
+  lastFitW = innerWidth;
+  lastFitH = innerHeight;
+  lastFitDpr = dpr;
+  if (!hasValidFit) {
+    hasValidFit = true;
+    if (typeof char !== 'undefined') {
+      char.x = Math.max(0, Math.floor((LW - SW) / 2));
+      if (typeof settings !== 'undefined') initCats(settings.cats);
+    }
+  } else if (typeof char !== 'undefined') {
     if (char.x > LW - SW) char.x = Math.max(0, LW - SW);
     for (const cat of cats) if (cat.x > LW - CW) cat.x = Math.max(0, LW - CW);
   }
-  if (typeof bubble !== 'undefined' && bubble.visible) bubble.w = bubbleEl.offsetWidth;
-  if (typeof catBubble !== 'undefined' && catBubble.visible) catBubble.w = catBubbleEl.offsetWidth;
+  if (typeof bubble !== 'undefined' && bubbleEl) bubble.w = bubbleEl.offsetWidth;
+  if (typeof catBubble !== 'undefined' && catBubbleEl) catBubble.w = catBubbleEl.offsetWidth;
 }
 
 /* ---------- State ---------- */
@@ -1272,6 +1285,13 @@ let last = performance.now();
 function tick(now) {
   const dt = Math.min(now - last, 100);
   last = now;
+  if (innerWidth >= 20 && innerHeight >= 20 && (!hasValidFit || innerWidth !== lastFitW || innerHeight !== lastFitH || (window.devicePixelRatio || 1) !== lastFitDpr)) {
+    fit();
+  }
+  if (!hasValidFit) {
+    requestAnimationFrame(tick);
+    return;
+  }
   update(dt);
   updateCats(dt);
   updateBubble(dt);
@@ -1373,9 +1393,11 @@ function positionBubble() {
   if (!bubble.visible) return;
   const px = scale / dpr;
   const headX = (char.x + SW * 0.5) * px;
-  const top = innerHeight - (SH - 1) * px - 6;
   const w = bubble.w || (bubble.w = bubbleEl.offsetWidth);
-  const left = Math.min(innerWidth - w * 0.5 - 4, Math.max(w * 0.5 + 4, headX));
+  const h = bubbleEl.offsetHeight || 28;
+  const rawTop = innerHeight - (SH - 1) * px - 6;
+  const top = Math.max(h + 6, rawTop);
+  const left = Math.min(innerWidth - w * 0.5 - 6, Math.max(w * 0.5 + 6, headX));
   bubbleEl.style.translate = left.toFixed(2) + 'px ' + top.toFixed(2) + 'px';
   const tail = Math.round(Math.min(w - 10, Math.max(10, w * 0.5 + (headX - left))));
   if (tail !== bubble.lastTail) {

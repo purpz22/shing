@@ -715,6 +715,12 @@ ipcMain.handle('updater:select-file', async () => {
 });
 
 ipcMain.handle('updater:relaunch', () => {
+  if (tiktokConnection) {
+    try { tiktokConnection.disconnect(); } catch (e) {}
+  }
+  if (overlayServer) {
+    try { overlayServer.stop(); } catch (e) {}
+  }
   updater.relaunch();
   return { success: true };
 });

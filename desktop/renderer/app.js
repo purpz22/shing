@@ -628,6 +628,12 @@ function switchTab(tabId) {
   });
   if (tabId === 'overlays') {
     OverlayDemoManager.start();
+    const demoCompIfr = $('ov-demo-comp-iframe');
+    if (demoCompIfr && demoCompIfr.contentWindow) {
+      setTimeout(() => {
+        try { demoCompIfr.contentWindow.dispatchEvent(new Event('resize')); } catch (e) {}
+      }, 60);
+    }
   } else {
     OverlayDemoManager.stop();
   }
@@ -1294,11 +1300,31 @@ async function downloadAndInstallUpdate() {
 
   try {
     await window.api.downloadUpdate(updateState);
-    await window.api.installUpdate(updateState);
+    const res = await window.api.installUpdate(updateState);
+    const installedVer = res?.newVersion || updateState.latestVersion || updateState.currentVersion;
+    updateState.currentVersion = installedVer;
+    updateState.hasUpdate = false;
+
+    if ($('stat-installed-ver')) $('stat-installed-ver').textContent = `v${installedVer}`;
+    if ($('header-version-text')) $('header-version-text').textContent = `v${installedVer}`;
+    if ($('header-version-badge')) {
+      $('header-version-badge').textContent = 'Up to Date';
+      $('header-version-badge').className = 'ver-badge-tag';
+    }
+    if ($('stat-latest-ver')) $('stat-latest-ver').textContent = `v${installedVer} (Latest)`;
+    if ($('update-banner')) $('update-banner').classList.add('hidden');
+    if ($('status-indicator-dot')) $('status-indicator-dot').className = 'status-indicator-dot';
+    if ($('update-status-text')) $('update-status-text').textContent = 'Up to Date';
+
+    // Refresh embedded preview iframes so updated overlays take effect immediately even before restart
+    const demoCompIfr = $('ov-demo-comp-iframe');
+    if (demoCompIfr) demoCompIfr.src = `http://localhost:3333/overlays/companion?muted=1&t=${Date.now()}`;
+    const compIfr = $('comp-preview-iframe');
+    if (compIfr) compIfr.src = `http://localhost:3333/overlays/companion?t=${Date.now()}`;
 
     // Show restart modal
     if ($('restart-dialog-msg')) {
-      $('restart-dialog-msg').textContent = `Shing Live has been updated to v${updateState.latestVersion || '1.2.1'}. Please restart the app now to activate all new features.`;
+      $('restart-dialog-msg').textContent = `Shing Live has been updated to v${installedVer}. Please restart the app now to activate all new features.`;
     }
     $('modal-restart').classList.add('active');
   } catch (e) {
@@ -1332,6 +1358,18 @@ function openChangelogModal() {
   container.innerHTML = '';
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
+    {
+      version: '1.2.8',
+      releaseName: 'Shing Live v1.2.8 - Companion Card Stage Scaling & Update Modal Alignment',
+      releaseDate: '2026-10-11',
+      summary: 'Fixed companion card preview canvas squishing when switching tabs, prevented speech bubble top clipping in compact previews, and centered the update confirmation modal icon.',
+      highlights: [
+        'Companion Card Preview Fix: Guarded canvas resize against hidden display:none tab dimensions so the chibi streamer and cats never collapse to 1px',
+        'Speech Bubble Viewport Clamping: Added compact stage scaling and top boundary clamping so speech bubbles never get cut off at the top of the card',
+        'Update Modal Alignment: Centered the checkmark badge and typography inside the Update Ready to Install confirmation dialog',
+        'Instant Post-Update Refresh: Automatically refreshes embedded preview iframes and version badges immediately after applying an update'
+      ]
+    },
     {
       version: '1.2.7',
       releaseName: 'Shing Live v1.2.7 - 1-Minute Companion Cat Meow Interval',

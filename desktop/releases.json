@@ -1,6 +1,23 @@
 {
-    "latest":  "1.2.7",
+    "latest":  "1.2.8",
     "releases":  [
+                     {
+                         "version":  "1.2.8",
+                         "releaseName":  "Shing Live v1.2.8 - Companion Card Stage Scaling \u0026 Update Modal Alignment",
+                         "releaseDate":  "2026-10-11",
+                         "type":  "fix",
+                         "summary":  "Fixed companion card preview canvas squishing when switching tabs, prevented speech bubble top clipping in compact previews, and centered the update confirmation modal icon.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.2.8.zip",
+                         "highlights":  [
+                                            "Companion Card Preview Fix: Guarded canvas resize against hidden display:none tab dimensions so the chibi streamer and cats never collapse to 1px",
+                                            "Speech Bubble Viewport Clamping: Added compact stage scaling and top boundary clamping so speech bubbles never get cut off at the top of the card",
+                                            "Update Modal Alignment: Centered the checkmark badge and typography inside the Update Ready to Install confirmation dialog",
+                                            "Instant Post-Update Refresh: Automatically refreshes embedded preview iframes and version badges immediately after applying an update"
+                                        ],
+                         "notes":  "UI layout and companion stage preview stability update.",
+                         "packageSize":  "3.99 MB",
+                         "checksum":  "b7f4786fd6665b40075cd9b6594f761ab9c9ab3be3b8cf46953115816a0cc8ca"
+                     },
                      {
                          "version":  "1.2.7",
                          "releaseName":  "Shing Live v1.2.7 - 1-Minute Companion Cat Meow Interval",
