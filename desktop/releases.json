@@ -1,6 +1,22 @@
 {
-    "latest":  "1.2.6",
+    "latest":  "1.2.7",
     "releases":  [
+                     {
+                         "version":  "1.2.7",
+                         "releaseName":  "Shing Live v1.2.7 - 1-Minute Companion Cat Meow Interval",
+                         "releaseDate":  "2026-10-11",
+                         "type":  "feature",
+                         "summary":  "Set companion cat meow interval to strictly once per minute and disabled automatic cat meows on gift, follow, chat, and like events.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.2.7.zip",
+                         "highlights":  [
+                                            "1-Minute Cat Meow Timer: Unified companion cat meowing to a single shared 60-second timer across all active cats",
+                                            "Event Meow Suppression: Cats no longer meow when viewers send gifts, follow, like, or chat",
+                                            "Silent Dashboard Card Preview: Muted miniature Overlays tab companion preview iframe so background tabs never duplicate audio"
+                                        ],
+                         "notes":  "Companion audio refinement for a calmer, predictable 1-minute cat meow cadence.",
+                         "packageSize":  "3.99 MB",
+                         "checksum":  "ec63169e6704de9e931e583cbc7cf2bd4a124cebb4cd64aba8ace62a75553a26"
+                     },
                      {
                          "version":  "1.2.6",
                          "releaseName":  "Shing Live v1.2.6 - Reliable TikTok Live Auto-Connect \u0026 Protocol Upgrade",

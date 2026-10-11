@@ -451,7 +451,7 @@ const OverlayDemoManager = {
     // Sync Companion iframe if exists
     const compIframe = $('ov-demo-comp-iframe');
     if (compIframe && !compIframe.src.includes('localhost:3333')) {
-      compIframe.src = 'http://localhost:3333/overlays/companion';
+      compIframe.src = 'http://localhost:3333/overlays/companion?muted=1';
     }
   },
 
@@ -1332,6 +1332,17 @@ function openChangelogModal() {
   container.innerHTML = '';
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
+    {
+      version: '1.2.7',
+      releaseName: 'Shing Live v1.2.7 - 1-Minute Companion Cat Meow Interval',
+      releaseDate: '2026-10-11',
+      summary: 'Set companion cat meow interval to strictly once per minute and disabled automatic cat meows on gift, follow, chat, and like events.',
+      highlights: [
+        '1-Minute Cat Meow Timer: Unified companion cat meowing to a single shared 60-second timer across all active cats',
+        'Event Meow Suppression: Cats no longer meow when viewers send gifts, follow, like, or chat',
+        'Silent Dashboard Card Preview: Muted miniature Overlays tab companion preview iframe so background tabs never duplicate audio'
+      ]
+    },
     {
       version: '1.2.6',
       releaseName: 'Shing Live v1.2.6 - Reliable TikTok Live Auto-Connect & Protocol Upgrade',
