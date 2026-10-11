@@ -20,8 +20,8 @@ class AppUpdater {
   getCurrentVersion() {
     try {
       if (fs.existsSync(this.packagePath)) {
-        const pkg = JSON.parse(fs.readFileSync(this.packagePath, 'utf8'));
-        return pkg.version || '1.0.0';
+        const pkg = JSON.parse(fs.readFileSync(this.packagePath, 'utf8').replace(/^\uFEFF/, ''));
+        return pkg.version || '1.1.0';
       }
     } catch (e) {
       console.warn('Failed to read package.json version', e.message);

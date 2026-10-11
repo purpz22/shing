@@ -250,8 +250,8 @@ class OverlayServer {
 
     if (pathname === '/api/version') {
       const pkgPath = path.join(this.baseDir, 'package.json');
-      let ver = '1.0.0';
-      try { ver = JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version || '1.0.0'; } catch (e) {}
+      let ver = '1.1.0';
+      try { ver = JSON.parse(fs.readFileSync(pkgPath, 'utf8').replace(/^\uFEFF/, '')).version || '1.1.0'; } catch (e) {}
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ version: ver, app: 'Shing Studio' }));
     }
