@@ -1381,6 +1381,9 @@ document.addEventListener('DOMContentLoaded', () => {
   $('test-comp-happy-btn').addEventListener('click', () => {
     window.api.simulateEvent('gift', { user: 'Tester', giftName: 'Rose' });
   });
+  $('test-cat-meow-btn')?.addEventListener('click', () => {
+    window.api.simulateEvent('cat:meow', {});
+  });
 
   // Settings: Theme
   $('setting-theme').addEventListener('change', () => {

@@ -957,7 +957,7 @@ function initCats(selected) {
       eyes: 'open',
       blinkT: 1800 + i * 900 + Math.random() * 2500,
       blinkPhase: -1,
-      meowT: 14000 + i * 9000 + Math.random() * 12000
+      meowT: 20000 + i * 4000 + Math.random() * 10000
     });
   }
 }
@@ -965,6 +965,28 @@ function initCats(selected) {
 const catBubbleEl = document.getElementById('cat-bubble');
 const catBubble = { visible: false, cat: null, t: 0, w: 0, lastTail: -1 };
 const MEOWS = ['meow~', 'nya~', 'mew!', 'purr~', 'prrrt~', 'nyaa~'];
+
+const MEOW_AUDIO_DATA = "data:audio/mp3;base64,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";
+
+let meowAudioObj = null;
+let lastMeowSoundTime = 0;
+
+function playMeowSound() {
+  const now = Date.now();
+  if (now - lastMeowSoundTime < 1800) return;
+  lastMeowSoundTime = now;
+  try {
+    if (!meowAudioObj) {
+      meowAudioObj = new Audio(MEOW_AUDIO_DATA);
+    }
+    meowAudioObj.currentTime = 0;
+    meowAudioObj.volume = 0.85;
+    const playPromise = meowAudioObj.play();
+    if (playPromise && playPromise.catch) {
+      playPromise.catch(() => {});
+    }
+  } catch (err) {}
+}
 
 function showCatMessage(cat, text) {
   if (!catBubbleEl) return;
@@ -1007,6 +1029,7 @@ function positionCatBubble() {
 function triggerCatMeow(cat) {
   const text = MEOWS[Math.floor(Math.random() * MEOWS.length)];
   showCatMessage(cat, text);
+  playMeowSound();
   for (let i = 0; i < 2 && hearts.length < 30; i++) {
     const x0 = cat.x + (cat.dir > 0 ? 13 : 7) + Math.random() * 6;
     hearts.push({
@@ -1043,10 +1066,8 @@ function updateCats(dt) {
     }
     cat.meowT -= dt;
     if (cat.meowT <= 0) {
-      cat.meowT = 20000 + Math.random() * 25000;
-      if (Math.random() < 0.65 && !reduceMotion.matches) {
-        triggerCatMeow(cat);
-      }
+      cat.meowT = 20000 + Math.random() * 10000;
+      triggerCatMeow(cat);
     }
     const happyActive = isHappy || cat.state === 'happy';
     cat.eyes = happyActive

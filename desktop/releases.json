@@ -1,6 +1,24 @@
 {
-    "latest":  "1.2.0",
+    "latest":  "1.2.1",
     "releases":  [
+                     {
+                         "version":  "1.2.1",
+                         "releaseName":  "Shing Studio v1.2.1 - Companion Cat Meow Audio \u0026 20s-30s Timer",
+                         "releaseDate":  "2026-10-11",
+                         "type":  "feature",
+                         "summary":  "Cats now reliably meow every 20s to 30s with cute audio sound effects, speech bubble, and hearts.",
+                         "downloadUrl":  "https://github.com/purpz22/shing/releases/download/v1.2.1/shing-studio-v1.2.1.zip",
+                         "highlights":  [
+                                            "Cat Meow Interval: Configured cats to meow every 20s or 30s (20000ms - 30000ms)",
+                                            "Audio Sound Effect: Embedded authentic meow sound effect that plays whenever cats meow",
+                                            "Interactive Meowing: Clicking any companion cat triggers immediate meowing with floating hearts",
+                                            "Stream Trigger Integration: Cats meow and play sound on incoming gifts, follows, and chat messages",
+                                            "Dashboard Test Button: Added Test Cat Meow button in companion settings"
+                                        ],
+                         "notes":  "Interactive audio companion upgrade.",
+                         "checksum":  "7c3f6a65aa719fee6247c9e5aaa1ecaa76cf893215e5591620bf75307fed2b0f",
+                         "packageSize":  "4.29 MB"
+                     },
                      {
                          "version":  "1.2.0",
                          "releaseName":  "Shing Studio v1.2.0 - Stream Sound Effects \u0026 500 Gift Physics Jar",
