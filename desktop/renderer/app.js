@@ -1052,6 +1052,18 @@ function openChangelogModal() {
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
     {
+      version: '1.2.3',
+      releaseName: 'Shing Live v1.2.3 - Smooth In-App Toasts & Custom Alert Modals',
+      releaseDate: '2026-10-11',
+      summary: 'Replaced intrusive native alert popups with sleek floating pastel toast notifications and custom in-app modal cards.',
+      highlights: [
+        'Floating Toast Notifications: Non-blocking notifications for settings save confirmations across all dashboard sections',
+        'Custom In-App Alert Modal: Branded dialog card with vector icons replacing native Windows message boxes',
+        'Auto-Dismiss Countdown: Animated progress bar auto-closing toasts after 3 seconds with manual dismiss button',
+        'Zero OS Popups: Intercepts all alerts so the streamer is never interrupted by system dialogs'
+      ]
+    },
+    {
       version: '1.2.2',
       releaseName: 'Shing Live v1.2.2 - Chat Overlay Themes & Stream Auto-Polling',
       releaseDate: '2026-10-11',

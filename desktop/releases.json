@@ -1,6 +1,23 @@
 {
-    "latest":  "1.2.2",
+    "latest":  "1.2.3",
     "releases":  [
+                     {
+                         "version":  "1.2.3",
+                         "releaseName":  "Shing Live v1.2.3 - Smooth In-App Toasts \u0026 Custom Pastel Alert Modals",
+                         "releaseDate":  "2026-10-11",
+                         "type":  "feature",
+                         "summary":  "Replaced native blocking alert dialogs with sleek floating pastel toast notifications and branded custom in-app modal cards.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.2.3.zip",
+                         "highlights":  [
+                                            "Floating Toast Notifications: Smooth non-blocking notifications for settings save confirmations (chat, triggers, lower third, companion, jar, timer)",
+                                            "Custom Pastel Alert Modal: Elegant in-app dialog card replacing Win32 OS dialogs",
+                                            "Auto-Dismiss Progress Bar: 3-second auto-dismiss with countdown bar and manual close button",
+                                            "Zero Native Dialogs: Global window.alert override ensuring consistent streaming experience"
+                                        ],
+                         "notes":  "Streamer dashboard UX upgrade eliminating disruptive native alert popups.",
+                         "packageSize":  "4.03 MB",
+                         "checksum":  "60cb71ef621a321e94137f8236a409375104ab64c1ad0d03d63dfad94ca44018"
+                     },
                      {
                          "version":  "1.2.2",
                          "releaseName":  "Shing Live v1.2.2 - Chat Overlay Themes \u0026 Stream Auto-Polling",
