@@ -1061,6 +1061,34 @@
   </div>
 </div>
 
+<!-- Floating In-App Toast Container -->
+<div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<!-- Modal: Custom In-App Alert Dialog -->
+<div id="modal-custom-alert" class="modal-backdrop">
+  <div class="modal-card custom-alert-card">
+    <div class="modal-header custom-alert-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span id="custom-alert-hdr-icon" class="custom-alert-hdr-icon"></span>
+        <h3 id="custom-alert-title" style="margin: 0; font-size: 16px;">Notice</h3>
+      </div>
+      <button class="modal-close-btn" id="custom-alert-close">&times;</button>
+    </div>
+    <div class="modal-body custom-alert-body">
+      <div id="custom-alert-icon-wrap" class="custom-alert-icon-wrap info">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      </div>
+      <div class="custom-alert-text-wrap">
+        <h4 id="custom-alert-heading" class="custom-alert-heading">Notice</h4>
+        <div id="custom-alert-message" class="custom-alert-message"></div>
+      </div>
+    </div>
+    <div class="modal-footer custom-alert-footer">
+      <button class="btn btn-primary" id="custom-alert-confirm-btn" style="min-width: 110px;">Got It</button>
+    </div>
+  </div>
+</div>
+
 <script src="../assets/icons/icons.js"></script>
 <script src="app.js"></script>
 </body>

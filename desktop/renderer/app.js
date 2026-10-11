@@ -200,6 +200,137 @@ if (typeof window.api === 'undefined') {
   };
 }
 
+// In-App Toast & Custom Alert Notification System
+const NOTIF_ICONS = {
+  success: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
+  error: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`,
+  info: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`,
+  warning: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>`
+};
+
+function escapeNotifHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function showToast(message, type = 'success', title = null, duration = 3200) {
+  const container = $('toast-container');
+  if (!container) return null;
+
+  const validTypes = ['success', 'error', 'info', 'warning'];
+  const toastType = validTypes.includes(type) ? type : 'info';
+
+  const defaultTitles = {
+    success: 'Success',
+    error: 'Notice',
+    info: 'Shing Live',
+    warning: 'Warning'
+  };
+  const toastTitle = title || defaultTitles[toastType];
+
+  const toast = document.createElement('div');
+  toast.className = `toast-item toast-${toastType}`;
+
+  const iconSvg = NOTIF_ICONS[toastType] || NOTIF_ICONS.info;
+
+  toast.innerHTML = `
+    <div class="toast-icon-badge">${iconSvg}</div>
+    <div class="toast-content">
+      <div class="toast-title">${escapeNotifHtml(toastTitle)}</div>
+      <div class="toast-message">${escapeNotifHtml(message)}</div>
+    </div>
+    <button class="toast-close-btn" aria-label="Close">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+    <div class="toast-progress-bar"></div>
+  `;
+
+  container.appendChild(toast);
+
+  const progBar = toast.querySelector('.toast-progress-bar');
+  if (progBar && duration > 0) {
+    progBar.style.transition = `transform ${duration}ms linear`;
+    requestAnimationFrame(() => {
+      progBar.style.transform = 'scaleX(0)';
+    });
+  }
+
+  let dismissTimer = null;
+  const closeToast = () => {
+    if (toast.classList.contains('toast-closing')) return;
+    toast.classList.add('toast-closing');
+    if (dismissTimer) clearTimeout(dismissTimer);
+    setTimeout(() => {
+      try { toast.remove(); } catch (e) {}
+    }, 240);
+  };
+
+  const closeBtn = toast.querySelector('.toast-close-btn');
+  if (closeBtn) closeBtn.addEventListener('click', closeToast);
+
+  if (duration > 0) {
+    dismissTimer = setTimeout(closeToast, duration);
+  }
+
+  return toast;
+}
+
+let customAlertResolver = null;
+function showCustomAlert(message, title = 'Notice', type = 'info') {
+  return new Promise(resolve => {
+    const modal = $('modal-custom-alert');
+    if (!modal) {
+      showToast(message, type, title);
+      return resolve(true);
+    }
+
+    customAlertResolver = resolve;
+
+    const titleEl = $('custom-alert-title');
+    const headingEl = $('custom-alert-heading');
+    const msgEl = $('custom-alert-message');
+    const iconWrap = $('custom-alert-icon-wrap');
+    const hdrIcon = $('custom-alert-hdr-icon');
+
+    if (titleEl) titleEl.textContent = title || 'Notice';
+    if (headingEl) headingEl.textContent = title || 'Notice';
+    if (msgEl) msgEl.textContent = message || '';
+
+    const validTypes = ['success', 'error', 'info', 'warning'];
+    const modalType = validTypes.includes(type) ? type : 'info';
+
+    if (iconWrap) {
+      iconWrap.className = `custom-alert-icon-wrap ${modalType}`;
+      iconWrap.innerHTML = NOTIF_ICONS[modalType] || NOTIF_ICONS.info;
+    }
+    if (hdrIcon) {
+      hdrIcon.innerHTML = NOTIF_ICONS[modalType] || NOTIF_ICONS.info;
+    }
+
+    modal.classList.add('active');
+  });
+}
+
+function closeCustomAlert() {
+  const modal = $('modal-custom-alert');
+  if (modal) modal.classList.remove('active');
+  if (typeof customAlertResolver === 'function') {
+    const fn = customAlertResolver;
+    customAlertResolver = null;
+    fn(true);
+  }
+}
+
+// Global window.alert override so OS dialogs never block the streamer
+window.alert = function(msg) {
+  showToast(String(msg), 'info', 'Shing Live');
+};
+
 // Initialize SVG icons
 function renderIcons() {
   document.querySelectorAll('[data-icon]').forEach(el => {
@@ -668,7 +799,7 @@ async function handleSoundSearch(query) {
               useBtn.classList.add('btn-primary');
             }, 2500);
           } catch (err) {
-            alert(`Download error: ${err.message}`);
+            showToast(`Download error: ${err.message}`, 'error', 'Sound Download');
             useBtn.disabled = false;
             useBtn.textContent = 'Retry';
           }
@@ -711,10 +842,10 @@ async function handleImportLocalSound(targetSelectId) {
         }
       }
       playSoundPreview(res.url);
-      alert(`Sound "${res.name}" imported and assigned!`);
+      showToast(`Sound "${res.name}" imported and assigned!`, 'success', 'Audio Library');
     }
   } catch (err) {
-    alert(`Import error: ${err.message}`);
+    showToast(`Import error: ${err.message}`, 'error', 'Audio Import');
   }
 }
 
@@ -848,14 +979,14 @@ async function checkAppUpdates(manual = true) {
       if ($('update-banner')) $('update-banner').classList.add('hidden');
 
       if (manual) {
-        alert(`Shing Live is up to date (v${result.currentVersion})!`);
+        showToast(`Shing Live is up to date (v${result.currentVersion})!`, 'success', 'Software Update');
       }
     }
   } catch (err) {
     console.error('Update check error', err);
     if (dot) dot.className = 'status-indicator-dot';
     if (txt) txt.textContent = 'Check Failed';
-    if (manual) alert(`Could not check for updates: ${err.message}`);
+    if (manual) showToast(`Could not check for updates: ${err.message}`, 'error', 'Software Update');
   } finally {
     updateState.isChecking = false;
     if (btnTxt) btnTxt.textContent = 'Check for Updates';
@@ -890,7 +1021,7 @@ async function downloadAndInstallUpdate() {
     }
     $('modal-restart').classList.add('active');
   } catch (e) {
-    alert(`Installation failed: ${e.message}`);
+    showCustomAlert(`Installation failed: ${e.message}`, 'Update Error', 'error');
   } finally {
     unsubscribe();
     updateState.isDownloading = false;
@@ -910,7 +1041,7 @@ async function handleSelectLocalZip() {
       $('modal-restart').classList.add('active');
     }
   } catch (e) {
-    alert(`Failed to apply local update package: ${e.message}`);
+    showCustomAlert(`Failed to apply local update package: ${e.message}`, 'Update Error', 'error');
   }
 }
 
@@ -986,7 +1117,7 @@ async function handleExportSettings() {
     const res = await window.api.exportSettings();
     if (res && res.success) {
       if (feedback) feedback.textContent = `Backup exported successfully to: ${res.filePath}`;
-      alert(`Settings backup saved successfully!\n\nLocation: ${res.filePath}`);
+      showToast(`Settings backup saved successfully!\nLocation: ${res.filePath}`, 'success', 'Backup Export', 4500);
     } else if (res && !res.canceled) {
       if (feedback) feedback.textContent = 'Export cancelled or failed.';
     } else {
@@ -994,7 +1125,7 @@ async function handleExportSettings() {
     }
   } catch (err) {
     if (feedback) feedback.textContent = `Export error: ${err.message}`;
-    alert(`Could not export backup: ${err.message}`);
+    showToast(`Could not export backup: ${err.message}`, 'error', 'Backup Export');
   }
 }
 
@@ -1005,17 +1136,17 @@ async function handleImportSettings() {
     const res = await window.api.importSettings();
     if (res && res.success) {
       if (feedback) feedback.textContent = `Configuration restored successfully from: ${res.filePath}`;
-      alert('Settings restored successfully! UI and overlays have been updated.');
+      showToast('Settings restored successfully! UI and overlays have been updated.', 'success', 'Backup Restore');
       await initSettings();
     } else if (res && res.error) {
       if (feedback) feedback.textContent = `Import error: ${res.error}`;
-      alert(`Could not restore settings: ${res.error}`);
+      showToast(`Could not restore settings: ${res.error}`, 'error', 'Backup Restore');
     } else {
       if (feedback) feedback.textContent = '';
     }
   } catch (err) {
     if (feedback) feedback.textContent = `Import error: ${err.message}`;
-    alert(`Failed to import configuration: ${err.message}`);
+    showToast(`Failed to import configuration: ${err.message}`, 'error', 'Backup Restore');
   }
 }
 
@@ -1090,6 +1221,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $('modal-account').classList.remove('active');
     saveCurrentSettings();
     window.api.connectTikTok(username);
+    showToast(`Connected to streamer @${username}!`, 'success', 'TikTok Live');
   });
   $('modal-confirm-no').addEventListener('click', () => {
     $('modal-step-confirm').style.display = 'none';
@@ -1141,7 +1273,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
     saveCurrentSettings();
-    alert('Triggers and sound settings saved!');
+    showToast('Triggers and sound settings saved!', 'success', 'Triggers & Sounds');
   });
 
   // Sound volume slider live preview
@@ -1255,7 +1387,7 @@ document.addEventListener('DOMContentLoaded', () => {
       interval: +$('lt-interval').value || 15
     };
     saveCurrentSettings();
-    alert('Lower 3rd settings saved!');
+    showToast('Lower 3rd social banner settings saved!', 'success', 'Lower Third');
   });
 
   // Chat Settings & Live Preview
@@ -1299,7 +1431,7 @@ document.addEventListener('DOMContentLoaded', () => {
       messageGrouping: $('chat-grouping').checked
     };
     saveCurrentSettings();
-    alert('Chat settings saved!');
+    showToast('Chat overlay settings saved!', 'success', 'Chat Box');
   });
 
   $('send-test-chat-btn').addEventListener('click', () => {
@@ -1354,7 +1486,7 @@ document.addEventListener('DOMContentLoaded', () => {
       overflowAllowed: true
     };
     saveCurrentSettings();
-    alert('Jar physics settings saved!');
+    showToast('Jar physics and gift settings saved!', 'success', 'Interactive Jar');
   });
   $('clear-jar-btn').addEventListener('click', () => {
     window.api.clearJar();
@@ -1400,7 +1532,7 @@ document.addEventListener('DOMContentLoaded', () => {
       addSecondsPerGift: +$('timer-bonus').value || 15
     };
     saveCurrentSettings();
-    alert('Timer settings saved!');
+    showToast('Subathon timer settings saved!', 'success', 'Countdown Timer');
   });
   $('timer-start-btn').addEventListener('click', () => {
     window.api.controlTimer('start');
@@ -1454,7 +1586,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('save-companion-btn').addEventListener('click', () => {
     broadcastCompanionChange();
-    alert('Companion settings saved!');
+    showToast('Pixel companion avatar settings saved!', 'success', 'Pixel Companion');
   });
   $('test-comp-happy-btn').addEventListener('click', () => {
     window.api.simulateEvent('gift', { user: 'Tester', giftName: 'Rose' });
@@ -1504,6 +1636,18 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   $('btn-restart-later')?.addEventListener('click', () => {
     $('modal-restart').classList.remove('active');
+  });
+
+  // Custom Alert modal actions
+  $('custom-alert-close')?.addEventListener('click', closeCustomAlert);
+  $('custom-alert-confirm-btn')?.addEventListener('click', closeCustomAlert);
+  $('modal-custom-alert')?.addEventListener('click', e => {
+    if (e.target.id === 'modal-custom-alert') closeCustomAlert();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && $('modal-custom-alert')?.classList.contains('active')) {
+      closeCustomAlert();
+    }
   });
 
   // Update Settings change listeners
