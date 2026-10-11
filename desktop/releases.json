@@ -1,6 +1,24 @@
 {
-    "latest":  "1.1.0",
+    "latest":  "1.2.0",
     "releases":  [
+                     {
+                         "version":  "1.2.0",
+                         "releaseName":  "Shing Studio v1.2.0 - Stream Sound Effects \u0026 500 Gift Physics Jar",
+                         "releaseDate":  "2026-10-11",
+                         "type":  "feature",
+                         "summary":  "Full sound effects suite with MyInstants online search, local audio import, 500 gift physics jar, and support for all TikTok gift icons.",
+                         "downloadUrl":  "https://github.com/purpz22/shing/releases/download/v1.2.0/shing-studio-v1.2.0.zip",
+                         "highlights":  [
+                                            "Full Sound Effects System: Alert sounds for Follows, Gifts, Big Gifts (1,000+ coins), and Likes with master volume control",
+                                            "MyInstants Online Search: Live search, instant audio preview, and one-click download with automatic alert assignment",
+                                            "Local Sound Import: Support for importing custom .mp3, .wav, .ogg, and .m4a audio files from local computer",
+                                            "All TikTok Gifts Display: Fixed gift icon visibility with catalog resolution and 3D shiny glass coin rendering",
+                                            "500 Gifts Jar Capacity: Increased default max gifts from 150 to 500 with smooth physics stacking"
+                                        ],
+                         "notes":  "Major audio and gift visual upgrade for TikTok Live streamers.",
+                         "checksum":  "d318a979aeb368fcb0cd6fda10bbb04f0a291909d3383f4d4340f2916d22efe3",
+                         "packageSize":  "4.28 MB"
+                     },
                      {
                          "version":  "1.1.0",
                          "releaseName":  "Shing Studio v1.1.0 - Viewer Display Names \u0026 Coins HUD",

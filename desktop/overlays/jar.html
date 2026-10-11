@@ -136,7 +136,10 @@ const GIFT_ICONS = {
   galaxy: '/assets/gifts/galaxy.png',
   panda: '/assets/gifts/panda.png',
   cap: '/assets/gifts/cap.png',
-  sunglasses: '/assets/gifts/sunglasses.png'
+  sunglasses: '/assets/gifts/sunglasses.png',
+  money_gun: '/assets/gifts/money_gun.png',
+  lion: '/assets/gifts/lion.png',
+  universe: '/assets/gifts/universe.png'
 };
 
 const preloadedImgs = {};
@@ -153,12 +156,58 @@ fetch('/api/gifts')
   .then(list => {
     if (Array.isArray(list)) {
       list.forEach(g => {
-        const key = (g.name || g.id || '').toLowerCase().replace(/\s+/g, '_');
-        if (g.image) catalogMap[key] = g.image;
+        if (!g.image) return;
+        const idStr = String(g.id);
+        catalogMap[idStr] = g.image;
+        if (g.name) {
+          const nameLower = g.name.toLowerCase();
+          catalogMap[nameLower] = g.image;
+          catalogMap[nameLower.replace(/[^a-z0-9]/g, '_')] = g.image;
+          catalogMap[nameLower.replace(/[^a-z0-9]/g, '')] = g.image;
+          if (nameLower.includes('universe')) {
+            catalogMap['universe'] = g.image;
+            catalogMap['tiktok_universe'] = g.image;
+          }
+          if (nameLower.includes('lion')) {
+            catalogMap['lion'] = g.image;
+          }
+          if (nameLower.includes('money') && nameLower.includes('gun')) {
+            catalogMap['money_gun'] = g.image;
+          }
+        }
       });
     }
   })
   .catch(() => {});
+
+function resolveGiftUrl(key, rawUrl, name) {
+  if (rawUrl && typeof rawUrl === 'string' && rawUrl.length > 5) return rawUrl;
+  const cleanKey = (key || '').toLowerCase().replace(/[^a-z0-9_]/g, '');
+  if (GIFT_ICONS[cleanKey]) return GIFT_ICONS[cleanKey];
+  if (catalogMap[cleanKey]) return catalogMap[cleanKey];
+  if (key && catalogMap[key]) return catalogMap[key];
+  if (name && catalogMap[name.toLowerCase()]) return catalogMap[name.toLowerCase()];
+  const localCandidates = ['universe', 'lion', 'money_gun', 'galaxy', 'rose', 'heart_me', 'gg', 'cap', 'doughnut', 'ice_cream', 'panda', 'perfume', 'sunglasses', 'tiktok'];
+  for (const c of localCandidates) {
+    if (cleanKey.includes(c) || (name && name.toLowerCase().includes(c))) {
+      return `/assets/gifts/${c}.png`;
+    }
+  }
+  return null;
+}
+
+function getGiftImage(key, url, name) {
+  const cacheKey = key || name || 'gift';
+  if (preloadedImgs[cacheKey]) return preloadedImgs[cacheKey];
+  const resolvedUrl = resolveGiftUrl(key, url, name);
+  if (resolvedUrl) {
+    const img = new Image();
+    img.src = resolvedUrl;
+    preloadedImgs[cacheKey] = img;
+    return img;
+  }
+  return null;
+}
 
 // Setup Matter.js
 const { Engine, World, Bodies, Body, Events } = Matter;
@@ -222,7 +271,7 @@ let jarSettings = {
   gravity: 0.95,
   giftScale: 0.85,
   bounciness: 0.4,
-  maxGifts: 150,
+  maxGifts: 500,
   overflowAllowed: true
 };
 
@@ -270,10 +319,9 @@ function triggerCombo(giftName) {
   }
 }
 
-function dropGift(type, sizeMul = 1.0) {
-  const iconKey = GIFT_ICONS[type] ? type : 'rose';
+function dropGift(type, sizeMul = 1.0, directImg = null, giftName = 'Gift', coinVal = 1) {
   const baseRadius = 26 * jarSettings.giftScale * sizeMul;
-  const radius = Math.max(16, Math.min(56, baseRadius));
+  const radius = Math.max(18, Math.min(68, baseRadius));
 
   const spawnX = 260 + Math.random() * 244;
   const spawnY = -25 - Math.random() * 60;
@@ -291,8 +339,11 @@ function dropGift(type, sizeMul = 1.0) {
   });
   Body.setAngularVelocity(giftBody, (Math.random() - 0.5) * 0.18);
 
-  giftBody.giftIcon = iconKey;
+  giftBody.giftIcon = type;
+  giftBody.giftName = giftName;
+  giftBody.coins = coinVal;
   giftBody.radius = radius;
+  giftBody.giftImg = directImg || preloadedImgs[type] || getGiftImage(type, null, giftName);
   giftBody.alpha = 1.0;
   giftBody.createdAt = Date.now();
   giftBody.squashX = 1.0;
@@ -363,7 +414,7 @@ function render() {
 
     const { x, y } = b.position;
     const r = b.radius;
-    const img = preloadedImgs[b.giftIcon] || preloadedImgs.rose;
+    const img = b.giftImg || preloadedImgs[b.giftIcon] || getGiftImage(b.giftIcon, null, b.giftName);
 
     ctx.save();
     ctx.translate(x, y);
@@ -374,22 +425,70 @@ function render() {
     // Soft drop shadow
     ctx.beginPath();
     ctx.arc(0, 3, r, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(20, 10, 35, 0.14)';
+    ctx.fillStyle = 'rgba(20, 10, 35, 0.16)';
     ctx.fill();
 
-    // Gift graphic
-    if (img && img.complete) {
+    // Gift graphic or high-contrast 3D shiny gift badge
+    if (img && img.complete && img.naturalWidth > 0) {
       ctx.drawImage(img, -r, -r, r * 2, r * 2);
     } else {
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.fillStyle = '#ff4d6d';
-      ctx.fill();
+      drawGiftFallbackBadge(ctx, b, r);
     }
     ctx.restore();
   }
 
   requestAnimationFrame(render);
+}
+
+function drawGiftFallbackBadge(ctx, b, r) {
+  const coins = b.coins || 1;
+  const name = (b.giftName || b.giftIcon || 'Gift').toUpperCase();
+
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+
+  const grad = ctx.createRadialGradient(0, -r * 0.3, r * 0.2, 0, 0, r);
+  if (coins >= 10000) {
+    grad.addColorStop(0, '#ffe57f');
+    grad.addColorStop(0.6, '#ffd54f');
+    grad.addColorStop(1, '#ff8f00');
+  } else if (coins >= 1000) {
+    grad.addColorStop(0, '#f48fb1');
+    grad.addColorStop(0.6, '#ba68c8');
+    grad.addColorStop(1, '#7b1fa2');
+  } else if (coins >= 100) {
+    grad.addColorStop(0, '#80deea');
+    grad.addColorStop(0.7, '#26a69a');
+    grad.addColorStop(1, '#00695c');
+  } else {
+    grad.addColorStop(0, '#e1bee7');
+    grad.addColorStop(0.7, '#ab47bc');
+    grad.addColorStop(1, '#6a1b9a');
+  }
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.lineWidth = Math.max(2, r * 0.08);
+  ctx.strokeStyle = coins >= 1000 ? '#fff8e1' : 'rgba(255, 255, 255, 0.85)';
+  ctx.stroke();
+
+  let text = name;
+  if (name.includes('UNIVERSE')) text = 'UNIV';
+  else if (name.includes('LION')) text = 'LION';
+  else if (name.includes('MONEY')) text = 'CASH';
+  else if (name.includes('GALAXY')) text = 'GLXY';
+  else if (name.includes('DRAGON')) text = 'DRAG';
+  else if (name.includes('WHALE')) text = 'WHAL';
+  else if (name.length > 5) {
+    const words = name.split(/\s+/);
+    text = words.length > 1 ? (words[0][0] + words[1][0]) : name.slice(0, 4);
+  }
+
+  ctx.fillStyle = coins >= 10000 ? '#3e2723' : '#ffffff';
+  ctx.font = `bold ${Math.floor(r * 0.44)}px system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 0, 1);
 }
 
 requestAnimationFrame(render);
@@ -411,12 +510,17 @@ function connectWS() {
       } else if (data.type === 'gift') {
         const giftName = data.giftName || 'Gift';
         const giftKey = (data.giftId || data.giftName || 'rose').toLowerCase().replace(/\s+/g, '_');
-        const imgUrl = data.giftPictureUrl || catalogMap[giftKey] || GIFT_ICONS[giftKey];
+        const resolvedUrl = data.giftPictureUrl || resolveGiftUrl(giftKey, null, giftName);
 
-        if (imgUrl && !preloadedImgs[giftKey]) {
-          const dynamicImg = new Image();
-          dynamicImg.src = imgUrl;
-          preloadedImgs[giftKey] = dynamicImg;
+        let dynamicImg = null;
+        if (resolvedUrl) {
+          if (!preloadedImgs[giftKey]) {
+            dynamicImg = new Image();
+            dynamicImg.src = resolvedUrl;
+            preloadedImgs[giftKey] = dynamicImg;
+          } else {
+            dynamicImg = preloadedImgs[giftKey];
+          }
         }
 
         const count = Math.min(25, Math.max(1, data.count || 1));
@@ -436,7 +540,7 @@ function connectWS() {
         }
 
         for (let i = 0; i < count; i++) {
-          setTimeout(() => dropGift(giftKey, sizeMul), i * 85);
+          setTimeout(() => dropGift(giftKey, sizeMul, dynamicImg, giftName, coinVal), i * 85);
         }
       } else if (data.type === 'clearJar') {
         clearJar();

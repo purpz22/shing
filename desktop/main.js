@@ -322,14 +322,127 @@ ipcMain.handle('tiktok:disconnect', () => {
 // Event Simulator (fires test follow, gift, like, chat, join)
 ipcMain.handle('tiktok:simulate', (evt, type, payload) => {
   const viewerName = payload.nickname || payload.user || payload.uniqueId || 'Viewer';
+  let giftPic = payload.giftPictureUrl || null;
+
+  if (type === 'gift' && !giftPic) {
+    const rawKey = (payload.giftId || payload.giftName || '').toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const localFile = path.join(__dirname, 'assets', 'gifts', `${rawKey}.png`);
+    if (fs.existsSync(localFile)) {
+      giftPic = `/assets/gifts/${rawKey}.png`;
+    } else if (giftCatalog.length > 0) {
+      const match = giftCatalog.find(g => String(g.id) === String(payload.giftId) || (g.name && payload.giftName && g.name.toLowerCase() === payload.giftName.toLowerCase()));
+      if (match && match.image) giftPic = match.image;
+    }
+  }
+
   const event = Object.assign({ type }, payload, {
     user: viewerName,
     nickname: viewerName,
-    username: payload.username || payload.uniqueId || ''
+    username: payload.username || payload.uniqueId || '',
+    giftPictureUrl: giftPic || payload.giftPictureUrl || null
   });
   overlayServer.broadcast(event);
   if (mainWindow) mainWindow.webContents.send('tiktok:event', event);
   return { success: true };
+});
+
+// Sound Management IPC Handlers
+ipcMain.handle('sounds:list', () => {
+  const soundsDir = path.join(__dirname, 'assets', 'sounds');
+  if (!fs.existsSync(soundsDir)) fs.mkdirSync(soundsDir, { recursive: true });
+  try {
+    const files = fs.readdirSync(soundsDir).filter(f => /\.(mp3|wav|ogg|m4a)$/i.test(f));
+    return files.map(f => ({
+      filename: f,
+      name: path.basename(f, path.extname(f)).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      url: `/assets/sounds/${f}`
+    }));
+  } catch (e) {
+    return [];
+  }
+});
+
+ipcMain.handle('sounds:search', async (evt, query) => {
+  if (!query || !query.trim()) return [];
+  const https = require('https');
+  const searchUrl = `https://www.myinstants.com/en/search/?name=${encodeURIComponent(query.trim())}`;
+  return new Promise((resolve) => {
+    https.get(searchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    }, res => {
+      let html = '';
+      res.on('data', chunk => html += chunk);
+      res.on('end', () => {
+        const results = [];
+        const regex = /<button class="small-button" onclick="play\('([^']+)'[^>]*title="([^"]*)"/g;
+        let match;
+        while ((match = regex.exec(html)) !== null && results.length < 24) {
+          let title = match[2].replace(/^Play\s+/i, '').replace(/\s+sound$/i, '').trim();
+          let soundUrl = match[1].startsWith('http') ? match[1] : 'https://www.myinstants.com' + match[1];
+          results.push({ title, soundUrl });
+        }
+        resolve(results);
+      });
+    }).on('error', () => resolve([]));
+  });
+});
+
+ipcMain.handle('sounds:download', async (evt, soundUrl, title) => {
+  if (!soundUrl) throw new Error('Missing soundUrl');
+  const https = require('https');
+  const http = require('http');
+  const cleanTitle = (title || 'sound').replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+  const ext = path.extname(new URL(soundUrl).pathname) || '.mp3';
+  const filename = `${cleanTitle}${ext}`;
+  const soundsDir = path.join(__dirname, 'assets', 'sounds');
+  if (!fs.existsSync(soundsDir)) fs.mkdirSync(soundsDir, { recursive: true });
+  const destPath = path.join(soundsDir, filename);
+
+  return new Promise((resolve, reject) => {
+    const client = soundUrl.startsWith('https') ? https : http;
+    client.get(soundUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } }, res => {
+      if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+      const fileStream = fs.createWriteStream(destPath);
+      res.pipe(fileStream);
+      fileStream.on('finish', () => {
+        fileStream.close();
+        resolve({
+          success: true,
+          name: title || cleanTitle,
+          filename,
+          url: `/assets/sounds/${filename}`
+        });
+      });
+    }).on('error', reject);
+  });
+});
+
+ipcMain.handle('sounds:select-local', async () => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select Alert Sound File',
+    filters: [{ name: 'Audio Files', extensions: ['mp3', 'wav', 'ogg', 'm4a'] }],
+    properties: ['openFile']
+  });
+  if (res.canceled || !res.filePaths.length) return { canceled: true };
+
+  const srcPath = res.filePaths[0];
+  const origName = path.basename(srcPath);
+  const cleanBase = path.basename(origName, path.extname(origName)).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const ext = path.extname(origName).toLowerCase();
+  const filename = `custom_${cleanBase}${ext}`;
+  const soundsDir = path.join(__dirname, 'assets', 'sounds');
+  if (!fs.existsSync(soundsDir)) fs.mkdirSync(soundsDir, { recursive: true });
+  const destPath = path.join(soundsDir, filename);
+
+  fs.copyFileSync(srcPath, destPath);
+  return {
+    success: true,
+    name: path.basename(origName, ext).replace(/_/g, ' '),
+    filename,
+    url: `/assets/sounds/${filename}`
+  };
 });
 
 // Timer control

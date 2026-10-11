@@ -387,8 +387,47 @@ let triggerSettings = {
   followMessage: 'Thank you {user} for following!',
   giftMessage: '{user} sent {gift} x{count}!',
   alertDuration: 5,
-  likeThreshold: 50
+  likeThreshold: 50,
+  soundEnabled: true,
+  soundVolume: 0.85,
+  sounds: {
+    follow: '/assets/sounds/chime.wav',
+    gift: '/assets/sounds/coin.wav',
+    gift_big: '/assets/sounds/fanfare.wav',
+    like: '/assets/sounds/pop.wav'
+  }
 };
+
+function playAlertSound(type, coins = 1) {
+  if (triggerSettings.soundEnabled === false) return;
+  const sounds = triggerSettings.sounds || {};
+  let soundPath = null;
+  if (type === 'follow') {
+    soundPath = sounds.follow || '/assets/sounds/chime.wav';
+  } else if (type === 'gift') {
+    if (coins >= 1000) {
+      soundPath = sounds.gift_big || '/assets/sounds/fanfare.wav';
+    } else {
+      soundPath = sounds.gift || '/assets/sounds/coin.wav';
+    }
+  } else if (type === 'like') {
+    soundPath = sounds.like || '/assets/sounds/pop.wav';
+  } else if (type === 'join') {
+    soundPath = sounds.join || sounds.like || '/assets/sounds/pop.wav';
+  }
+
+  if (soundPath && soundPath !== 'none') {
+    try {
+      const audio = new Audio(soundPath);
+      audio.volume = typeof triggerSettings.soundVolume === 'number' ? triggerSettings.soundVolume : 0.85;
+      audio.play().catch(e => {
+        console.warn('Audio play notice (auto-play policy):', e.message);
+      });
+    } catch (err) {
+      console.warn('Audio error:', err.message);
+    }
+  }
+}
 
 const queue = [];
 let isShowing = false;
@@ -406,6 +445,9 @@ function processQueue() {
   }
   isShowing = true;
   const item = queue.shift();
+
+  // Play configured sound effect
+  playAlertSound(item.type, item.coins || 1);
 
   // Reset classes
   container.className = item.tierClass || 'tier-gift-small';
@@ -494,6 +536,7 @@ function connectWS() {
           .replace('{count}', count);
 
         showAlert({
+          type: 'gift',
           title: coins >= 1000 ? 'LEGENDARY GIFT!' : (coins >= 100 ? 'RARE GIFT!' : 'GIFT ALERT'),
           message: msg,
           avatarUrl,
@@ -507,6 +550,7 @@ function connectWS() {
         const msgTemplate = triggerSettings.followMessage || 'Thank you {user} for following!';
         const msg = msgTemplate.replace('{user}', user);
         showAlert({
+          type: 'follow',
           title: 'NEW FOLLOWER',
           message: msg,
           avatarUrl: data.avatar || '/assets/avatar.png',
@@ -517,6 +561,7 @@ function connectWS() {
       } else if (data.type === 'join') {
         const user = data.nickname || data.user || data.uniqueId || 'Viewer';
         showAlert({
+          type: 'join',
           title: 'WELCOME TO STREAM',
           message: `${user} joined the chat!`,
           avatarUrl: data.avatar || '/assets/avatar.png',
@@ -527,6 +572,7 @@ function connectWS() {
       } else if (data.type === 'like' && (data.count >= (triggerSettings.likeThreshold || 50))) {
         const user = data.nickname || data.user || data.uniqueId || 'Chat';
         showAlert({
+          type: 'like',
           title: 'LIKES MILESTONE',
           message: `${user} tapped ${data.count} likes!`,
           avatarUrl: data.avatar || '/assets/avatar.png',

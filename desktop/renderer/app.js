@@ -146,6 +146,56 @@ if (typeof window.api === 'undefined') {
         input.click();
       });
     },
+    listSounds: async () => {
+      try {
+        const res = await fetch('/api/sounds');
+        return await res.json();
+      } catch (e) {
+        return [];
+      }
+    },
+    searchSounds: async (query) => {
+      try {
+        const res = await fetch(`/api/sounds/search?q=${encodeURIComponent(query)}`);
+        return await res.json();
+      } catch (e) {
+        return [];
+      }
+    },
+    downloadSound: async (soundUrl, title) => {
+      try {
+        const res = await fetch('/api/sounds/download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ soundUrl, url: soundUrl, title })
+        });
+        return await res.json();
+      } catch (e) {
+        throw e;
+      }
+    },
+    selectLocalSound: async () => {
+      return new Promise(resolve => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'audio/*';
+        input.onchange = async () => {
+          if (!input.files.length) return resolve({ canceled: true });
+          const file = input.files[0];
+          const reader = new FileReader();
+          reader.onload = () => {
+            resolve({
+              success: true,
+              name: file.name.replace(/\.[^/.]+$/, ''),
+              filename: file.name,
+              url: reader.result
+            });
+          };
+          reader.readAsDataURL(file);
+        };
+        input.click();
+      });
+    },
     onSettingsLoaded: () => () => {}
   };
 }
@@ -281,6 +331,15 @@ async function initSettings() {
     $('trig-gift-msg').value = appSettings.triggers.giftMessage || '{user} sent {gift} x{count}!';
     $('trig-duration').value = appSettings.triggers.alertDuration || 5;
     $('trig-likes-thresh').value = appSettings.triggers.likeThreshold || 50;
+
+    if ($('trig-sound-enabled')) {
+      $('trig-sound-enabled').checked = appSettings.triggers.soundEnabled !== false;
+    }
+    if ($('trig-volume')) {
+      const vol = typeof appSettings.triggers.soundVolume === 'number' ? appSettings.triggers.soundVolume : 0.85;
+      $('trig-volume').value = vol;
+      if ($('trig-volume-val')) $('trig-volume-val').textContent = `${Math.round(vol * 100)}%`;
+    }
   }
 
   // Populate Lower Third
@@ -316,7 +375,7 @@ async function initSettings() {
     $('jar-scale-val').textContent = Number($('jar-scale').value).toFixed(2);
     $('jar-bounciness').value = appSettings.jar.bounciness || 0.4;
     $('jar-bounce-val').textContent = Number($('jar-bounciness').value).toFixed(2);
-    $('jar-max').value = appSettings.jar.maxGifts || 150;
+    $('jar-max').value = appSettings.jar.maxGifts || 500;
   }
 
   // Populate Companion
@@ -347,7 +406,280 @@ async function initSettings() {
 
   renderIcons();
   renderFavorites();
+  await refreshSoundDropdowns();
+  await populateGiftCatalogSelect();
   initUpdater();
+}
+
+let currentPreviewAudio = null;
+let cachedSoundList = [];
+let fullGiftCatalog = [];
+
+function playSoundPreview(url) {
+  if (!url || url === 'none') return;
+  if (currentPreviewAudio) {
+    try {
+      currentPreviewAudio.pause();
+      currentPreviewAudio.currentTime = 0;
+    } catch (e) {}
+    currentPreviewAudio = null;
+  }
+  try {
+    const audio = new Audio(url);
+    const vol = $('trig-volume') ? +$('trig-volume').value : 0.85;
+    audio.volume = isNaN(vol) ? 0.85 : Math.max(0, Math.min(1, vol));
+    currentPreviewAudio = audio;
+    audio.play().catch(e => {
+      console.warn('Preview play notice:', e.message);
+    });
+  } catch (err) {
+    console.warn('Audio preview error:', err);
+  }
+}
+
+async function refreshSoundDropdowns() {
+  try {
+    const sounds = await window.api.listSounds();
+    cachedSoundList = Array.isArray(sounds) ? sounds : [];
+  } catch (e) {
+    cachedSoundList = [];
+  }
+
+  const defaultPresets = [
+    { filename: 'chime.wav', name: 'Chime (Default)', url: '/assets/sounds/chime.wav' },
+    { filename: 'coin.wav', name: 'Coin (Default)', url: '/assets/sounds/coin.wav' },
+    { filename: 'fanfare.wav', name: 'Fanfare (Default)', url: '/assets/sounds/fanfare.wav' },
+    { filename: 'pop.wav', name: 'Pop (Default)', url: '/assets/sounds/pop.wav' },
+    { filename: 'level_up.wav', name: 'Level Up', url: '/assets/sounds/level_up.wav' },
+    { filename: 'anime_wow.mp3', name: 'Anime Wow', url: '/assets/sounds/anime_wow.mp3' }
+  ];
+
+  const mergedSounds = [...defaultPresets];
+  for (const s of cachedSoundList) {
+    if (!mergedSounds.some(m => m.url === s.url || m.filename === s.filename)) {
+      mergedSounds.push(s);
+    }
+  }
+
+  const dropdownTargets = [
+    { id: 'trig-sound-follow', def: '/assets/sounds/chime.wav', key: 'follow' },
+    { id: 'trig-sound-gift', def: '/assets/sounds/coin.wav', key: 'gift' },
+    { id: 'trig-sound-gift-big', def: '/assets/sounds/fanfare.wav', key: 'gift_big' },
+    { id: 'trig-sound-like', def: '/assets/sounds/pop.wav', key: 'like' }
+  ];
+
+  dropdownTargets.forEach(target => {
+    const sel = $(target.id);
+    if (!sel) return;
+
+    const currentVal = (appSettings.triggers && appSettings.triggers.sounds && appSettings.triggers.sounds[target.key])
+      ? appSettings.triggers.sounds[target.key]
+      : (sel.value || target.def);
+
+    sel.innerHTML = '';
+    mergedSounds.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.url;
+      opt.textContent = s.name;
+      sel.appendChild(opt);
+    });
+
+    const muteOpt = document.createElement('option');
+    muteOpt.value = 'none';
+    muteOpt.textContent = 'No Sound (Mute)';
+    sel.appendChild(muteOpt);
+
+    if (Array.from(sel.options).some(o => o.value === currentVal)) {
+      sel.value = currentVal;
+    } else if (currentVal) {
+      const customOpt = document.createElement('option');
+      customOpt.value = currentVal;
+      customOpt.textContent = `Custom (${currentVal.split('/').pop()})`;
+      sel.insertBefore(customOpt, muteOpt);
+      sel.value = currentVal;
+    } else {
+      sel.value = target.def;
+    }
+  });
+}
+
+async function populateGiftCatalogSelect() {
+  try {
+    const res = await fetch('/api/gifts');
+    if (res.ok) {
+      fullGiftCatalog = await res.json();
+    }
+  } catch (e) {
+    fullGiftCatalog = [];
+  }
+
+  const sel = $('select-any-gift');
+  if (!sel || !Array.isArray(fullGiftCatalog) || fullGiftCatalog.length === 0) return;
+
+  const existingValues = new Set(Array.from(sel.options).map(o => o.value));
+  const sorted = [...fullGiftCatalog].sort((a, b) => (b.diamonds || b.coins || 0) - (a.diamonds || a.coins || 0));
+
+  const frag = document.createDocumentFragment();
+  sorted.forEach(g => {
+    const safeKey = (g.name || String(g.id)).toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    if (!existingValues.has(safeKey) && !existingValues.has(String(g.id))) {
+      const opt = document.createElement('option');
+      opt.value = safeKey;
+      opt.setAttribute('data-name', g.name || safeKey);
+      const coins = g.diamonds || g.coins || 1;
+      opt.setAttribute('data-coins', coins);
+      if (g.image) opt.setAttribute('data-img', g.image);
+      opt.textContent = `${g.name} (${coins.toLocaleString()} coins)`;
+      frag.appendChild(opt);
+    }
+  });
+  sel.appendChild(frag);
+}
+
+async function handleSoundSearch(query) {
+  const q = (query || '').trim();
+  if (!q) return;
+
+  const statusEl = $('sound-search-status');
+  const resultsEl = $('sound-search-results');
+  if (statusEl) {
+    statusEl.style.display = 'block';
+    statusEl.textContent = `Searching MyInstants for "${q}"...`;
+  }
+  if (resultsEl) {
+    resultsEl.innerHTML = '<div style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 13px;">Searching online sound buttons...</div>';
+  }
+
+  try {
+    const results = await window.api.searchSounds(q);
+    if (!Array.isArray(results) || results.length === 0) {
+      if (statusEl) statusEl.textContent = `No sounds found on MyInstants for "${q}". Try another search term.`;
+      if (resultsEl) {
+        resultsEl.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 13px;">No sounds found matching that keyword. Try searching anime, chime, level up, coin, fanfare, or applause.</div>';
+      }
+      return;
+    }
+
+    if (statusEl) statusEl.textContent = `Found ${results.length} sound results from MyInstants:`;
+    if (resultsEl) {
+      resultsEl.innerHTML = '';
+      results.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'sound-result-item';
+
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'sound-result-title';
+        titleDiv.textContent = item.title;
+
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'sound-result-actions';
+
+        const previewBtn = document.createElement('button');
+        previewBtn.className = 'sound-preview-btn';
+        previewBtn.type = 'button';
+        previewBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <span>Preview</span>
+        `;
+        previewBtn.addEventListener('click', () => {
+          playSoundPreview(item.soundUrl);
+        });
+
+        const useBtn = document.createElement('button');
+        useBtn.className = 'btn btn-primary btn-small';
+        useBtn.type = 'button';
+        useBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+          <span>Use Sound</span>
+        `;
+        useBtn.addEventListener('click', async () => {
+          useBtn.disabled = true;
+          useBtn.textContent = 'Downloading...';
+          try {
+            const downloaded = await window.api.downloadSound(item.soundUrl, item.title);
+            await refreshSoundDropdowns();
+
+            const targetSelectId = $('modal-target-sound-select') ? $('modal-target-sound-select').value : 'trig-sound-gift';
+            if (targetSelectId && targetSelectId !== 'library_only') {
+              const targetSelect = $(targetSelectId);
+              if (targetSelect) {
+                targetSelect.value = downloaded.url;
+              }
+              const keyMap = {
+                'trig-sound-follow': 'follow',
+                'trig-sound-gift': 'gift',
+                'trig-sound-gift-big': 'gift_big',
+                'trig-sound-like': 'like'
+              };
+              const key = keyMap[targetSelectId];
+              if (key) {
+                if (!appSettings.triggers) appSettings.triggers = {};
+                if (!appSettings.triggers.sounds) appSettings.triggers.sounds = {};
+                appSettings.triggers.sounds[key] = downloaded.url;
+                saveCurrentSettings();
+              }
+            }
+            useBtn.textContent = 'Assigned!';
+            useBtn.classList.remove('btn-primary');
+            useBtn.classList.add('btn-secondary');
+            setTimeout(() => {
+              useBtn.disabled = false;
+              useBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                <span>Use Sound</span>
+              `;
+              useBtn.classList.remove('btn-secondary');
+              useBtn.classList.add('btn-primary');
+            }, 2500);
+          } catch (err) {
+            alert(`Download error: ${err.message}`);
+            useBtn.disabled = false;
+            useBtn.textContent = 'Retry';
+          }
+        });
+
+        actionsDiv.appendChild(previewBtn);
+        actionsDiv.appendChild(useBtn);
+        row.appendChild(titleDiv);
+        row.appendChild(actionsDiv);
+        resultsEl.appendChild(row);
+      });
+    }
+  } catch (err) {
+    if (statusEl) statusEl.textContent = `Search error: ${err.message}`;
+  }
+}
+
+async function handleImportLocalSound(targetSelectId) {
+  try {
+    const res = await window.api.selectLocalSound();
+    if (!res || res.canceled) return;
+    if (res.success && res.url) {
+      await refreshSoundDropdowns();
+      const targetId = targetSelectId || ($('modal-target-sound-select') ? $('modal-target-sound-select').value : 'trig-sound-gift');
+      if (targetId && targetId !== 'library_only') {
+        const targetSelect = $(targetId);
+        if (targetSelect) targetSelect.value = res.url;
+        const keyMap = {
+          'trig-sound-follow': 'follow',
+          'trig-sound-gift': 'gift',
+          'trig-sound-gift-big': 'gift_big',
+          'trig-sound-like': 'like'
+        };
+        const key = keyMap[targetId];
+        if (key) {
+          if (!appSettings.triggers) appSettings.triggers = {};
+          if (!appSettings.triggers.sounds) appSettings.triggers.sounds = {};
+          appSettings.triggers.sounds[key] = res.url;
+          saveCurrentSettings();
+        }
+      }
+      playSoundPreview(res.url);
+      alert(`Sound "${res.name}" imported and assigned!`);
+    }
+  } catch (err) {
+    alert(`Import error: ${err.message}`);
+  }
 }
 
 function syncPresetSelect(selectId, hex) {
@@ -737,11 +1069,105 @@ document.addEventListener('DOMContentLoaded', () => {
       followMessage: $('trig-follow-msg').value,
       giftMessage: $('trig-gift-msg').value,
       alertDuration: +$('trig-duration').value || 5,
-      likeThreshold: +$('trig-likes-thresh').value || 50
+      likeThreshold: +$('trig-likes-thresh').value || 50,
+      soundEnabled: $('trig-sound-enabled') ? $('trig-sound-enabled').checked : true,
+      soundVolume: $('trig-volume') ? +$('trig-volume').value : 0.85,
+      sounds: {
+        follow: $('trig-sound-follow') ? $('trig-sound-follow').value : '/assets/sounds/chime.wav',
+        gift: $('trig-sound-gift') ? $('trig-sound-gift').value : '/assets/sounds/coin.wav',
+        gift_big: $('trig-sound-gift-big') ? $('trig-sound-gift-big').value : '/assets/sounds/fanfare.wav',
+        like: $('trig-sound-like') ? $('trig-sound-like').value : '/assets/sounds/pop.wav'
+      }
     };
     saveCurrentSettings();
-    alert('Triggers settings saved!');
+    alert('Triggers and sound settings saved!');
   });
+
+  // Sound volume slider live preview
+  $('trig-volume')?.addEventListener('input', e => {
+    if ($('trig-volume-val')) {
+      $('trig-volume-val').textContent = `${Math.round(e.target.value * 100)}%`;
+    }
+    if (currentPreviewAudio) {
+      currentPreviewAudio.volume = Math.max(0, Math.min(1, +e.target.value));
+    }
+  });
+
+  // Sound preview buttons
+  document.querySelectorAll('.test-sound-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.dataset.target;
+      const sel = $(targetId);
+      if (sel) playSoundPreview(sel.value);
+    });
+  });
+
+  // Open MyInstants search modal from triggers tab
+  $('open-myinstants-modal-btn')?.addEventListener('click', () => {
+    $('modal-sound-search').classList.add('active');
+    $('sound-search-input')?.focus();
+  });
+
+  // Row-level search MyInstants buttons
+  document.querySelectorAll('.search-sound-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.dataset.target;
+      if ($('modal-target-sound-select') && targetId) {
+        $('modal-target-sound-select').value = targetId;
+      }
+      $('modal-sound-search').classList.add('active');
+      $('sound-search-input')?.focus();
+    });
+  });
+
+  // Row-level local file import buttons
+  document.querySelectorAll('.upload-sound-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      handleImportLocalSound(btn.dataset.target);
+    });
+  });
+
+  // Main local sound import buttons
+  $('import-local-sound-btn')?.addEventListener('click', () => {
+    handleImportLocalSound('trig-sound-gift');
+  });
+  $('modal-import-local-btn')?.addEventListener('click', () => {
+    const target = $('modal-target-sound-select') ? $('modal-target-sound-select').value : 'trig-sound-gift';
+    handleImportLocalSound(target);
+  });
+
+  // Sound search submit
+  $('sound-search-submit-btn')?.addEventListener('click', () => {
+    handleSoundSearch($('sound-search-input').value);
+  });
+  $('sound-search-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleSoundSearch($('sound-search-input').value);
+  });
+
+  // Quick search category pills
+  document.querySelectorAll('.sound-quick-pill, .sound-modal-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const q = pill.dataset.q;
+      if ($('sound-search-input')) $('sound-search-input').value = q;
+      $('modal-sound-search').classList.add('active');
+      handleSoundSearch(q);
+    });
+  });
+
+  // Close sound search modal
+  $('modal-sound-search-close')?.addEventListener('click', () => {
+    $('modal-sound-search').classList.remove('active');
+    if (currentPreviewAudio) {
+      try { currentPreviewAudio.pause(); } catch (e) {}
+    }
+  });
+  $('modal-sound-search-dismiss')?.addEventListener('click', () => {
+    $('modal-sound-search').classList.remove('active');
+    if (currentPreviewAudio) {
+      try { currentPreviewAudio.pause(); } catch (e) {}
+    }
+  });
+
   $('test-follow-btn')?.addEventListener('click', () => {
     window.api.simulateEvent('follow', { user: 'Test Follower', nickname: 'Test Follower', uniqueId: 'testfollower' });
   });
@@ -873,11 +1299,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const giftId = sel.value;
     const giftName = opt.getAttribute('data-name') || giftId;
     const coins = +(opt.getAttribute('data-coins') || opt.getAttribute('data-diamonds') || 1);
+    let giftPictureUrl = opt.getAttribute('data-img') || null;
+    if (!giftPictureUrl && fullGiftCatalog.length > 0) {
+      const match = fullGiftCatalog.find(g => String(g.id) === String(giftId) || (g.name && g.name.toLowerCase() === giftName.toLowerCase()));
+      if (match && match.image) giftPictureUrl = match.image;
+    }
     window.api.simulateEvent('gift', {
       user: 'Supporter',
+      nickname: 'Supporter',
       giftId,
       giftName,
       coins,
+      giftPictureUrl: giftPictureUrl || undefined,
       count: 1
     });
   });

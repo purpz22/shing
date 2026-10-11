@@ -1,6 +1,7 @@
 'use strict';
 
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
@@ -101,7 +102,7 @@ class OverlayServer {
         gravity: 0.9,
         giftScale: 0.85,
         bounciness: 0.4,
-        maxGifts: 150,
+        maxGifts: 500,
         overflowAllowed: true
       },
       lowerThird: {
@@ -126,7 +127,15 @@ class OverlayServer {
         followMessage: 'Thank you {user} for following!',
         giftMessage: '{user} sent {gift} x{count}!',
         likeThreshold: 50,
-        alertDuration: 5
+        alertDuration: 5,
+        soundEnabled: true,
+        soundVolume: 0.85,
+        sounds: {
+          follow: '/assets/sounds/chime.wav',
+          gift: '/assets/sounds/coin.wav',
+          gift_big: '/assets/sounds/fanfare.wav',
+          like: '/assets/sounds/pop.wav'
+        }
       },
       timer: {
         durationMin: 30,
@@ -252,10 +261,30 @@ class OverlayServer {
         try {
           const parsed = JSON.parse(body);
           const viewerName = parsed.nickname || parsed.user || parsed.uniqueId || 'Viewer';
+
+          let giftPic = parsed.giftPictureUrl || null;
+          if (parsed.type === 'gift' && !giftPic) {
+            const rawKey = (parsed.giftId || parsed.giftName || '').toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            const localFile = path.join(this.baseDir, 'assets', 'gifts', `${rawKey}.png`);
+            if (fs.existsSync(localFile)) {
+              giftPic = `/assets/gifts/${rawKey}.png`;
+            } else {
+              const catalogPath = path.join(this.baseDir, 'assets', 'gifts-catalog.json');
+              if (fs.existsSync(catalogPath)) {
+                try {
+                  const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+                  const match = catalog.find(g => String(g.id) === String(parsed.giftId) || (g.name && parsed.giftName && g.name.toLowerCase() === parsed.giftName.toLowerCase()));
+                  if (match && match.image) giftPic = match.image;
+                } catch (e) {}
+              }
+            }
+          }
+
           const event = Object.assign({}, parsed, {
             user: viewerName,
             nickname: viewerName,
-            username: parsed.username || parsed.uniqueId || ''
+            username: parsed.username || parsed.uniqueId || '',
+            giftPictureUrl: giftPic || parsed.giftPictureUrl || null
           });
           this.broadcast(event);
           res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -267,6 +296,106 @@ class OverlayServer {
       });
       return;
     }
+
+    // Sound Management APIs
+    if (pathname === '/api/sounds') {
+      const soundsDir = path.join(this.baseDir, 'assets', 'sounds');
+      if (!fs.existsSync(soundsDir)) fs.mkdirSync(soundsDir, { recursive: true });
+      try {
+        const files = fs.readdirSync(soundsDir).filter(f => /\.(mp3|wav|ogg|m4a)$/i.test(f));
+        const sounds = files.map(f => ({
+          filename: f,
+          name: path.basename(f, path.extname(f)).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          url: `/assets/sounds/${f}`
+        }));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify(sounds));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: e.message }));
+      }
+    }
+
+    if (pathname === '/api/sounds/search') {
+      const query = (url.searchParams.get('q') || '').trim();
+      if (!query) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify([]));
+      }
+
+      const searchUrl = `https://www.myinstants.com/en/search/?name=${encodeURIComponent(query)}`;
+      https.get(searchUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      }, searchRes => {
+        let html = '';
+        searchRes.on('data', chunk => html += chunk);
+        searchRes.on('end', () => {
+          const results = [];
+          const regex = /<button class="small-button" onclick="play\('([^']+)'[^>]*title="([^"]*)"/g;
+          let match;
+          while ((match = regex.exec(html)) !== null && results.length < 24) {
+            let title = match[2].replace(/^Play\s+/i, '').replace(/\s+sound$/i, '').trim();
+            let soundUrl = match[1].startsWith('http') ? match[1] : 'https://www.myinstants.com' + match[1];
+            results.push({ title, soundUrl });
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(results));
+        });
+      }).on('error', err => {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      });
+      return;
+    }
+
+    if (pathname === '/api/sounds/download' && req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', () => {
+        try {
+          const parsed = JSON.parse(body);
+          const soundUrl = parsed.soundUrl || parsed.url;
+          const title = parsed.title;
+          if (!soundUrl) throw new Error('Missing soundUrl');
+          const cleanTitle = (title || 'sound').replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+          const ext = path.extname(new URL(soundUrl).pathname) || '.mp3';
+          const filename = `${cleanTitle}${ext}`;
+          const soundsDir = path.join(this.baseDir, 'assets', 'sounds');
+          if (!fs.existsSync(soundsDir)) fs.mkdirSync(soundsDir, { recursive: true });
+          const destPath = path.join(soundsDir, filename);
+
+          const client = soundUrl.startsWith('https') ? https : http;
+          client.get(soundUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } }, fileRes => {
+            if (fileRes.statusCode !== 200) {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              return res.end(JSON.stringify({ error: `HTTP ${fileRes.statusCode}` }));
+            }
+            const fileStream = fs.createWriteStream(destPath);
+            fileRes.pipe(fileStream);
+            fileStream.on('finish', () => {
+              fileStream.close();
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({
+                success: true,
+                name: title || cleanTitle,
+                filename,
+                url: `/assets/sounds/${filename}`
+              }));
+            });
+          }).on('error', err => {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message }));
+          });
+        } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: e.message }));
+        }
+      });
+      return;
+    }
+
 
     if (pathname === '/api/gifts') {
       const catalogPath = path.join(this.baseDir, 'assets', 'gifts-catalog.json');
