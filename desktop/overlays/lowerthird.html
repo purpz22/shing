@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lower Third Socials Overlay</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  #banner {
+    position: absolute;
+    bottom: 32px;
+    left: 32px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #7b3fe4;
+    border-radius: 40px;
+    padding: 8px 26px 8px 10px;
+    box-shadow: 0 8px 26px rgba(123, 63, 228, 0.25);
+    backdrop-filter: blur(10px);
+    transform: translateY(120px);
+    opacity: 0;
+    transition: transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
+  }
+  #banner.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  #avatar-frame {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid #7b3fe4;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 0 12px rgba(123, 63, 228, 0.4);
+    animation: pfpPulseAura 3.5s infinite ease-in-out;
+  }
+  @keyframes pfpPulseAura {
+    0% { box-shadow: 0 0 8px rgba(123, 63, 228, 0.3); }
+    50% { box-shadow: 0 0 16px rgba(155, 92, 240, 0.6); }
+    100% { box-shadow: 0 0 8px rgba(123, 63, 228, 0.3); }
+  }
+  #avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* 3D Perspective Card Flipper */
+  .info-wrap {
+    perspective: 500px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  #info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.32s ease;
+    transform-origin: center center;
+    backface-visibility: hidden;
+  }
+  #info.flip-out {
+    transform: rotateX(90deg);
+    opacity: 0;
+  }
+  #info.flip-in {
+    transform: rotateX(0deg);
+    opacity: 1;
+  }
+
+  .platform-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .platform-icon {
+    display: flex;
+    align-items: center;
+    color: #7b3fe4;
+  }
+  .platform-icon svg {
+    width: 13px;
+    height: 13px;
+    fill: currentColor;
+  }
+  #platform {
+    font-size: 11px;
+    font-weight: 800;
+    color: #7b3fe4;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  #handle {
+    font-size: 16px;
+    font-weight: 800;
+    color: #271442;
+    letter-spacing: -0.2px;
+  }
+</style>
+</head>
+<body>
+<div id="banner" class="show">
+  <div id="avatar-frame">
+    <img id="avatar" src="/assets/avatar.png" alt="Avatar">
+  </div>
+  <div class="info-wrap">
+    <div id="info" class="flip-in">
+      <div class="platform-row">
+        <span id="platform-icon" class="platform-icon">
+          <!-- TikTok SVG Default -->
+          <svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .57.04.84.12V9.38a6.37 6.37 0 0 0-.84-.06A6.34 6.34 0 0 0 3 15.66a6.34 6.34 0 0 0 10.82 4.49 6.34 6.34 0 0 0 1.91-4.49V8.75a8.28 8.28 0 0 0 3.86 1.09V6.69z"/></svg>
+        </span>
+        <span id="platform">TikTok</span>
+      </div>
+      <div id="handle">@shimmy_ming</div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const banner = document.getElementById('banner');
+const info = document.getElementById('info');
+const platformIcon = document.getElementById('platform-icon');
+const platformEl = document.getElementById('platform');
+const handleEl = document.getElementById('handle');
+
+const PLATFORM_SVGS = {
+  TikTok: '<svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .57.04.84.12V9.38a6.37 6.37 0 0 0-.84-.06A6.34 6.34 0 0 0 3 15.66a6.34 6.34 0 0 0 10.82 4.49 6.34 6.34 0 0 0 1.91-4.49V8.75a8.28 8.28 0 0 0 3.86 1.09V6.69z"/></svg>',
+  Instagram: '<svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>',
+  YouTube: '<svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>',
+  Discord: '<svg viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.893.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>'
+};
+
+let socials = [
+  { platform: 'TikTok', handle: '@shimmy_ming' }
+];
+
+let currentIndex = 0;
+let cycleTimer = null;
+
+function updateSocialsList(lt) {
+  const list = [];
+  if (lt.tiktok) list.push({ platform: 'TikTok', handle: lt.tiktok });
+  if (lt.instagram) list.push({ platform: 'Instagram', handle: lt.instagram });
+  if (lt.youtube) list.push({ platform: 'YouTube', handle: lt.youtube });
+  if (lt.discord) list.push({ platform: 'Discord', handle: lt.discord });
+
+  socials = list.length > 0 ? list : [{ platform: 'TikTok', handle: '@shimmy_ming' }];
+}
+
+function showNext() {
+  if (socials.length <= 1) return;
+  currentIndex = (currentIndex + 1) % socials.length;
+  const item = socials[currentIndex];
+
+  // 3D Card Flip Out
+  info.classList.remove('flip-in');
+  info.classList.add('flip-out');
+
+  setTimeout(() => {
+    platformEl.textContent = item.platform;
+    handleEl.textContent = item.handle;
+    platformIcon.innerHTML = PLATFORM_SVGS[item.platform] || PLATFORM_SVGS.TikTok;
+
+    // 3D Card Flip In
+    info.classList.remove('flip-out');
+    info.classList.add('flip-in');
+  }, 320);
+}
+
+function startCycle(intervalSec = 15) {
+  clearInterval(cycleTimer);
+  cycleTimer = setInterval(showNext, Math.max(5000, intervalSec * 1000));
+}
+
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(`${proto}//${location.host}`);
+
+  ws.onmessage = evt => {
+    try {
+      const data = JSON.parse(evt.data);
+      if (data.type === 'init' && data.settings?.lowerThird) {
+        updateSocialsList(data.settings.lowerThird);
+        startCycle(data.settings.lowerThird.interval || 15);
+      } else if (data.type === 'settings:update' && data.settings?.lowerThird) {
+        updateSocialsList(data.settings.lowerThird);
+        startCycle(data.settings.lowerThird.interval || 15);
+      }
+    } catch (e) {
+      console.warn('LowerThird WS error', e);
+    }
+  };
+
+  ws.onclose = () => setTimeout(connectWS, 2000);
+  ws.onerror = () => ws.close();
+}
+
+connectWS();
+startCycle(15);
+</script>
+</body>
+</html>

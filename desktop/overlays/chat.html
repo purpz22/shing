@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cute Stream Chat Overlay</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  #chat-container {
+    position: absolute;
+    bottom: 18px;
+    left: 18px;
+    width: 420px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 10px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  /* Chat Message Card */
+  .chat-msg {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1.5px solid #dcd0f8;
+    box-shadow: 0 6px 18px rgba(123, 63, 228, 0.12);
+    border-radius: var(--bubble-radius, 16px);
+    padding: 10px 14px;
+    backdrop-filter: blur(10px);
+    transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    animation: bubbleEnter 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.25);
+    will-change: transform, opacity;
+  }
+  @keyframes bubbleEnter {
+    0% { opacity: 0; transform: translateY(18px) scale(0.94); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* Avatar Container & PFP Animations */
+  .avatar-wrap {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* Avatar Shapes */
+  .avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #ede4ff;
+    display: block;
+    transition: transform 0.25s ease;
+  }
+  .shape-circle .avatar-img,
+  .shape-circle .avatar-ring {
+    border-radius: 50%;
+  }
+  .shape-squircle .avatar-img,
+  .shape-squircle .avatar-ring {
+    border-radius: 28%;
+  }
+  .shape-hexagon .avatar-img {
+    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+    border-radius: 0;
+  }
+  .shape-hexagon .avatar-ring {
+    border-radius: 12%;
+  }
+
+  /* PFP Animation Styles */
+  .anim-elastic .avatar-wrap {
+    animation: pfpElasticPop 0.48s cubic-bezier(0.175, 0.885, 0.32, 1.35) forwards;
+  }
+  @keyframes pfpElasticPop {
+    0% { transform: scale(0) rotate(-14deg); opacity: 0; }
+    55% { transform: scale(1.22) rotate(4deg); opacity: 1; }
+    80% { transform: scale(0.94) rotate(-2deg); }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+
+  .anim-slide .avatar-wrap {
+    animation: pfpSlideIn 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
+  }
+  @keyframes pfpSlideIn {
+    0% { transform: translateX(-24px) scale(0.8); opacity: 0; }
+    100% { transform: translateX(0) scale(1); opacity: 1; }
+  }
+
+  .anim-halo .avatar-wrap {
+    animation: pfpHaloPop 0.45s ease-out forwards;
+  }
+  @keyframes pfpHaloPop {
+    0% { transform: scale(0.4); opacity: 0; filter: drop-shadow(0 0 14px #9b5cf0); }
+    60% { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 10px #7b3fe4); }
+    100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 0 transparent); }
+  }
+
+  /* Speaking Pulse Effect */
+  .avatar-wrap.speaking .avatar-img {
+    animation: pfpSpeakingPulse 0.4s ease 2;
+  }
+  @keyframes pfpSpeakingPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+
+  /* Role Halo Rings */
+  .avatar-ring {
+    position: absolute;
+    inset: -3px;
+    border: 2px solid transparent;
+    pointer-events: none;
+    transition: all 0.3s;
+  }
+
+  /* Role Themes */
+  .role-streamer .avatar-ring {
+    border-color: #7b3fe4;
+    box-shadow: 0 0 10px rgba(123, 63, 228, 0.55), inset 0 0 4px rgba(123, 63, 228, 0.3);
+  }
+  .role-moderator .avatar-ring {
+    border-color: #0284c7;
+    box-shadow: 0 0 10px rgba(2, 132, 199, 0.5);
+  }
+  .role-top_gifter .avatar-ring {
+    border-color: #f59e0b;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+    animation: ringRotate 5s linear infinite;
+  }
+  @keyframes ringRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .role-subscriber .avatar-ring {
+    border-color: #ec4899;
+    box-shadow: 0 0 8px rgba(236, 72, 153, 0.5);
+  }
+  .role-viewer .avatar-ring {
+    border-color: #c4b5fd;
+    box-shadow: 0 0 4px rgba(196, 181, 253, 0.4);
+  }
+
+  /* Role Tag Badge on Avatar */
+  .avatar-tag {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+  }
+  .avatar-tag svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* Content Block */
+  .content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 1px;
+  }
+
+  .username {
+    font-size: 13px;
+    font-weight: 700;
+    color: #4a218c;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -0.2px;
+  }
+  .role-streamer .username { color: #6b21a8; }
+  .role-moderator .username { color: #0369a1; }
+  .role-top_gifter .username { color: #b45309; }
+  .role-subscriber .username { color: #be185d; }
+
+  /* Pill Badges */
+  .badge {
+    font-size: 10px;
+    padding: 1px 7px;
+    border-radius: 6px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .badge-streamer { background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; }
+  .badge-moderator { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
+  .badge-gifter { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
+  .badge-subscriber { background: #fce7f3; color: #db2777; border: 1px solid #fbcfe8; }
+  .badge-viewer { background: #f3f0f9; color: #7c6f93; }
+
+  /* Comment Text & Grouping */
+  .comment-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .comment-line {
+    font-size: var(--chat-font-size, 14px);
+    color: #231737;
+    line-height: 1.38;
+    word-break: break-word;
+    animation: lineFadeIn 0.25s ease;
+  }
+  @keyframes lineFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Fade Out Animation */
+  .fade-out {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.96);
+  }
+</style>
+</head>
+<body class="shape-circle anim-elastic">
+<div id="chat-container"></div>
+
+<script>
+'use strict';
+
+const container = document.getElementById('chat-container');
+let chatSettings = {
+  fontSize: 14,
+  bubbleRadius: 16,
+  autoFadeSec: 15,
+  maxMessages: 8,
+  showBadges: true,
+  avatarShape: 'circle', // circle, squircle, hexagon
+  avatarAnim: 'elastic', // elastic, slide, halo
+  messageGrouping: true
+};
+
+let lastMsgUser = null;
+let lastMsgEl = null;
+let lastMsgTime = 0;
+
+// Apply styles & shapes to body
+function updateChatVisualStyles() {
+  document.body.className = `shape-${chatSettings.avatarShape || 'circle'} anim-${chatSettings.avatarAnim || 'elastic'}`;
+  document.documentElement.style.setProperty('--chat-font-size', `${chatSettings.fontSize || 14}px`);
+  document.documentElement.style.setProperty('--bubble-radius', `${chatSettings.bubbleRadius || 16}px`);
+}
+
+// SVG Icons for Badges
+const ICONS = {
+  crown: '<svg viewBox="0 0 24 24" fill="#6d28d9"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="#0284c7"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z"/></svg>',
+  diamond: '<svg viewBox="0 0 24 24" fill="#d97706"><path d="M12 2L4 9l8 13 8-13-8-7z"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="#db2777"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>'
+};
+
+function resolveRole(user, badgeText, roleProp) {
+  if (roleProp) return roleProp;
+  const lowerUser = (user || '').toLowerCase();
+  const lowerBadge = (badgeText || '').toLowerCase();
+  if (lowerBadge.includes('streamer') || lowerUser === 'shimmy_ming' || lowerUser === 'shimmy ming' || lowerUser === 'shing') return 'streamer';
+  if (lowerBadge.includes('mod')) return 'moderator';
+  if (lowerBadge.includes('top gifter') || lowerBadge.includes('gifter')) return 'top_gifter';
+  if (lowerBadge.includes('sub')) return 'subscriber';
+  return 'viewer';
+}
+
+function addMessage(user, text, avatarUrl, badgeText, role) {
+  const resolvedRole = resolveRole(user, badgeText, role);
+  const now = Date.now();
+
+  // Consecutive Message Grouping within 8 seconds
+  if (chatSettings.messageGrouping && lastMsgUser === user && lastMsgEl && (now - lastMsgTime < 8000)) {
+    const commentGroup = lastMsgEl.querySelector('.comment-group');
+    if (commentGroup) {
+      const line = document.createElement('div');
+      line.className = 'comment-line';
+      line.textContent = text;
+      commentGroup.appendChild(line);
+
+      // Trigger speaking pulse on existing avatar
+      const wrap = lastMsgEl.querySelector('.avatar-wrap');
+      if (wrap) {
+        wrap.classList.remove('speaking');
+        void wrap.offsetWidth; // force reflow
+        wrap.classList.add('speaking');
+      }
+
+      lastMsgTime = now;
+      resetAutoFade(lastMsgEl);
+      container.scrollTop = container.scrollHeight;
+      return;
+    }
+  }
+
+  // Build new Chat Message Card
+  const msgEl = document.createElement('div');
+  msgEl.className = `chat-msg role-${resolvedRole}`;
+
+  // Avatar Wrapper
+  const avWrap = document.createElement('div');
+  avWrap.className = 'avatar-wrap speaking';
+
+  const ring = document.createElement('div');
+  ring.className = 'avatar-ring';
+  avWrap.appendChild(ring);
+
+  const img = document.createElement('img');
+  img.className = 'avatar-img';
+  img.src = avatarUrl || '/assets/avatar.png';
+  img.alt = user;
+  img.onerror = () => { img.src = '/assets/avatar.png'; };
+  avWrap.appendChild(img);
+
+  // Role tag mini badge on bottom right of avatar
+  if (resolvedRole === 'streamer') {
+    const tag = document.createElement('div');
+    tag.className = 'avatar-tag';
+    tag.innerHTML = ICONS.crown;
+    avWrap.appendChild(tag);
+  } else if (resolvedRole === 'moderator') {
+    const tag = document.createElement('div');
+    tag.className = 'avatar-tag';
+    tag.innerHTML = ICONS.shield;
+    avWrap.appendChild(tag);
+  } else if (resolvedRole === 'top_gifter') {
+    const tag = document.createElement('div');
+    tag.className = 'avatar-tag';
+    tag.innerHTML = ICONS.diamond;
+    avWrap.appendChild(tag);
+  } else if (resolvedRole === 'subscriber') {
+    const tag = document.createElement('div');
+    tag.className = 'avatar-tag';
+    tag.innerHTML = ICONS.star;
+    avWrap.appendChild(tag);
+  }
+
+  // Content Block
+  const content = document.createElement('div');
+  content.className = 'content';
+
+  const header = document.createElement('div');
+  header.className = 'header';
+
+  const u = document.createElement('span');
+  u.className = 'username';
+  u.textContent = user;
+  header.appendChild(u);
+
+  if (chatSettings.showBadges) {
+    let displayBadge = badgeText;
+    let badgeClass = 'badge-viewer';
+    if (resolvedRole === 'streamer') { displayBadge = displayBadge || 'Streamer'; badgeClass = 'badge-streamer'; }
+    else if (resolvedRole === 'moderator') { displayBadge = displayBadge || 'Mod'; badgeClass = 'badge-moderator'; }
+    else if (resolvedRole === 'top_gifter') { displayBadge = displayBadge || 'Top Gifter'; badgeClass = 'badge-gifter'; }
+    else if (resolvedRole === 'subscriber') { displayBadge = displayBadge || 'Sub'; badgeClass = 'badge-subscriber'; }
+
+    if (displayBadge) {
+      const b = document.createElement('span');
+      b.className = `badge ${badgeClass}`;
+      b.textContent = displayBadge;
+      header.appendChild(b);
+    }
+  }
+
+  const commentGroup = document.createElement('div');
+  commentGroup.className = 'comment-group';
+
+  const line = document.createElement('div');
+  line.className = 'comment-line';
+  line.textContent = text;
+  commentGroup.appendChild(line);
+
+  content.appendChild(header);
+  content.appendChild(commentGroup);
+
+  msgEl.appendChild(avWrap);
+  msgEl.appendChild(content);
+
+  container.appendChild(msgEl);
+
+  lastMsgUser = user;
+  lastMsgEl = msgEl;
+  lastMsgTime = now;
+
+  container.scrollTop = container.scrollHeight;
+
+  // Enforce Max Messages Limit
+  enforceMaxMessages();
+
+  // Handle Auto Fade
+  resetAutoFade(msgEl);
+}
+
+function enforceMaxMessages() {
+  const maxLimit = Math.max(1, Math.min(50, chatSettings.maxMessages || 8));
+  while (container.children.length > maxLimit) {
+    const oldest = container.firstChild;
+    if (oldest._fadeTimeout) clearTimeout(oldest._fadeTimeout);
+    oldest.remove();
+    if (lastMsgEl === oldest) { lastMsgEl = null; lastMsgUser = null; }
+  }
+}
+
+function resetAutoFade(el) {
+  if (el._fadeTimeout) clearTimeout(el._fadeTimeout);
+  if (chatSettings.autoFadeSec > 0) {
+    el._fadeTimeout = setTimeout(() => {
+      el.classList.add('fade-out');
+      setTimeout(() => {
+        if (el.parentNode) el.remove();
+        if (lastMsgEl === el) { lastMsgEl = null; lastMsgUser = null; }
+      }, 450);
+    }, chatSettings.autoFadeSec * 1000);
+  }
+}
+
+// WebSocket Connection
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(`${proto}//${location.host}`);
+
+  ws.onmessage = evt => {
+    try {
+      const data = JSON.parse(evt.data);
+      if (data.type === 'init' && data.settings?.chat) {
+        chatSettings = Object.assign(chatSettings, data.settings.chat);
+        updateChatVisualStyles();
+        enforceMaxMessages();
+      } else if (data.type === 'settings:update' && data.settings?.chat) {
+        chatSettings = Object.assign(chatSettings, data.settings.chat);
+        updateChatVisualStyles();
+        enforceMaxMessages();
+      } else if (data.type === 'chat') {
+        const viewerName = data.nickname || data.user || data.uniqueId || 'Viewer';
+        addMessage(
+          viewerName,
+          data.comment || '',
+          data.avatar,
+          data.badge,
+          data.role
+        );
+      }
+    } catch (e) {
+      console.warn('Chat WS error', e);
+    }
+  };
+
+  ws.onclose = () => setTimeout(connectWS, 2000);
+  ws.onerror = () => ws.close();
+}
+
+updateChatVisualStyles();
+connectWS();
+
+// Welcome greeting message
+setTimeout(() => {
+  addMessage('Shimmy Ming', 'Welcome to the stream chat! Cozy vibes only~', '/assets/avatar.png', 'Streamer', 'streamer');
+}, 400);
+</script>
+</body>
+</html>

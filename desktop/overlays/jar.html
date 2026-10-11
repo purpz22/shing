@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shing Glass Jar Overlay</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  #container {
+    position: relative;
+    width: 100%; height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #jar-stage {
+    position: relative;
+    width: 764px;
+    height: 1024px;
+    max-width: 100vw;
+    max-height: 100vh;
+    will-change: transform;
+  }
+  .layer {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  #jar-back {
+    z-index: 1;
+    object-fit: contain;
+  }
+  #physics-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 2;
+  }
+  #jar-front {
+    z-index: 3;
+    object-fit: contain;
+  }
+
+  /* Combo Badge above jar mouth */
+  #combo-badge {
+    position: absolute;
+    top: 130px;
+    left: 50%;
+    transform: translateX(-50%) scale(0.8);
+    opacity: 0;
+    z-index: 10;
+    background: linear-gradient(135deg, #ff4785, #7b3fe4);
+    color: #fff;
+    padding: 8px 24px;
+    border-radius: 28px;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    box-shadow: 0 8px 24px rgba(255, 71, 133, 0.45);
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    pointer-events: none;
+    transition: opacity 0.3s, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    text-transform: uppercase;
+  }
+  #combo-badge.show {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+    animation: comboPulse 0.4s ease;
+  }
+  @keyframes comboPulse {
+    0% { transform: translateX(-50%) scale(0.9); }
+    50% { transform: translateX(-50%) scale(1.15); }
+    100% { transform: translateX(-50%) scale(1); }
+  }
+
+  /* Gift Odometer Counter */
+  #gift-counter {
+    position: absolute;
+    bottom: 38px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4;
+    background: rgba(46, 26, 82, 0.85);
+    color: #fff;
+    padding: 8px 22px;
+    border-radius: 24px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    transition: opacity 0.3s, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: none;
+    opacity: 0;
+  }
+  #gift-counter.visible { opacity: 1; }
+  #gift-counter.counter-pop {
+    transform: translateX(-50%) scale(1.12);
+  }
+</style>
+<script src="/assets/matter.min.js"></script>
+</head>
+<body>
+<div id="container">
+  <div id="jar-stage">
+    <div id="combo-badge">ROSE COMBO x5</div>
+    <img id="jar-back" class="layer" src="/assets/jar/jar-back.png" alt="Jar Back">
+    <canvas id="physics-canvas" width="764" height="1024"></canvas>
+    <img id="jar-front" class="layer" src="/assets/jar/jar-front.png" alt="Jar Front">
+    <div id="gift-counter"><span id="count-num">0</span> gifts</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const jarStage = document.getElementById('jar-stage');
+const comboBadge = document.getElementById('combo-badge');
+const counterEl = document.getElementById('gift-counter');
+const countNumEl = document.getElementById('count-num');
+
+const GIFT_ICONS = {
+  rose: '/assets/gifts/rose.png',
+  heart_me: '/assets/gifts/heart_me.png',
+  gg: '/assets/gifts/gg.png',
+  ice_cream: '/assets/gifts/ice_cream.png',
+  doughnut: '/assets/gifts/doughnut.png',
+  perfume: '/assets/gifts/perfume.png',
+  tiktok: '/assets/gifts/tiktok.png',
+  galaxy: '/assets/gifts/galaxy.png',
+  panda: '/assets/gifts/panda.png',
+  cap: '/assets/gifts/cap.png',
+  sunglasses: '/assets/gifts/sunglasses.png'
+};
+
+const preloadedImgs = {};
+Object.entries(GIFT_ICONS).forEach(([k, src]) => {
+  const img = new Image();
+  img.src = src;
+  preloadedImgs[k] = img;
+});
+
+// Cache for all 676+ TikTok gifts
+const catalogMap = {};
+fetch('/api/gifts')
+  .then(r => r.json())
+  .then(list => {
+    if (Array.isArray(list)) {
+      list.forEach(g => {
+        const key = (g.name || g.id || '').toLowerCase().replace(/\s+/g, '_');
+        if (g.image) catalogMap[key] = g.image;
+      });
+    }
+  })
+  .catch(() => {});
+
+// Setup Matter.js
+const { Engine, World, Bodies, Body, Events } = Matter;
+const engine = Engine.create({ enableSleeping: false });
+engine.gravity.y = 0.95;
+
+const canvas = document.getElementById('physics-canvas');
+const ctx = canvas.getContext('2d');
+const W = 764, H = 1024;
+
+// Build collision walls matching the glass jar curve
+function createJarWalls() {
+  const walls = [];
+  const wallThick = 26;
+  const wallOpts = { isStatic: true, friction: 0.1, restitution: 0.35, render: { visible: false } };
+
+  // Bottom floor
+  walls.push(Bodies.rectangle(382, 852, 420, wallThick, wallOpts));
+
+  // Left curve segments
+  const leftPoints = [
+    [190, 240], [140, 320], [95, 420], [70, 520], [68, 620], [95, 720], [145, 800], [195, 845]
+  ];
+  for (let i = 0; i < leftPoints.length - 1; i++) {
+    const p1 = leftPoints[i], p2 = leftPoints[i + 1];
+    const cx = (p1[0] + p2[0]) / 2, cy = (p1[1] + p2[1]) / 2;
+    const len = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+    const angle = Math.atan2(p2[1] - p1[1], p2[0] - p1[0]);
+    walls.push(Bodies.rectangle(cx - wallThick * 0.4, cy, len + 2, wallThick, { ...wallOpts, angle }));
+  }
+
+  // Right curve segments
+  const rightPoints = [
+    [574, 240], [624, 320], [669, 420], [694, 520], [696, 620], [669, 720], [619, 800], [569, 845]
+  ];
+  for (let i = 0; i < rightPoints.length - 1; i++) {
+    const p1 = rightPoints[i], p2 = rightPoints[i + 1];
+    const cx = (p1[0] + p2[0]) / 2, cy = (p1[1] + p2[1]) / 2;
+    const len = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+    const angle = Math.atan2(p2[1] - p1[1], p2[0] - p1[0]);
+    walls.push(Bodies.rectangle(cx + wallThick * 0.4, cy, len + 2, wallThick, { ...wallOpts, angle }));
+  }
+
+  return walls;
+}
+
+const jarWalls = createJarWalls();
+World.add(engine.world, jarWalls);
+
+const giftBodies = [];
+let totalGiftCount = 0;
+let screenTrauma = 0;
+
+// Combo tracker
+let lastGiftKey = null;
+let comboCount = 0;
+let lastGiftTime = 0;
+let comboTimer = null;
+
+let jarSettings = {
+  gravity: 0.95,
+  giftScale: 0.85,
+  bounciness: 0.4,
+  maxGifts: 150,
+  overflowAllowed: true
+};
+
+// Squash & Stretch Collision Listener
+Events.on(engine, 'collisionStart', evt => {
+  evt.pairs.forEach(pair => {
+    const { bodyA, bodyB } = pair;
+    const relVx = bodyA.velocity.x - bodyB.velocity.x;
+    const relVy = bodyA.velocity.y - bodyB.velocity.y;
+    const speed = Math.hypot(relVx, relVy);
+
+    if (speed > 2.8) {
+      if (bodyA.giftIcon) applySquash(bodyA, speed);
+      if (bodyB.giftIcon) applySquash(bodyB, speed);
+    }
+  });
+});
+
+function applySquash(body, impactSpeed) {
+  const intensity = Math.min(0.35, impactSpeed * 0.035);
+  body.squashX = 1.0 + intensity;
+  body.squashY = 1.0 - intensity;
+}
+
+function triggerCombo(giftName) {
+  const now = Date.now();
+  if (lastGiftKey === giftName && (now - lastGiftTime < 3200)) {
+    comboCount++;
+  } else {
+    lastGiftKey = giftName;
+    comboCount = 1;
+  }
+  lastGiftTime = now;
+
+  if (comboCount >= 2) {
+    comboBadge.textContent = `${giftName} x${comboCount}!`;
+    comboBadge.classList.remove('show');
+    void comboBadge.offsetWidth;
+    comboBadge.classList.add('show');
+
+    clearTimeout(comboTimer);
+    comboTimer = setTimeout(() => {
+      comboBadge.classList.remove('show');
+    }, 2800);
+  }
+}
+
+function dropGift(type, sizeMul = 1.0) {
+  const iconKey = GIFT_ICONS[type] ? type : 'rose';
+  const baseRadius = 26 * jarSettings.giftScale * sizeMul;
+  const radius = Math.max(16, Math.min(56, baseRadius));
+
+  const spawnX = 260 + Math.random() * 244;
+  const spawnY = -25 - Math.random() * 60;
+
+  const giftBody = Bodies.circle(spawnX, spawnY, radius, {
+    restitution: jarSettings.bounciness,
+    friction: 0.35,
+    frictionAir: 0.008,
+    density: 0.002
+  });
+
+  Body.setVelocity(giftBody, {
+    x: (Math.random() - 0.5) * 4.5,
+    y: 2 + Math.random() * 4
+  });
+  Body.setAngularVelocity(giftBody, (Math.random() - 0.5) * 0.18);
+
+  giftBody.giftIcon = iconKey;
+  giftBody.radius = radius;
+  giftBody.alpha = 1.0;
+  giftBody.createdAt = Date.now();
+  giftBody.squashX = 1.0;
+  giftBody.squashY = 1.0;
+
+  giftBodies.push(giftBody);
+  World.add(engine.world, giftBody);
+
+  totalGiftCount++;
+  countNumEl.textContent = totalGiftCount;
+  counterEl.classList.add('visible');
+
+  // Trigger Spring Pulse on counter
+  counterEl.classList.remove('counter-pop');
+  void counterEl.offsetWidth;
+  counterEl.classList.add('counter-pop');
+  setTimeout(() => counterEl.classList.remove('counter-pop'), 200);
+
+  // Enforce Max Gifts limit
+  if (giftBodies.length > jarSettings.maxGifts) {
+    const oldest = giftBodies.shift();
+    World.remove(engine.world, oldest);
+  }
+}
+
+function triggerScreenShake(intensity = 0.85) {
+  screenTrauma = Math.max(screenTrauma, intensity);
+}
+
+function clearJar() {
+  giftBodies.forEach(b => World.remove(engine.world, b));
+  giftBodies.length = 0;
+  totalGiftCount = 0;
+  countNumEl.textContent = '0';
+  comboBadge.classList.remove('show');
+}
+
+// Render loop with squash/stretch & screen shake
+function render() {
+  Engine.update(engine, 1000 / 60);
+  ctx.clearRect(0, 0, W, H);
+
+  // Screen shake calculation
+  if (screenTrauma > 0.02) {
+    const t = Date.now() * 0.045;
+    const shakeX = Math.sin(t) * screenTrauma * 16;
+    const shakeY = Math.cos(t * 0.9) * screenTrauma * 12;
+    jarStage.style.transform = `translate3d(${shakeX.toFixed(2)}px, ${shakeY.toFixed(2)}px, 0)`;
+    screenTrauma *= 0.93;
+  } else if (screenTrauma > 0) {
+    screenTrauma = 0;
+    jarStage.style.transform = '';
+  }
+
+  // Render gift bodies
+  for (let i = giftBodies.length - 1; i >= 0; i--) {
+    const b = giftBodies[i];
+
+    if (b.position.y > H + 100) {
+      World.remove(engine.world, b);
+      giftBodies.splice(i, 1);
+      continue;
+    }
+
+    // Smooth squash spring return to 1.0
+    b.squashX += (1.0 - b.squashX) * 0.16;
+    b.squashY += (1.0 - b.squashY) * 0.16;
+
+    const { x, y } = b.position;
+    const r = b.radius;
+    const img = preloadedImgs[b.giftIcon] || preloadedImgs.rose;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(b.angle);
+    ctx.scale(b.squashX, b.squashY);
+    ctx.globalAlpha = b.alpha || 1.0;
+
+    // Soft drop shadow
+    ctx.beginPath();
+    ctx.arc(0, 3, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(20, 10, 35, 0.14)';
+    ctx.fill();
+
+    // Gift graphic
+    if (img && img.complete) {
+      ctx.drawImage(img, -r, -r, r * 2, r * 2);
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff4d6d';
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  requestAnimationFrame(render);
+}
+
+requestAnimationFrame(render);
+
+// WebSocket integration
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(`${proto}//${location.host}`);
+
+  ws.onmessage = evt => {
+    try {
+      const data = JSON.parse(evt.data);
+      if (data.type === 'init' && data.settings?.jar) {
+        jarSettings = Object.assign(jarSettings, data.settings.jar);
+        engine.gravity.y = jarSettings.gravity;
+      } else if (data.type === 'settings:update' && data.settings?.jar) {
+        jarSettings = Object.assign(jarSettings, data.settings.jar);
+        engine.gravity.y = jarSettings.gravity;
+      } else if (data.type === 'gift') {
+        const giftName = data.giftName || 'Gift';
+        const giftKey = (data.giftId || data.giftName || 'rose').toLowerCase().replace(/\s+/g, '_');
+        const imgUrl = data.giftPictureUrl || catalogMap[giftKey] || GIFT_ICONS[giftKey];
+
+        if (imgUrl && !preloadedImgs[giftKey]) {
+          const dynamicImg = new Image();
+          dynamicImg.src = imgUrl;
+          preloadedImgs[giftKey] = dynamicImg;
+        }
+
+        const count = Math.min(25, Math.max(1, data.count || 1));
+        const coinVal = data.coins || data.diamonds || 1;
+        let sizeMul = 1.0;
+        if (coinVal >= 10000) sizeMul = 1.75;
+        else if (coinVal >= 1000) sizeMul = 1.45;
+        else if (coinVal >= 100) sizeMul = 1.25;
+        else if (coinVal >= 10) sizeMul = 1.12;
+
+        // Trigger combo badge
+        triggerCombo(giftName);
+
+        // Tier 4 screen shake
+        if (coinVal >= 1000) {
+          triggerScreenShake(coinVal >= 10000 ? 1.0 : 0.7);
+        }
+
+        for (let i = 0; i < count; i++) {
+          setTimeout(() => dropGift(giftKey, sizeMul), i * 85);
+        }
+      } else if (data.type === 'clearJar') {
+        clearJar();
+      }
+    } catch (e) {
+      console.warn('WS message error', e);
+    }
+  };
+
+  ws.onclose = () => setTimeout(connectWS, 2000);
+  ws.onerror = () => ws.close();
+}
+
+connectWS();
+
+// Click to drop test gift in standalone browser view
+canvas.addEventListener('pointerdown', () => {
+  const gifts = Object.keys(GIFT_ICONS);
+  const rand = gifts[Math.floor(Math.random() * gifts.length)];
+  dropGift(rand, 1.0);
+  triggerCombo(rand.replace(/_/g, ' '));
+});
+</script>
+</body>
+</html>

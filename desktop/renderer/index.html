@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shing Studio</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-purple">
+
+<!-- Top Header -->
+<header id="app-header">
+  <div class="header-left">
+    <img id="app-logo" src="/assets/logo.png" alt="Shing Studio Logo">
+    <div class="app-branding">
+      <span class="app-title">Shing Studio</span>
+      <span class="app-subtitle">TikTok Live Companion</span>
+    </div>
+  </div>
+
+  <div class="header-center">
+    <div class="simulator-toolbar" title="Quick Live Event Simulator">
+      <span class="sim-label">Test Events:</span>
+      <button class="sim-btn" data-sim="rose">Rose (1c)</button>
+      <button class="sim-btn" data-sim="heart_me">Heart Me (1c)</button>
+      <button class="sim-btn" data-sim="money_gun">Money Gun (500c)</button>
+      <button class="sim-btn" data-sim="galaxy">Galaxy (1,000c)</button>
+      <button class="sim-btn" data-sim="lion">Lion (29,999c)</button>
+      <button class="sim-btn" data-sim="follow">Follow</button>
+      <button class="sim-btn" data-sim="like">Like</button>
+      <button class="sim-btn" data-sim="chat">Chat</button>
+      <button class="sim-btn" data-sim="join">Join</button>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <div class="hud-stats">
+      <div class="hud-pill" title="Total chat messages this session">
+        <span class="hud-label">Chat</span>
+        <span class="hud-val" id="hud-chat-count">0</span>
+      </div>
+      <div class="hud-pill" title="Total coins collected this session">
+        <span class="hud-label">Coins</span>
+        <span class="hud-val" id="hud-coin-count">0</span>
+      </div>
+      <div class="hud-pill" title="Total likes received this session">
+        <span class="hud-label">Likes</span>
+        <span class="hud-val" id="hud-like-count">0</span>
+      </div>
+    </div>
+    <div id="version-pill" class="version-pill" title="Click to view software updates">
+      <span class="ver-icon">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+      </span>
+      <span class="ver-text" id="header-version-text">v1.0.0</span>
+      <span class="ver-badge-tag" id="header-version-badge">Up to Date</span>
+    </div>
+    <button id="account-pill" class="account-pill" title="Click to change account">
+      <span class="status-dot online"></span>
+      <span id="header-username">@shimmy_ming</span>
+    </button>
+  </div>
+</header>
+
+<!-- Main App Body -->
+<div id="app-body">
+  <!-- Left Navigation Sidebar -->
+  <aside id="sidebar">
+    <!-- Favorites Section -->
+    <div class="sidebar-group">
+      <div class="group-title">Favorites</div>
+      <div id="favorites-list" class="nav-list"></div>
+    </div>
+
+    <!-- Main Navigation Section -->
+    <div class="sidebar-group">
+      <div class="group-title">Navigation</div>
+      <div class="nav-list">
+        <button class="nav-item active" data-tab="overlays">
+          <span class="nav-icon" data-icon="layers"></span>
+          <span class="nav-label">Overlays</span>
+          <span class="star-toggle" data-fav="overlays" title="Pin to Favorites"></span>
+        </button>
+        <button class="nav-item" data-tab="triggers">
+          <span class="nav-icon" data-icon="triggers"></span>
+          <span class="nav-label">Triggers</span>
+          <span class="star-toggle" data-fav="triggers" title="Pin to Favorites"></span>
+        </button>
+        <button class="nav-item" data-tab="lowerthird">
+          <span class="nav-icon" data-icon="lowerthird"></span>
+          <span class="nav-label">Lower 3rd</span>
+          <span class="star-toggle" data-fav="lowerthird" title="Pin to Favorites"></span>
+        </button>
+        <button class="nav-item" data-tab="chat">
+          <span class="nav-icon" data-icon="chat"></span>
+          <span class="nav-label">Chat</span>
+          <span class="star-toggle" data-fav="chat" title="Pin to Favorites"></span>
+        </button>
+        <button class="nav-item" data-tab="jar">
+          <span class="nav-icon" data-icon="jar"></span>
+          <span class="nav-label">Jar</span>
+          <span class="star-toggle" data-fav="jar" title="Pin to Favorites"></span>
+        </button>
+        <button class="nav-item" data-tab="timer">
+          <span class="nav-icon" data-icon="timer"></span>
+          <span class="nav-label">Timer</span>
+          <span class="star-toggle" data-fav="timer" title="Pin to Favorites"></span>
+        </button>
+        <button class="nav-item" data-tab="companion">
+          <span class="nav-icon" data-icon="companion"></span>
+          <span class="nav-label">Companion</span>
+          <span class="star-toggle" data-fav="companion" title="Pin to Favorites"></span>
+        </button>
+        <button class="nav-item" data-tab="settings">
+          <span class="nav-icon" data-icon="settings"></span>
+          <span class="nav-label">Settings</span>
+          <span class="star-toggle" data-fav="settings" title="Pin to Favorites"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Sidebar Footer Update Shortcut -->
+    <div class="sidebar-footer">
+      <button class="update-check-mini-btn" id="sidebar-update-btn" title="Check for software updates">
+        <span class="mini-update-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></span>
+        <span class="mini-update-label" id="sidebar-update-label">Check Updates</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main id="content">
+    <!-- 1. OVERLAYS TAB -->
+    <section id="tab-overlays" class="tab-pane active">
+      <div class="section-header">
+        <h2>Browser Overlays</h2>
+        <p>Add these URLs as Browser Sources in OBS Studio or TikTok LIVE Studio.</p>
+      </div>
+
+      <div class="overlay-grid">
+        <!-- Jar Card -->
+        <div class="overlay-card" data-goto="jar">
+          <div class="card-preview">
+            <img src="/assets/jar/jar-front.png" class="preview-img jar-mini" alt="Jar Preview">
+          </div>
+          <div class="card-info">
+            <h3>Physics Gift Jar</h3>
+            <p>Gifts drop into the glass jar with 2D physics and stack/overflow.</p>
+            <div class="card-actions">
+              <button class="btn btn-primary copy-url-btn" data-url="http://localhost:3333/overlays/jar">Copy URL</button>
+              <button class="btn btn-secondary open-ext-btn" data-overlay="jar">Open Preview</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Companion Card -->
+        <div class="overlay-card" data-goto="companion">
+          <div class="card-preview companion-preview-box">
+            <div class="mini-companion-badge">Pixel Cats & Chibi</div>
+          </div>
+          <div class="card-info">
+            <h3>Companion Cats</h3>
+            <p>Chibi streamer and cats interacting with gifts, follows, and likes.</p>
+            <div class="card-actions">
+              <button class="btn btn-primary copy-url-btn" data-url="http://localhost:3333/overlays/companion">Copy URL</button>
+              <button class="btn btn-secondary open-ext-btn" data-overlay="companion">Open Preview</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Card -->
+        <div class="overlay-card" data-goto="chat">
+          <div class="card-preview chat-preview-box">
+            <div class="mini-chat-bubble">Hi chat! Welcome~</div>
+          </div>
+          <div class="card-info">
+            <h3>Cute Chat</h3>
+            <p>Pastel speech bubble chat stream with zero sound effects.</p>
+            <div class="card-actions">
+              <button class="btn btn-primary copy-url-btn" data-url="http://localhost:3333/overlays/chat">Copy URL</button>
+              <button class="btn btn-secondary open-ext-btn" data-overlay="chat">Open Preview</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lower Third Card -->
+        <div class="overlay-card" data-goto="lowerthird">
+          <div class="card-preview lt-preview-box">
+            <div class="mini-lt-badge">TikTok @shimmy_ming</div>
+          </div>
+          <div class="card-info">
+            <h3>Lower 3rd Socials</h3>
+            <p>Animated rotating streamer socials banner for stream bottom.</p>
+            <div class="card-actions">
+              <button class="btn btn-primary copy-url-btn" data-url="http://localhost:3333/overlays/lowerthird">Copy URL</button>
+              <button class="btn btn-secondary open-ext-btn" data-overlay="lowerthird">Open Preview</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Triggers Card -->
+        <div class="overlay-card" data-goto="triggers">
+          <div class="card-preview trigger-preview-box">
+            <div class="mini-alert-badge">Gift Alert Banner</div>
+          </div>
+          <div class="card-info">
+            <h3>Popup Alerts</h3>
+            <p>Top popup alerts when viewers follow, like, or send gifts.</p>
+            <div class="card-actions">
+              <button class="btn btn-primary copy-url-btn" data-url="http://localhost:3333/overlays/triggers">Copy URL</button>
+              <button class="btn btn-secondary open-ext-btn" data-overlay="triggers">Open Preview</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timer Card -->
+        <div class="overlay-card" data-goto="timer">
+          <div class="card-preview timer-preview-box">
+            <div class="mini-timer-badge">00:30:00</div>
+          </div>
+          <div class="card-info">
+            <h3>Stream Timer</h3>
+            <p>Stream countdown timer with bonus seconds per gift.</p>
+            <div class="card-actions">
+              <button class="btn btn-primary copy-url-btn" data-url="http://localhost:3333/overlays/timer">Copy URL</button>
+              <button class="btn btn-secondary open-ext-btn" data-overlay="timer">Open Preview</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. TRIGGERS TAB -->
+    <section id="tab-triggers" class="tab-pane">
+      <div class="section-header">
+        <h2>Triggers & Alerts</h2>
+        <p>Set custom messages and behavior when viewers follow, send gifts, or like.</p>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-card">
+          <h3>Follow Event</h3>
+          <label>Alert Message
+            <input type="text" id="trig-follow-msg" value="Thank you {user} for following!">
+          </label>
+          <div class="hint-text">Use {user} to display the follower's username.</div>
+          <div class="btn-row">
+            <button class="btn btn-secondary" id="test-follow-btn">Test Follow Alert</button>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <h3>Gift Event</h3>
+          <label>Alert Message
+            <input type="text" id="trig-gift-msg" value="{user} sent {gift} x{count}!">
+          </label>
+          <div class="btn-row" style="flex-wrap: wrap; gap: 8px;">
+            <button class="btn btn-secondary" id="test-follow-btn">Tier 1: Follow</button>
+            <button class="btn btn-secondary" id="test-tier2-btn">Tier 2: Rose (1c)</button>
+            <button class="btn btn-secondary" id="test-tier3-btn">Tier 3: Money Gun (500c)</button>
+            <button class="btn btn-secondary" id="test-tier4-btn">Tier 4: Lion (29,999c)</button>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <h3>Alert Timing</h3>
+          <label>Display Duration (seconds)
+            <input type="number" id="trig-duration" min="2" max="15" value="5">
+          </label>
+          <label>Likes Milestone Threshold
+            <input type="number" id="trig-likes-thresh" min="10" max="1000" step="10" value="50">
+          </label>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="save-triggers-btn">Save Triggers</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. LOWER THIRD TAB -->
+    <section id="tab-lowerthird" class="tab-pane">
+      <div class="section-header">
+        <h2>Lower Third Socials</h2>
+        <p>Display your social media handles in an animated banner.</p>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-card">
+          <h3>Social Handles</h3>
+          <label>TikTok
+            <input type="text" id="lt-tiktok" value="@shimmy_ming">
+          </label>
+          <label>Instagram
+            <input type="text" id="lt-instagram" placeholder="@username">
+          </label>
+          <label>YouTube
+            <input type="text" id="lt-youtube" placeholder="@channel">
+          </label>
+          <label>Discord
+            <input type="text" id="lt-discord" placeholder="discord.gg/yourlink">
+          </label>
+        </div>
+
+        <div class="form-card">
+          <h3>Display Timing</h3>
+          <label>Rotation Interval (seconds)
+            <input type="number" id="lt-interval" min="5" max="120" value="15">
+          </label>
+          <div class="live-preview-box">
+            <div class="preview-title">Live Preview</div>
+            <div class="lt-banner-preview">
+              <img src="/assets/avatar.png" class="lt-mini-avatar" alt="Avatar">
+              <div>
+                <div class="lt-mini-platform">TikTok</div>
+                <div class="lt-mini-handle" id="lt-preview-handle">@shimmy_ming</div>
+              </div>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="save-lowerthird-btn">Save Lower 3rd</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. CHAT TAB -->
+    <section id="tab-chat" class="tab-pane">
+      <div class="section-header">
+        <h2>Cute Chat Overlay</h2>
+        <p>Pastel speech bubble chat with animated chatter PFPs and zero sound effects.</p>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-card">
+          <h3>Avatar & Bubble Styling</h3>
+          <label>Avatar Shape
+            <select id="chat-avatar-shape">
+              <option value="circle">Circle</option>
+              <option value="squircle">Squircle (Rounded Box)</option>
+              <option value="hexagon">Hexagon</option>
+            </select>
+          </label>
+          <label>Avatar Animation Style
+            <select id="chat-avatar-anim">
+              <option value="elastic">Elastic Spring Bounce</option>
+              <option value="slide">Smooth Slide In</option>
+              <option value="halo">Radiant Halo Glow</option>
+            </select>
+          </label>
+          <label>Font Size (px)
+            <input type="range" id="chat-font-size" min="12" max="22" value="14">
+            <span class="range-val" id="chat-font-val">14px</span>
+          </label>
+          <label>Bubble Corner Radius (px)
+            <input type="range" id="chat-radius" min="8" max="24" value="16">
+            <span class="range-val" id="chat-radius-val">16px</span>
+          </label>
+          <label>Auto-Hide Delay (seconds, 0 = never hide)
+            <input type="number" id="chat-autofade" min="0" max="60" value="15">
+          </label>
+          <label>Max Visible Messages (Limit on screen)
+            <input type="number" id="chat-max-messages" min="2" max="30" value="8">
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="chat-badges" checked> Show viewer badges
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="chat-grouping" checked> Group consecutive messages from same chatter
+          </label>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="save-chat-btn">Save Chat Settings</button>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <h3>Test Message & Preview</h3>
+          <label>Viewer Name (Display Name)
+            <input type="text" id="test-chat-user" value="Cute Fan">
+          </label>
+          <label>Chatter Role
+            <select id="test-chat-role">
+              <option value="viewer">Viewer</option>
+              <option value="subscriber">Subscriber</option>
+              <option value="moderator">Moderator</option>
+              <option value="top_gifter">Top Gifter</option>
+              <option value="streamer">Streamer</option>
+            </select>
+          </label>
+          <label>Comment
+            <input type="text" id="test-chat-comment" value="Hello streamer! Love the cozy stream~">
+          </label>
+          <div class="btn-row">
+            <button class="btn btn-secondary" id="send-test-chat-btn">Send Test Comment</button>
+          </div>
+          <div class="live-preview-box" style="margin-top: 14px;">
+            <div class="preview-title">Live Chat Preview</div>
+            <div id="dashboard-chat-preview" class="chat-dash-preview">
+              <div class="preview-chat-msg role-top_gifter">
+                <div class="preview-pfp-wrap">
+                  <img src="/assets/avatar.png" class="preview-pfp-img" alt="PFP">
+                </div>
+                <div class="preview-chat-body">
+                  <div class="preview-chat-hdr">
+                    <span class="preview-uname">Cute Fan</span>
+                    <span class="badge badge-gifter">Top Gifter</span>
+                  </div>
+                  <div class="preview-comment">Hello streamer! Love the cozy stream~</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. JAR TAB -->
+    <section id="tab-jar" class="tab-pane">
+      <div class="section-header">
+        <h2>Glass Gift Jar</h2>
+        <p>Gifts drop into the transparent jar with real 2D physics and stack/overflow.</p>
+      </div>
+
+      <div class="split-layout">
+        <div class="form-card flex-1">
+          <h3>Physics Settings</h3>
+          <label>Gravity
+            <input type="range" id="jar-gravity" min="0.5" max="1.6" step="0.05" value="0.95">
+            <span class="range-val" id="jar-gravity-val">0.95</span>
+          </label>
+          <label>Gift Size Scale
+            <input type="range" id="jar-scale" min="0.6" max="1.3" step="0.05" value="0.85">
+            <span class="range-val" id="jar-scale-val">0.85</span>
+          </label>
+          <label>Bounciness (Restitution)
+            <input type="range" id="jar-bounciness" min="0.1" max="0.8" step="0.05" value="0.4">
+            <span class="range-val" id="jar-bounce-val">0.40</span>
+          </label>
+          <label>Max Gifts in Jar
+            <input type="number" id="jar-max" min="50" max="300" step="10" value="150">
+          </label>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="save-jar-btn">Save Jar Settings</button>
+            <button class="btn btn-danger" id="clear-jar-btn">Clear Jar</button>
+          </div>
+
+          <h3 style="margin-top:20px;">Quick Test Drops</h3>
+          <div class="btn-row">
+            <button class="btn btn-secondary" id="drop-rose-btn">Drop Rose</button>
+            <button class="btn btn-secondary" id="drop-heartme-btn">Drop Heart Me</button>
+            <button class="btn btn-secondary" id="drop-gg-btn">Drop GG</button>
+            <button class="btn btn-secondary" id="drop-galaxy-btn">Drop Galaxy</button>
+          </div>
+
+          <h3 style="margin-top:16px;">Test Any Other TikTok Gift</h3>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select id="select-any-gift" style="flex:1; padding:7px 12px; border-radius:10px; border:1px solid var(--border-color); font-size:13px; background:var(--bg-card); color:var(--text-main);">
+              <option value="rose" data-name="Rose" data-diamonds="1">Rose (1 coin)</option>
+              <option value="heart_me" data-name="Heart Me" data-diamonds="1">Heart Me (1 coin)</option>
+              <option value="gg" data-name="GG" data-diamonds="1">GG (1 coin)</option>
+              <option value="ice_cream" data-name="Ice Cream Cone" data-diamonds="1">Ice Cream (1 coin)</option>
+              <option value="doughnut" data-name="Doughnut" data-diamonds="30">Doughnut (30 coins)</option>
+              <option value="cap" data-name="Cap" data-diamonds="99">Cap (99 coins)</option>
+              <option value="sunglasses" data-name="Sunglasses" data-diamonds="199">Sunglasses (199 coins)</option>
+              <option value="money_gun" data-name="Money Gun" data-diamonds="500">Money Gun (500 coins)</option>
+              <option value="swan" data-name="Swan" data-diamonds="699">Swan (699 coins)</option>
+              <option value="galaxy" data-name="Galaxy" data-diamonds="1000">Galaxy (1,000 coins)</option>
+              <option value="whale" data-name="Whale Diving" data-diamonds="2150">Whale Diving (2,150 coins)</option>
+              <option value="dragon" data-name="Dragon Flame" data-diamonds="26999">Dragon Flame (26,999 coins)</option>
+              <option value="lion" data-name="Leon and Lion" data-diamonds="34000">Lion (34,000 coins)</option>
+              <option value="universe" data-name="TikTok Universe+" data-diamonds="34999">TikTok Universe (34,999 coins)</option>
+            </select>
+            <button class="btn btn-primary" id="drop-selected-gift-btn">Drop</button>
+          </div>
+        </div>
+
+        <div class="jar-live-preview-card">
+          <div class="preview-title">Jar Live Stream Preview</div>
+          <iframe id="jar-preview-iframe" src="http://localhost:3333/overlays/jar" class="jar-iframe"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. TIMER TAB -->
+    <section id="tab-timer" class="tab-pane">
+      <div class="section-header">
+        <h2>Stream Timer</h2>
+        <p>Countdown timer overlay with subathon gift bonus support.</p>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-card">
+          <h3>Timer Setup</h3>
+          <label>Duration (Minutes)
+            <input type="number" id="timer-duration" min="1" max="360" value="30">
+          </label>
+          <label>Bonus Seconds per Gift Received
+            <input type="number" id="timer-bonus" min="0" max="120" value="15">
+          </label>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="save-timer-btn">Save Timer Settings</button>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <h3>Timer Controls</h3>
+          <div class="big-timer-display" id="dash-timer-display">00:30:00</div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="timer-start-btn">Start</button>
+            <button class="btn btn-secondary" id="timer-pause-btn">Pause</button>
+            <button class="btn btn-secondary" id="timer-reset-btn">Reset</button>
+            <button class="btn btn-secondary" id="timer-add1m-btn">+1 Min</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. COMPANION TAB -->
+    <section id="tab-companion" class="tab-pane">
+      <div class="section-header">
+        <h2>Companion Cats & Chibi</h2>
+        <p>The animated chibi streamer and cats that interact with stream events.</p>
+      </div>
+
+      <div class="companion-layout">
+        <div class="form-card">
+          <h3>Chibi Customization</h3>
+          <label>Hair style
+            <select id="comp-hairstyle">
+              <option value="twintails">Pigtails</option>
+              <option value="lowpigtails">Low Pigtails</option>
+              <option value="long">Long</option>
+              <option value="wavy">Wavy</option>
+              <option value="halfup">Medium</option>
+              <option value="bob">Short</option>
+              <option value="pixie">Pixie</option>
+              <option value="ponytail">Ponytail</option>
+              <option value="sidepony">Side Ponytail</option>
+              <option value="bun">Bun</option>
+              <option value="buns">Double Bun</option>
+              <option value="braids">Braids</option>
+            </select>
+          </label>
+
+          <div class="row-2">
+            <label>Hair color
+              <div class="color-pick">
+                <select id="comp-hair-preset">
+                  <option value="#7b3fe4">Purple</option>
+                  <option value="#a98be8">Light Purple</option>
+                  <option value="#4a1d9e">Dark Purple</option>
+                  <option value="#ff7eb9">Pink</option>
+                  <option value="#d92b4b">Red</option>
+                  <option value="#f58231">Orange</option>
+                  <option value="#f5c842">Yellow</option>
+                  <option value="#38d39f">Green</option>
+                  <option value="#48b5ff">Blue</option>
+                  <option value="#8b5a2b">Brown</option>
+                  <option value="#dce0f0">White</option>
+                  <option value="#261c35">Black</option>
+                  <option value="custom">Custom</option>
+                </select>
+                <input type="color" id="comp-hair-color" value="#7b3fe4">
+              </div>
+            </label>
+
+            <label>Outfit color
+              <div class="color-pick">
+                <select id="comp-outfit-preset">
+                  <option value="#9b5cf0">Purple</option>
+                  <option value="#c4aef5">Light Purple</option>
+                  <option value="#5b2aa8">Dark Purple</option>
+                  <option value="#f06292">Pink</option>
+                  <option value="#d32f2f">Red</option>
+                  <option value="#f57c00">Orange</option>
+                  <option value="#fbc02d">Yellow</option>
+                  <option value="#26a69a">Green</option>
+                  <option value="#42a5f5">Blue</option>
+                  <option value="#795548">Brown</option>
+                  <option value="#ece6f8">White</option>
+                  <option value="#241a38">Black</option>
+                  <option value="custom">Custom</option>
+                </select>
+                <input type="color" id="comp-outfit-color" value="#9b5cf0">
+              </div>
+            </label>
+          </div>
+
+          <h3 style="margin-top:16px;">Cats</h3>
+          <div class="cat-checks" id="comp-cats">
+            <label><input type="checkbox" value="purple" checked> Purple Cat</label>
+            <label><input type="checkbox" value="black" checked> Black Cat</label>
+            <label><input type="checkbox" value="calico"> Calico Cat</label>
+            <label><input type="checkbox" value="white"> White Cat</label>
+          </div>
+
+          <div class="btn-row" style="margin-top:16px;">
+            <button class="btn btn-primary" id="save-companion-btn">Save Companion</button>
+            <button class="btn btn-secondary" id="test-comp-happy-btn">Test Happy Reaction</button>
+          </div>
+        </div>
+
+        <div class="companion-stage-card">
+          <div class="stage-header">
+            <span class="preview-title">Companion Live Stream Stage Preview</span>
+            <span class="stage-tag">Transparent Stream Overlay Preview</span>
+          </div>
+          <iframe id="comp-preview-iframe" src="http://localhost:3333/overlays/companion" class="companion-stage-iframe"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. SETTINGS TAB -->
+    <section id="tab-settings" class="tab-pane">
+      <div class="section-header">
+        <h2>App Settings</h2>
+        <p>Customize the software theme and manage connection settings.</p>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-card">
+          <h3>Software Theme</h3>
+          <label>Theme Color
+            <select id="setting-theme">
+              <option value="Purple">Purple (Default Pastel)</option>
+              <option value="Light Purple">Light Purple</option>
+              <option value="Dark Purple">Dark Purple</option>
+              <option value="Pink">Pink</option>
+              <option value="Blue">Blue</option>
+              <option value="Green">Green</option>
+            </select>
+          </label>
+          <div class="hint-text">Clean pastel color schemes with high contrast.</div>
+        </div>
+
+        <div class="form-card">
+          <h3>TikTok Account</h3>
+          <label>Current Username
+            <input type="text" id="setting-username" value="@shimmy_ming" readonly>
+          </label>
+          <div class="btn-row">
+            <button class="btn btn-secondary" id="switch-account-btn">Change TikTok Account</button>
+          </div>
+        </div>
+
+        <!-- App Updates & Version Manager Card -->
+        <div class="form-card full-width" id="card-app-updates">
+          <div class="card-header-row">
+            <div>
+              <h3>App Updates & Version Manager</h3>
+              <p class="hint-text">Check for new releases, install updates automatically, or update from package files.</p>
+            </div>
+            <div class="update-status-pill" id="update-status-pill">
+              <span class="status-indicator-dot" id="status-indicator-dot"></span>
+              <span id="update-status-text">Up to Date</span>
+            </div>
+          </div>
+
+          <div class="update-info-grid">
+            <div class="update-stat-box">
+              <div class="update-stat-lbl">Installed Version</div>
+              <div class="update-stat-val" id="stat-installed-ver">v1.0.0</div>
+            </div>
+            <div class="update-stat-box">
+              <div class="update-stat-lbl">Latest Release</div>
+              <div class="update-stat-val" id="stat-latest-ver">Checking...</div>
+            </div>
+            <div class="update-stat-box">
+              <div class="update-stat-lbl">Last Checked</div>
+              <div class="update-stat-val" id="stat-last-checked">Never</div>
+            </div>
+            <div class="update-stat-box">
+              <div class="update-stat-lbl">Release Channel</div>
+              <div class="update-stat-val">Official Stable</div>
+            </div>
+          </div>
+
+          <!-- Update Available Banner (Shown dynamically when new version is found) -->
+          <div id="update-banner" class="update-banner hidden">
+            <div class="update-banner-header">
+              <div class="update-banner-title" id="update-banner-title">New Update Available!</div>
+              <div class="update-badge" id="update-badge-ver">v1.1.0</div>
+            </div>
+            <div class="update-banner-desc" id="update-banner-desc">
+              A new update is available with viewer display names, TikTok coins currency, and companion hairstyle improvements!
+            </div>
+            <div class="update-banner-actions">
+              <button class="btn btn-primary" id="btn-install-update">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                <span>Download & Install Update</span>
+              </button>
+              <button class="btn btn-secondary" id="btn-view-changelog">View Release Notes</button>
+            </div>
+          </div>
+
+          <!-- Download & Installation Progress Bar -->
+          <div id="update-progress-container" class="update-progress-container hidden">
+            <div class="progress-info-row">
+              <span id="progress-status-msg">Downloading update components...</span>
+              <span id="progress-percent-val">0%</span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" id="progress-bar-fill"></div>
+            </div>
+          </div>
+
+          <!-- Update Action Buttons -->
+          <div class="btn-row" style="margin-top: 14px; flex-wrap: wrap; gap: 10px;">
+            <button class="btn btn-secondary" id="btn-check-updates">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+              <span id="btn-check-updates-text">Check for Updates</span>
+            </button>
+            <button class="btn btn-secondary" id="btn-select-local-zip">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
+              <span>Install Update from File (.zip)</span>
+            </button>
+            <button class="btn btn-secondary" id="btn-open-changelog-modal">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+              <span>Version History & Notes</span>
+            </button>
+          </div>
+
+          <!-- Update Settings -->
+          <div class="update-settings-subcard" style="margin-top: 16px;">
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-auto-update" checked> Automatically check for updates on startup
+            </label>
+            <label style="margin-top: 10px;">Custom Update Feed URL (Optional)
+              <input type="text" id="input-update-feed" placeholder="https://raw.githubusercontent.com/purpz22/shing/main/desktop/releases.json (Default)">
+            </label>
+            <div class="hint-text">Leave blank to use official purpz22/shing GitHub release channel.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Modal: Account Verification -->
+<div id="modal-account" class="modal-backdrop active">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Connect TikTok Live</h3>
+    </div>
+    <div class="modal-body">
+      <div class="modal-step" id="modal-step-search">
+        <p class="modal-desc">Enter your TikTok username to connect to your live stream:</p>
+        <div class="search-input-wrap">
+          <input type="text" id="modal-username-input" value="shimmy_ming" placeholder="e.g. shimmy_ming">
+          <button class="btn btn-primary" id="modal-search-btn">Find Account</button>
+        </div>
+      </div>
+
+      <div class="modal-step" id="modal-step-confirm">
+        <div class="account-card-preview">
+          <img id="modal-avatar-img" src="/assets/avatar.png" alt="Profile Picture">
+          <div class="account-details">
+            <div id="modal-display-name" class="account-name">Shimmy Ming</div>
+            <div id="modal-unique-id" class="account-handle">@shimmy_ming</div>
+            <div class="badge-tag">TikTok Live Creator</div>
+          </div>
+        </div>
+
+        <p class="confirm-question">Is this the correct account?</p>
+
+        <div class="modal-btn-row">
+          <button class="btn btn-primary btn-large" id="modal-confirm-yes">Yes, continue</button>
+          <button class="btn btn-secondary btn-large" id="modal-confirm-no">No, change</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Changelog & Release Notes -->
+<div id="modal-changelog" class="modal-backdrop">
+  <div class="modal-card wide">
+    <div class="modal-header">
+      <h3>Shing Studio - Version Release Notes</h3>
+      <button class="modal-close-btn" id="modal-changelog-close">&times;</button>
+    </div>
+    <div class="modal-body" id="changelog-list-container">
+      <!-- Populated dynamically from releases.json -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="modal-changelog-dismiss">Close</button>
+      <button class="btn btn-primary" id="modal-changelog-update-action">Update to Latest</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Restart Confirmation -->
+<div id="modal-restart" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Update Ready to Install</h3>
+    </div>
+    <div class="modal-body" style="text-align: center; padding: 20px 10px;">
+      <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: var(--primary-light); margin-bottom: 12px;">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="#7b3fe4"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+      </div>
+      <h4 style="margin: 6px 0 6px; font-size: 16px;">Update Applied Successfully!</h4>
+      <p style="color: var(--text-muted); font-size: 13px;" id="restart-dialog-msg">
+        Shing Studio has been updated to v1.1.0. Please restart the app now to activate all new features.
+      </p>
+    </div>
+    <div class="modal-footer" style="justify-content: center; gap: 12px;">
+      <button class="btn btn-secondary" id="btn-restart-later">Restart Later</button>
+      <button class="btn btn-primary" id="btn-restart-now">Restart App Now</button>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/icons/icons.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

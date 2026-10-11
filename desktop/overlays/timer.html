@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Stream Timer Overlay</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  #timer-card {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #7b3fe4;
+    border-radius: 24px;
+    padding: 10px 24px;
+    box-shadow: 0 8px 24px rgba(123, 63, 228, 0.22);
+    backdrop-filter: blur(10px);
+    transition: border-color 0.4s, box-shadow 0.4s;
+    position: relative;
+  }
+
+  /* Low Time Warning Pulse (< 5 mins) */
+  #timer-card.low-time {
+    border-color: #f43f5e;
+    animation: urgentPulse 1.4s ease infinite;
+  }
+  @keyframes urgentPulse {
+    0% { box-shadow: 0 0 12px rgba(244, 63, 94, 0.35); }
+    50% { box-shadow: 0 0 24px rgba(244, 63, 94, 0.65); }
+    100% { box-shadow: 0 0 12px rgba(244, 63, 94, 0.35); }
+  }
+
+  .icon-wrap {
+    color: #7b3fe4;
+    display: flex;
+    align-items: center;
+  }
+  #timer-card.low-time .icon-wrap {
+    color: #f43f5e;
+  }
+
+  #time-display {
+    font-size: 30px;
+    font-weight: 800;
+    color: #271442;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
+  }
+  #timer-card.low-time #time-display {
+    color: #9f1239;
+  }
+
+  /* Floating Bonus Seconds Tags */
+  .bonus-tag {
+    position: absolute;
+    top: -12px;
+    right: 24px;
+    background: #ec4899;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(236, 72, 153, 0.4);
+    pointer-events: none;
+    animation: bonusFloat 1.2s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  }
+  @keyframes bonusFloat {
+    0% { transform: translateY(0) scale(0.8); opacity: 0; }
+    30% { transform: translateY(-16px) scale(1.15); opacity: 1; }
+    80% { transform: translateY(-34px) scale(1); opacity: 1; }
+    100% { transform: translateY(-44px) scale(0.9); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div id="timer-card">
+  <div class="icon-wrap">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+  </div>
+  <div id="time-display">00:30:00</div>
+</div>
+
+<script>
+'use strict';
+
+const timerCard = document.getElementById('timer-card');
+const display = document.getElementById('time-display');
+let remainingSeconds = 1800;
+let isRunning = false;
+let timerInterval = null;
+let timerSettings = {
+  durationMin: 30,
+  addSecondsPerGift: 15
+};
+
+function formatTime(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) {
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function updateDisplay() {
+  display.textContent = formatTime(remainingSeconds);
+  if (remainingSeconds > 0 && remainingSeconds <= 300) {
+    timerCard.classList.add('low-time');
+  } else {
+    timerCard.classList.remove('low-time');
+  }
+}
+
+function spawnBonusTag(seconds) {
+  const tag = document.createElement('div');
+  tag.className = 'bonus-tag';
+  tag.textContent = `+${seconds}s`;
+  timerCard.appendChild(tag);
+  setTimeout(() => tag.remove(), 1250);
+}
+
+function startTimer() {
+  if (isRunning) return;
+  isRunning = true;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    if (remainingSeconds > 0) {
+      remainingSeconds--;
+      updateDisplay();
+    } else {
+      pauseTimer();
+    }
+  }, 1000);
+}
+
+function pauseTimer() {
+  isRunning = false;
+  clearInterval(timerInterval);
+}
+
+function resetTimer(seconds) {
+  remainingSeconds = seconds || (timerSettings.durationMin * 60);
+  updateDisplay();
+}
+
+function addTime(seconds) {
+  remainingSeconds += seconds;
+  updateDisplay();
+  spawnBonusTag(seconds);
+}
+
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(`${proto}//${location.host}`);
+
+  ws.onmessage = evt => {
+    try {
+      const data = JSON.parse(evt.data);
+      if (data.type === 'init' && data.settings?.timer) {
+        timerSettings = Object.assign(timerSettings, data.settings.timer);
+      } else if (data.type === 'settings:update' && data.settings?.timer) {
+        timerSettings = Object.assign(timerSettings, data.settings.timer);
+      } else if (data.type === 'timer:control') {
+        if (data.action === 'start') startTimer();
+        else if (data.action === 'pause') pauseTimer();
+        else if (data.action === 'reset') resetTimer(data.seconds);
+        else if (data.action === 'add') addTime(data.seconds || 60);
+      } else if (data.type === 'gift') {
+        const bonus = (timerSettings.addSecondsPerGift || 0) * (data.count || 1);
+        if (bonus > 0) addTime(bonus);
+      }
+    } catch (e) {
+      console.warn('Timer WS error', e);
+    }
+  };
+
+  ws.onclose = () => setTimeout(connectWS, 2000);
+  ws.onerror = () => ws.close();
+}
+
+connectWS();
+updateDisplay();
+</script>
+</body>
+</html>

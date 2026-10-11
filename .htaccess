@@ -1,0 +1,14 @@
+<IfModule mod_headers.c>
+    Header unset X-Frame-Options
+</IfModule>
+
+<FilesMatch "\.svg$">
+    ForceType text/html
+    <IfModule mod_headers.c>
+        Header set Content-Type "text/html; charset=utf-8"
+        Header set Cache-Control "public, max-age=31536000, s-maxage=31536000"
+        Header unset Pragma
+        Header unset Expires
+        Header unset X-Frame-Options
+    </IfModule>
+</FilesMatch>

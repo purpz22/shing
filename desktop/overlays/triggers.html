@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Stream Triggers & Alerts Overlay</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  #overlay-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+  }
+
+  /* Canvas for hardware-accelerated sparkle crystals on Legendary alerts */
+  #fx-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Base Alert Box */
+  #alert-box {
+    position: absolute;
+    top: 36px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-120px) scale(0.85);
+    opacity: 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 2px solid #7b3fe4;
+    border-radius: 40px;
+    padding: 10px 28px 10px 14px;
+    box-shadow: 0 12px 36px rgba(123, 63, 228, 0.28);
+    backdrop-filter: blur(12px);
+    transition: transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.35s ease;
+    z-index: 50;
+    will-change: transform, opacity;
+  }
+  #alert-box.show {
+    transform: translateX(-50%) translateY(0) scale(1);
+    opacity: 1;
+  }
+
+  /* Avatars & Showcase Elements */
+  .media-showcase {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+  }
+
+  .avatar-bubble {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: #efe6ff;
+    border: 2.5px solid #7b3fe4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    position: relative;
+    box-shadow: 0 4px 12px rgba(123, 63, 228, 0.2);
+  }
+  .avatar-bubble img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .gift-bubble {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2.5px solid #ff6fae;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(255, 111, 174, 0.25);
+    animation: giftBounce 1.2s ease infinite alternate;
+  }
+  @keyframes giftBounce {
+    0% { transform: translateY(0) scale(1); }
+    100% { transform: translateY(-4px) scale(1.05); }
+  }
+  .gift-bubble img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+  }
+
+  /* Bridge icon between PFP and Gift */
+  .media-bridge {
+    display: flex;
+    align-items: center;
+    color: #ff6fae;
+  }
+  .media-bridge svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Text Content */
+  .text-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #7b3fe4;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .coin-pill {
+    font-size: 11px;
+    font-weight: 700;
+    color: #b45309;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    padding: 2px 9px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .coin-pill svg {
+    width: 13px;
+    height: 13px;
+    color: #d97706;
+  }
+
+  .message {
+    font-size: 18px;
+    font-weight: 800;
+    color: #271442;
+    line-height: 1.25;
+  }
+
+  /* ---------- TIER STYLES ---------- */
+
+  /* Tier 1: Follow & Join */
+  .tier-follow #alert-box,
+  .tier-join #alert-box {
+    border-color: #8b5cf6;
+    background: rgba(255, 255, 255, 0.97);
+  }
+  .tier-follow .avatar-bubble,
+  .tier-join .avatar-bubble {
+    animation: pfpAuraPulse 2s infinite;
+  }
+  @keyframes pfpAuraPulse {
+    0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+  }
+
+  /* Tier 2: Small Gift (1 - 99c) */
+  .tier-gift-small #alert-box {
+    border-color: #ff6fae;
+    box-shadow: 0 12px 36px rgba(255, 111, 174, 0.3);
+  }
+
+  /* Tier 3: Medium / Rare Gift (100 - 999c) */
+  .tier-gift-medium #alert-box {
+    border: 2.5px solid transparent;
+    background: linear-gradient(#fff, #fff) padding-box,
+                linear-gradient(135deg, #7b3fe4, #ff6fae, #ffd13b) border-box;
+    box-shadow: 0 14px 44px rgba(245, 158, 11, 0.35);
+    padding: 12px 32px 12px 16px;
+  }
+  .tier-gift-medium .avatar-bubble {
+    animation: coinFlip 0.6s ease-out;
+  }
+  @keyframes coinFlip {
+    0% { transform: rotateY(90deg) scale(0.6); }
+    100% { transform: rotateY(0deg) scale(1); }
+  }
+
+  /* Tier 4: Legendary Mega Gift (1,000+ coins: Galaxy, Lion, Universe) */
+  .tier-gift-legendary #alert-box {
+    border: 3px solid #ffd13b;
+    background: linear-gradient(135deg, rgba(38, 16, 75, 0.96), rgba(76, 29, 149, 0.96));
+    box-shadow: 0 18px 60px rgba(255, 209, 59, 0.5), inset 0 0 20px rgba(255, 209, 59, 0.25);
+    padding: 18px 42px 18px 22px;
+    border-radius: 54px;
+  }
+  .tier-gift-legendary .title {
+    color: #ffd13b;
+    text-shadow: 0 0 10px rgba(255, 209, 59, 0.6);
+  }
+  .tier-gift-legendary .message {
+    color: #ffffff;
+    font-size: 22px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .tier-gift-legendary .avatar-bubble {
+    width: 74px;
+    height: 74px;
+    border: 3px solid #ffd13b;
+    box-shadow: 0 0 20px rgba(255, 209, 59, 0.7);
+  }
+  .tier-gift-legendary .gift-bubble {
+    width: 74px;
+    height: 74px;
+    border: 3px solid #ffd13b;
+    box-shadow: 0 0 20px rgba(255, 209, 59, 0.7);
+  }
+  .tier-gift-legendary .gift-bubble img {
+    width: 60px;
+    height: 60px;
+  }
+</style>
+</head>
+<body>
+<div id="overlay-container">
+  <canvas id="fx-canvas"></canvas>
+
+  <div id="alert-box">
+    <div class="media-showcase">
+      <div class="avatar-bubble">
+        <img id="alert-avatar" src="/assets/avatar.png" alt="Sender PFP">
+      </div>
+      <div id="alert-bridge" class="media-bridge">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+      </div>
+      <div id="alert-gift-bubble" class="gift-bubble">
+        <img id="alert-gift-img" src="/assets/gifts/rose.png" alt="Gift Graphic">
+      </div>
+    </div>
+
+    <div class="text-content">
+      <div class="title-row">
+        <div id="alert-title" class="title">New Gift!</div>
+        <div id="alert-coins" class="coin-pill" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="9.5" stroke-width="2"/>
+            <circle cx="12" cy="12" r="6" stroke-width="1.2"/>
+            <path d="M12 7.5v9M9.5 10h5M10 14h4" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          <span id="coin-count-text">1,000 Coins</span>
+        </div>
+      </div>
+      <div id="alert-msg" class="message">User sent Rose x1</div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const container = document.getElementById('overlay-container');
+const alertBox = document.getElementById('alert-box');
+const alertAvatar = document.getElementById('alert-avatar');
+const alertBridge = document.getElementById('alert-bridge');
+const alertGiftBubble = document.getElementById('alert-gift-bubble');
+const alertGiftImg = document.getElementById('alert-gift-img');
+const alertTitle = document.getElementById('alert-title');
+const alertMsg = document.getElementById('alert-msg');
+const alertCoins = document.getElementById('alert-coins');
+const coinCountText = document.getElementById('coin-count-text');
+
+// Cache for all 676+ TikTok gifts
+const catalogMap = {};
+fetch('/api/gifts')
+  .then(r => r.json())
+  .then(list => {
+    if (Array.isArray(list)) {
+      list.forEach(g => {
+        const key = (g.name || g.id || '').toLowerCase().replace(/\s+/g, '_');
+        if (g.image) {
+          catalogMap[key] = g.image;
+          catalogMap[String(g.id)] = g.image;
+          catalogMap[(g.name || '').toLowerCase()] = g.image;
+        }
+      });
+    }
+  })
+  .catch(() => {});
+
+// Particle FX Canvas
+const canvas = document.getElementById('fx-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+let animRunning = false;
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+function spawnStarParticles(count = 45) {
+  const originX = window.innerWidth / 2;
+  const originY = 80;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 8;
+    particles.push({
+      x: originX,
+      y: originY,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1.5,
+      size: 4 + Math.random() * 8,
+      rotation: Math.random() * Math.PI,
+      vRot: (Math.random() - 0.5) * 0.15,
+      color: ['#ffd13b', '#ff6fae', '#c084fc', '#67e8f9'][Math.floor(Math.random() * 4)],
+      alpha: 1.0,
+      decay: 0.012 + Math.random() * 0.015
+    });
+  }
+  if (!animRunning) {
+    animRunning = true;
+    requestAnimationFrame(renderParticles);
+  }
+}
+
+function renderParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.12; // gravity
+    p.rotation += p.vRot;
+    p.alpha -= p.decay;
+
+    if (p.alpha <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rotation);
+    ctx.globalAlpha = p.alpha;
+    ctx.fillStyle = p.color;
+
+    // Draw 4-point geometric star crystal (zero emojis)
+    const s = p.size;
+    ctx.beginPath();
+    ctx.moveTo(0, -s);
+    ctx.quadraticCurveTo(0, 0, s, 0);
+    ctx.quadraticCurveTo(0, 0, 0, s);
+    ctx.quadraticCurveTo(0, 0, -s, 0);
+    ctx.quadraticCurveTo(0, 0, 0, -s);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  if (particles.length > 0) {
+    requestAnimationFrame(renderParticles);
+  } else {
+    animRunning = false;
+  }
+}
+
+let triggerSettings = {
+  followMessage: 'Thank you {user} for following!',
+  giftMessage: '{user} sent {gift} x{count}!',
+  alertDuration: 5,
+  likeThreshold: 50
+};
+
+const queue = [];
+let isShowing = false;
+
+function showAlert(opts) {
+  queue.push(opts);
+  if (!isShowing) processQueue();
+}
+
+function processQueue() {
+  if (queue.length === 0) {
+    isShowing = false;
+    container.className = '';
+    return;
+  }
+  isShowing = true;
+  const item = queue.shift();
+
+  // Reset classes
+  container.className = item.tierClass || 'tier-gift-small';
+
+  alertTitle.textContent = item.title;
+  alertMsg.textContent = item.message;
+  alertAvatar.src = item.avatarUrl || '/assets/avatar.png';
+  alertAvatar.onerror = () => { alertAvatar.src = '/assets/avatar.png'; };
+
+  if (item.giftIconUrl) {
+    alertGiftImg.onerror = () => {
+      if (alertGiftImg.src.indexOf('rose.png') === -1) {
+        alertGiftImg.src = '/assets/gifts/rose.png';
+      }
+    };
+    alertGiftImg.src = item.giftIconUrl;
+    alertGiftBubble.style.display = 'flex';
+    alertBridge.style.display = 'flex';
+  } else {
+    alertGiftBubble.style.display = 'none';
+    alertBridge.style.display = 'none';
+  }
+
+  if (item.coins && item.coins >= 100) {
+    alertCoins.style.display = 'inline-flex';
+    coinCountText.textContent = item.coins.toLocaleString() + ' Coins';
+  } else {
+    alertCoins.style.display = 'none';
+  }
+
+  if (item.tierClass === 'tier-gift-legendary') {
+    spawnStarParticles(55);
+  }
+
+  alertBox.classList.add('show');
+
+  const dur = (item.duration || triggerSettings.alertDuration || 5) * 1000;
+  setTimeout(() => {
+    alertBox.classList.remove('show');
+    setTimeout(processQueue, 450);
+  }, dur);
+}
+
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(`${proto}//${location.host}`);
+
+  ws.onmessage = evt => {
+    try {
+      const data = JSON.parse(evt.data);
+      if (data.type === 'init' && data.settings?.triggers) {
+        triggerSettings = Object.assign(triggerSettings, data.settings.triggers);
+      } else if (data.type === 'settings:update' && data.settings?.triggers) {
+        triggerSettings = Object.assign(triggerSettings, data.settings.triggers);
+      } else if (data.type === 'gift') {
+        const giftName = data.giftName || 'Gift';
+        const count = data.count || 1;
+        const user = data.nickname || data.user || data.uniqueId || 'Viewer';
+        const coins = (data.coins || data.diamonds || 1) * count;
+        const avatarUrl = data.avatar || '/assets/avatar.png';
+
+        const safeKey = (data.giftId || data.giftName || 'rose').toLowerCase().replace(/\s+/g, '_');
+        const rawName = (data.giftName || '').toLowerCase();
+        const giftIconUrl = data.giftPictureUrl ||
+                            catalogMap[safeKey] ||
+                            catalogMap[rawName] ||
+                            catalogMap[String(data.giftId)] ||
+                            `/assets/gifts/${safeKey}.png` ||
+                            '/assets/gifts/rose.png';
+
+        let tierClass = 'tier-gift-small';
+        let duration = triggerSettings.alertDuration || 5;
+
+        if (coins >= 1000) {
+          tierClass = 'tier-gift-legendary';
+          duration = Math.max(7, duration + 2);
+        } else if (coins >= 100) {
+          tierClass = 'tier-gift-medium';
+          duration = Math.max(6, duration + 1);
+        }
+
+        const msgTemplate = triggerSettings.giftMessage || '{user} sent {gift} x{count}!';
+        const msg = msgTemplate
+          .replace('{user}', user)
+          .replace('{gift}', giftName)
+          .replace('{count}', count);
+
+        showAlert({
+          title: coins >= 1000 ? 'LEGENDARY GIFT!' : (coins >= 100 ? 'RARE GIFT!' : 'GIFT ALERT'),
+          message: msg,
+          avatarUrl,
+          giftIconUrl,
+          coins,
+          tierClass,
+          duration
+        });
+      } else if (data.type === 'follow') {
+        const user = data.nickname || data.user || data.uniqueId || 'Friend';
+        const msgTemplate = triggerSettings.followMessage || 'Thank you {user} for following!';
+        const msg = msgTemplate.replace('{user}', user);
+        showAlert({
+          title: 'NEW FOLLOWER',
+          message: msg,
+          avatarUrl: data.avatar || '/assets/avatar.png',
+          giftIconUrl: null,
+          tierClass: 'tier-follow',
+          duration: 4.5
+        });
+      } else if (data.type === 'join') {
+        const user = data.nickname || data.user || data.uniqueId || 'Viewer';
+        showAlert({
+          title: 'WELCOME TO STREAM',
+          message: `${user} joined the chat!`,
+          avatarUrl: data.avatar || '/assets/avatar.png',
+          giftIconUrl: null,
+          tierClass: 'tier-join',
+          duration: 3.8
+        });
+      } else if (data.type === 'like' && (data.count >= (triggerSettings.likeThreshold || 50))) {
+        const user = data.nickname || data.user || data.uniqueId || 'Chat';
+        showAlert({
+          title: 'LIKES MILESTONE',
+          message: `${user} tapped ${data.count} likes!`,
+          avatarUrl: data.avatar || '/assets/avatar.png',
+          giftIconUrl: '/assets/gifts/heart_me.png',
+          tierClass: 'tier-gift-small',
+          duration: 4.2
+        });
+      }
+    } catch (e) {
+      console.warn('Triggers WS error', e);
+    }
+  };
+
+  ws.onclose = () => setTimeout(connectWS, 2000);
+  ws.onerror = () => ws.close();
+}
+
+connectWS();
+</script>
+</body>
+</html>

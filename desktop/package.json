@@ -1,0 +1,22 @@
+{
+  "name": "shing-studio",
+  "version": "1.0.0",
+  "description": "Cute pastel streaming companion and OBS overlays for TikTok Live streamers",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "check": "node -e \"require('./main.js')\"",
+    "package-update": "powershell -ExecutionPolicy Bypass -File ./package-update.ps1"
+  },
+  "keywords": ["tiktok", "live", "obs", "overlays", "electron", "streamer"],
+  "author": "Shing",
+  "license": "MIT",
+  "dependencies": {
+    "matter-js": "^0.19.0",
+    "tiktok-live-connector": "^1.1.8",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^31.0.2"
+  }
+}

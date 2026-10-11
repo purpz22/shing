@@ -1,0 +1,1630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shing Companion Overlay</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  body { font-family: ui-monospace, "Courier New", monospace; color: #4b1fa0; }
+  #scene {
+    position: fixed; left: 0; bottom: 0;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+    touch-action: manipulation;
+    cursor: pointer;
+  }
+  #scene:focus-visible { outline: 2px dashed #9b5cf0; outline-offset: -4px; }
+  .controls { z-index: 10; position: fixed; top: 12px; left: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .controls button {
+    font: inherit; font-size: 13px; color: #2e1a52; background: #efe6ff;
+    border: 2px solid #7b3fe4; padding: 4px 10px; cursor: pointer;
+    box-shadow: 2px 2px 0 #2e1a52;
+  }
+  .controls button[aria-pressed="true"] { background: #7b3fe4; color: #fff; }
+  .controls button:focus-visible { outline: 2px dashed #e6a8ff; outline-offset: 2px; }
+  .controls svg { width: 12px; height: 12px; vertical-align: -1px; margin-right: 4px; }
+
+  /* Speech bubble */
+  #bubble {
+    position: fixed; left: 0; top: 0; z-index: 5; pointer-events: none;
+    max-width: min(240px, 80vw); padding: 5px 9px;
+    font: bold 14px/1.25 ui-monospace, "Courier New", monospace;
+    color: #2e1a52; background: #fff; border: 2px solid #2e1a52;
+    box-shadow: 3px 3px 0 #7b3fe4; white-space: pre-wrap; word-break: break-word; text-align: center;
+    will-change: translate, transform;
+    transform: translate(-50%, -100%) scale(0); transform-origin: 50% 100%;
+    transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  #bubble.show { transform: translate(-50%, -100%) scale(1); }
+  #bubble::after {
+    content: ""; position: absolute; left: var(--tail, 50%); bottom: -6px; margin-left: -5px;
+    width: 8px; height: 8px; background: #fff;
+    border-right: 2px solid #2e1a52; border-bottom: 2px solid #2e1a52;
+    transform: rotate(45deg);
+  }
+
+  /* Cat speech bubble */
+  #cat-bubble {
+    position: fixed; left: 0; top: 0; z-index: 6; pointer-events: none;
+    padding: 3px 7px;
+    font: bold 12px/1.2 ui-monospace, "Courier New", monospace;
+    color: #2e1a52; background: #fff; border: 2px solid #2e1a52;
+    box-shadow: 2px 2px 0 #7b3fe4; text-align: center;
+    will-change: translate, transform;
+    transform: translate(-50%, -100%) scale(0); transform-origin: 50% 100%;
+    transition: transform 120ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  #cat-bubble.show { transform: translate(-50%, -100%) scale(1); }
+  #cat-bubble::after {
+    content: ""; position: absolute; left: var(--tail, 50%); bottom: -5px; margin-left: -4px;
+    width: 6px; height: 6px; background: #fff;
+    border-right: 2px solid #2e1a52; border-bottom: 2px solid #2e1a52;
+    transform: rotate(45deg);
+  }
+
+  /* Editor panel */
+  .panel {
+    z-index: 10; position: fixed; top: 52px; left: 12px; width: min(330px, calc(100vw - 24px));
+    max-height: calc(100vh - 64px); overflow-y: auto;
+    background: #f7f2ff; border: 2px solid #7b3fe4; box-shadow: 3px 3px 0 #2e1a52;
+    padding: 10px; font-size: 13px; display: grid; gap: 8px; color: #2e1a52;
+  }
+  .panel label { display: grid; gap: 3px; font-weight: bold; }
+  .panel textarea, .panel input[type="number"], .panel select {
+    font: inherit; font-weight: normal; color: #2e1a52; background: #fff;
+    border: 2px solid #9b5cf0; padding: 4px 6px; min-width: 0;
+  }
+  .panel textarea { min-height: 90px; resize: vertical; }
+  .panel .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .panel .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .panel .color-pick { display: grid; grid-template-columns: 1fr 32px; gap: 4px; align-items: stretch; }
+  .panel input[type="color"] {
+    -webkit-appearance: none; appearance: none;
+    width: 32px; height: 100%; min-height: 27px; padding: 1px;
+    background: #fff; border: 2px solid #9b5cf0; cursor: pointer;
+  }
+  .panel input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  .panel input[type="color"]::-webkit-color-swatch { border: none; }
+  .panel fieldset {
+    margin: 0; padding: 6px 8px; border: 2px solid #9b5cf0; background: #fff;
+  }
+  .panel legend { font-weight: bold; padding: 0 4px; }
+  .panel .cat-checks {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px;
+  }
+  .panel .cat-checks label {
+    display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer;
+  }
+  .panel .cat-checks input[type="checkbox"] {
+    width: 15px; height: 15px; margin: 0; accent-color: #7b3fe4; cursor: pointer;
+  }
+  .panel .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .panel button {
+    font: inherit; color: #2e1a52; background: #efe6ff; border: 2px solid #7b3fe4;
+    padding: 4px 10px; cursor: pointer; box-shadow: 2px 2px 0 #2e1a52;
+  }
+  .panel button.primary { background: #7b3fe4; color: #fff; }
+  .panel button:focus-visible, .panel textarea:focus-visible, .panel input:focus-visible, .panel select:focus-visible { outline: 2px dashed #e6a8ff; outline-offset: 2px; }
+  .panel .status { min-height: 1em; font-size: 12px; color: #6a35c2; }
+
+  body.overlay .controls, body.overlay .panel { display: none; }
+  body.overlay #scene { cursor: default; }
+</style>
+</head>
+<body>
+<nav class="controls" aria-label="Palette and export">
+  <button data-palette="0" aria-pressed="true">1 Purple</button>
+  <button data-palette="1" aria-pressed="false">2 Light Purple</button>
+  <button data-palette="2" aria-pressed="false">3 Dark Purple</button>
+  <button data-palette="3" aria-pressed="false">4 Bright Purple</button>
+  <button id="export"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M5 0h2v6h2l-3 3-3-3h2zM0 10h12v2H0z" fill="currentColor"/></svg>Save PNG</button>
+</nav>
+<section class="panel" aria-label="Character and speech bubble settings">
+  <label>Messages (one per line)
+    <textarea id="msgs" spellcheck="false"></textarea>
+  </label>
+  <div class="row">
+    <label>Show (s)<input id="dur" type="number" min="1" max="60" step="0.5"></label>
+    <label>Gap (s)<input id="gap" type="number" min="0" max="600" step="0.5"></label>
+    <label>Order
+      <select id="order"><option value="seq">In order</option><option value="random">Random</option></select>
+    </label>
+  </div>
+  <label>Hair style
+    <select id="hairStyle">
+      <option value="twintails">Pigtails</option>
+      <option value="lowpigtails">Low Pigtails</option>
+      <option value="long">Long</option>
+      <option value="wavy">Wavy</option>
+      <option value="halfup">Medium</option>
+      <option value="bob">Short</option>
+      <option value="pixie">Pixie</option>
+      <option value="ponytail">Ponytail</option>
+      <option value="sidepony">Side Ponytail</option>
+      <option value="bun">Bun</option>
+      <option value="buns">Double Bun</option>
+      <option value="braids">Braids</option>
+    </select>
+  </label>
+  <div class="row-2">
+    <label>Hair color
+      <div class="color-pick">
+        <select id="hairPreset" aria-label="Hair color preset">
+          <option value="#7b3fe4">Purple</option>
+          <option value="#a98be8">Light Purple</option>
+          <option value="#4a1d9e">Dark Purple</option>
+          <option value="#ff7eb9">Pink</option>
+          <option value="#d92b4b">Red</option>
+          <option value="#f58231">Orange</option>
+          <option value="#f5c842">Yellow</option>
+          <option value="#38d39f">Green</option>
+          <option value="#48b5ff">Blue</option>
+          <option value="#8b5a2b">Brown</option>
+          <option value="#dce0f0">White</option>
+          <option value="#261c35">Black</option>
+          <option value="custom">Custom</option>
+        </select>
+        <input id="hairColor" type="color" value="#7b3fe4" aria-label="Custom hair color">
+      </div>
+    </label>
+    <label>Outfit color
+      <div class="color-pick">
+        <select id="outfitPreset" aria-label="Outfit color preset">
+          <option value="#9b5cf0">Purple</option>
+          <option value="#c4aef5">Light Purple</option>
+          <option value="#5b2aa8">Dark Purple</option>
+          <option value="#f06292">Pink</option>
+          <option value="#d32f2f">Red</option>
+          <option value="#f57c00">Orange</option>
+          <option value="#fbc02d">Yellow</option>
+          <option value="#26a69a">Green</option>
+          <option value="#42a5f5">Blue</option>
+          <option value="#795548">Brown</option>
+          <option value="#ece6f8">White</option>
+          <option value="#241a38">Black</option>
+          <option value="custom">Custom</option>
+        </select>
+        <input id="outfitColor" type="color" value="#9b5cf0" aria-label="Custom outfit color">
+      </div>
+    </label>
+  </div>
+  <fieldset>
+    <legend>Cats</legend>
+    <div class="cat-checks" id="catChecks">
+      <label><input type="checkbox" name="cat" value="purple" checked> Purple Cat</label>
+      <label><input type="checkbox" name="cat" value="black" checked> Black Cat</label>
+      <label><input type="checkbox" name="cat" value="calico"> Calico Cat</label>
+      <label><input type="checkbox" name="cat" value="white"> White Cat</label>
+    </div>
+  </fieldset>
+  <div class="btns">
+    <button id="save" class="primary">Save</button>
+    <button id="test">Test bubble</button>
+    <button id="copy">Copy overlay link</button>
+  </div>
+  <div class="status" id="status" role="status"></div>
+</section>
+<div id="bubble" aria-live="polite"></div>
+<div id="cat-bubble" aria-live="polite"></div>
+<canvas id="scene" tabindex="0" role="img" aria-label="Pixel art of a purple-haired anime chibi girl walking"></canvas>
+
+<script>
+'use strict';
+
+/* ---------- Palettes & custom color derivation ---------- */
+const BASE = {
+  o: '#1a0f2e', s: '#ffe3d6', b: '#ff9fbf', e: '#ffffff', m: '#7a2a4a', t: '#2e1a52'
+};
+const VARIANTS = [
+  { name: 'Amethyst', H: '#7b3fe4', h: '#b48cff', d: '#4b1fa0', E: '#4a148c', L: '#9c6bff', C: '#9b5cf0', c: '#d9c2ff', k: '#6a35c2', r: '#e6a8ff' },
+  { name: 'Lavender', H: '#a98be8', h: '#ddd0ff', d: '#7c63c4', E: '#6a4fb0', L: '#bfa8ff', C: '#c4aef5', c: '#f3ecff', k: '#9a84d8', r: '#ffc6ec', o: '#3b2a5c' },
+  { name: 'Midnight', H: '#4a1d9e', h: '#7d4fe0', d: '#2a0f63', E: '#2b0a5c', L: '#6e3fd6', C: '#5b2aa8', c: '#a98be8', k: '#3a1878', r: '#b06cff', o: '#0a0614' },
+  { name: 'Neon',     H: '#b03cff', h: '#ff8cf0', d: '#6d1fb8', E: '#5b00a8', L: '#ff4fd8', C: '#c25cff', c: '#7ffcff', k: '#8a2be2', r: '#ff4fd8', e: '#bffcff' }
+];
+const HAIR_STYLES = ['twintails', 'lowpigtails', 'long', 'wavy', 'halfup', 'bob', 'pixie', 'ponytail', 'sidepony', 'bun', 'buns', 'braids'];
+let paletteIndex = 0;
+let activePalette = Object.assign({}, BASE, VARIANTS[0]);
+let RGB = {};
+let CHAR_CACHE = {};
+
+function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function normalizeHex(hex, fallback) {
+  const s = String(hex || '').trim().toLowerCase();
+  return /^#[0-9a-f]{6}$/.test(s) ? s : fallback;
+}
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+  }
+  return [h, s * 100, l * 100];
+}
+function hslToHex(h, s, l) {
+  h = ((h % 360) + 360) % 360;
+  s = Math.max(0, Math.min(100, s)) / 100;
+  l = Math.max(0, Math.min(100, l)) / 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) { r = c; g = x; }
+  else if (h < 120) { r = x; g = c; }
+  else if (h < 180) { g = c; b = x; }
+  else if (h < 240) { g = x; b = c; }
+  else if (h < 300) { r = x; b = c; }
+  else { r = c; b = x; }
+  const toHex = v => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+function deriveHairPalette(hex) {
+  const H = normalizeHex(hex, VARIANTS[0].H);
+  const preset = VARIANTS.find(v => v.H.toLowerCase() === H);
+  if (preset) {
+    return {
+      H: preset.H, h: preset.h, d: preset.d, E: preset.E, L: preset.L,
+      o: preset.o || BASE.o, e: preset.e || BASE.e
+    };
+  }
+  const [hue, sat, lit] = rgbToHsl(...hexToRgb(H));
+  const lowSat = sat < 10;
+  return {
+    H,
+    h: hslToHex(hue - 4, lowSat ? sat : Math.min(100, sat + 18), Math.max(30, Math.min(96, lit + Math.max(10, (98 - lit) * 0.45)))),
+    d: hslToHex(hue + 3, lowSat ? sat : Math.min(100, Math.max(24, sat - 6)), Math.max(8, lit - 19)),
+    E: hslToHex(hue + 5, lowSat ? 18 : Math.min(100, sat + 8), Math.max(12, Math.min(52, lit - 24))),
+    L: hslToHex(hue - 2, lowSat ? 24 : Math.min(100, sat + 20), Math.max(48, Math.min(86, lit + 14))),
+    o: BASE.o,
+    e: BASE.e
+  };
+}
+function deriveOutfitPalette(hex) {
+  const C = normalizeHex(hex, VARIANTS[0].C);
+  const preset = VARIANTS.find(v => v.C.toLowerCase() === C);
+  if (preset) {
+    return { C: preset.C, c: preset.c, k: preset.k, r: preset.r };
+  }
+  const [hue, sat, lit] = rgbToHsl(...hexToRgb(C));
+  const lowSat = sat < 10;
+  return {
+    C,
+    c: hslToHex(hue - 3, lowSat ? sat : Math.min(100, sat + 16), Math.max(68, Math.min(96, lit + 23))),
+    k: hslToHex(hue - 3, lowSat ? sat : Math.max(20, sat - 16), Math.max(12, lit - 17)),
+    r: hslToHex(hue + 20, lowSat ? 65 : Math.min(100, Math.max(75, sat + 18)), Math.max(66, Math.min(88, lit + 16)))
+  };
+}
+function applyCustomColors(hairHex, outfitHex) {
+  const hp = deriveHairPalette(hairHex);
+  const op = deriveOutfitPalette(outfitHex);
+  activePalette = Object.assign({}, BASE, hp, op);
+  RGB = {};
+  for (const k in activePalette) if (k !== 'name') RGB[k] = hexToRgb(activePalette[k]);
+  CHAR_CACHE = {};
+  if (typeof bakeAllCats === 'function') bakeAllCats();
+  const matchedIdx = VARIANTS.findIndex(v => v.H.toLowerCase() === hp.H.toLowerCase() && v.C.toLowerCase() === op.C.toLowerCase());
+  paletteIndex = matchedIdx >= 0 ? matchedIdx : -1;
+  document.querySelectorAll('[data-palette]').forEach(b =>
+    b.setAttribute('aria-pressed', String(+b.dataset.palette === paletteIndex)));
+}
+function applyPalette(i) {
+  const v = VARIANTS[i] || VARIANTS[0];
+  if (typeof settings !== 'undefined') {
+    settings.pal = i;
+    settings.hc = v.H;
+    settings.oc = v.C;
+  }
+  applyCustomColors(v.H, v.C);
+  if (typeof syncColorControls === 'function') syncColorControls(v.H, v.C);
+}
+
+/* ---------- Pixel grid helpers ---------- */
+const SW = 34, SH = 42;           // sprite grid (32x40 art + 1px outline margin)
+function newGrid() { return Array.from({ length: SH }, () => new Array(SW).fill('.')); }
+function painter(g) {
+  const set = (x, y, k) => {
+    x = Math.round(x) + 1; y = Math.round(y) + 1;
+    if (x >= 0 && y >= 0 && x < SW && y < SH) g[y][x] = k;
+  };
+  const ellipse = (cx, cy, rx, ry, k, test) => {
+    for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++)
+      for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+        const dx = (x - cx) / rx, dy = (y - cy) / ry;
+        if (dx * dx + dy * dy <= 1 && (!test || test(x, y))) set(x, y, k);
+      }
+  };
+  const rect = (x0, y0, w, h, k) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) set(x, y, k); };
+  const get = (x, y) => { x += 1; y += 1; return (x >= 0 && y >= 0 && x < SW && y < SH) ? g[y][x] : '.'; };
+  const line = (x0, y0, x1, y1, r, k) => {
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2));
+    for (let i = 0; i <= n; i++) { const t = i / n; ellipse(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, r, r, k); }
+  };
+  return { set, ellipse, rect, get, line };
+}
+/* Draw one part on its own layer, give it a 1px outline, then stack it. */
+function layer(main, draw) {
+  const g = newGrid();
+  draw(painter(g));
+  const out = g.map(r => r.slice());
+  for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) {
+    if (g[y][x] !== '.') continue;
+    if ((y > 0 && g[y - 1][x] !== '.') || (y < SH - 1 && g[y + 1][x] !== '.') ||
+        (x > 0 && g[y][x - 1] !== '.') || (x < SW - 1 && g[y][x + 1] !== '.')) out[y][x] = 'o';
+  }
+  for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) if (out[y][x] !== '.') main[y][x] = out[y][x];
+}
+
+/* ---------- Character construction ---------- */
+// 8-frame walk cycle with 1px-smooth foot lift, symmetric arm swing, and delayed hair follow-through
+const WALK = [
+  { bob: 1, hbob: 0, L: [11, 0], R: [18, 0], arm:  1.0, tail:  0.0 },
+  { bob: 1, hbob: 1, L: [11, 1], R: [18, 0], arm:  0.5, tail:  0.5 },
+  { bob: 0, hbob: 1, L: [12, 2], R: [17, 0], arm:  0.0, tail:  1.0 },
+  { bob: 0, hbob: 0, L: [12, 1], R: [17, 0], arm: -0.5, tail:  0.5 },
+  { bob: 1, hbob: 0, L: [11, 0], R: [18, 0], arm: -1.0, tail:  0.0 },
+  { bob: 1, hbob: 1, L: [11, 0], R: [18, 1], arm: -0.5, tail: -0.5 },
+  { bob: 0, hbob: 1, L: [12, 0], R: [17, 2], arm:  0.0, tail: -1.0 },
+  { bob: 0, hbob: 0, L: [12, 0], R: [17, 1], arm:  0.5, tail: -0.5 }
+];
+const CX = 15.5;
+
+function buildSprite(frame, eyes, mouth) {
+  const hair = (typeof settings !== 'undefined' && HAIR_STYLES.includes(settings.hair))
+    ? settings.hair
+    : 'twintails';
+  const w = WALK[frame % WALK.length], b = w.bob, hb = w.hbob;
+  const g = newGrid();
+
+  // 1. Back hair layer (behind everything, with phase-delayed vertical follow-through)
+  if (hair === 'twintails') {
+    layer(g, p => {
+      for (let i = 0; i <= 24; i++) {
+        const t = i / 24, y = 8 + b + (hb - b) * t + t * 21, r = 2.7 - t * 1.4, sway = w.tail * t * 1.5;
+        const k = y > 22 + b ? 'd' : 'H';
+        p.ellipse(3.5 - t + sway, y, r, r, k);
+        p.ellipse(27.5 + t + sway, y, r, r, k);
+      }
+    });
+  } else if (hair === 'lowpigtails') {
+    layer(g, p => {
+      for (let i = 0; i <= 18; i++) {
+        const t = i / 18, y = 16 + b + (hb - b) * t + t * 15;
+        const r = 1.6 + Math.sin(t * Math.PI * 0.85) * 1.1;
+        const sway = w.tail * t * 1.4;
+        const k = y > 25 + b ? 'd' : 'H';
+        p.ellipse(4.2 - t * 1.1 + sway, y, r, r, k);
+        p.ellipse(26.8 + t * 1.1 + sway, y, r, r, k);
+      }
+    });
+  } else if (hair === 'long') {
+    layer(g, p => {
+      for (let i = 0; i <= 24; i++) {
+        const t = i / 24;
+        const y = Math.round(8 + b + (hb - b) * t + i);
+        const cx = CX + w.tail * t * 1.5;
+        const half = 8.0 + Math.sin(t * Math.PI * 0.82) * 4.6;
+        for (let x = Math.ceil(cx - half); x <= Math.floor(cx + half); x++) {
+          const dist = Math.abs(x - cx);
+          if (i >= 23 && Math.round(dist) % 4 === 2) continue;
+          p.set(x, y, (y > 24 + b || dist < 7.5) ? 'd' : 'H');
+        }
+      }
+    });
+  } else if (hair === 'wavy') {
+    layer(g, p => {
+      for (let i = 0; i <= 25; i++) {
+        const t = i / 25;
+        const y = Math.round(8 + b + (hb - b) * t + i);
+        const wave = Math.sin(i * 0.65) * 1.4;
+        const cx = CX + wave + w.tail * t * 1.5;
+        const half = 8.4 + Math.sin(t * Math.PI * 0.85) * 4.8 + Math.cos(i * 0.65) * 0.8;
+        for (let x = Math.ceil(cx - half); x <= Math.floor(cx + half); x++) {
+          const dist = Math.abs(x - cx);
+          if (i >= 24 && Math.round(dist) % 3 === 1) continue;
+          const isCrest = (i === 10 || i === 11 || i === 19 || i === 20) && dist > half - 2.2;
+          p.set(x, y, isCrest ? 'h' : ((y > 24 + b || dist < 7.4) ? 'd' : 'H'));
+        }
+      }
+    });
+  } else if (hair === 'ponytail') {
+    layer(g, p => {
+      for (let i = 0; i <= 20; i++) {
+        const t = i / 20;
+        const y = 5 + hb + t * 20;
+        const x = 25.0 + Math.sin(t * Math.PI * 0.95) * 3.0 + w.tail * t * 1.0;
+        const r = 2.6 - t * 1.3;
+        p.ellipse(x, y, r, r, y > 18 + hb ? 'd' : 'H');
+      }
+      p.set(27, 7 + hb, 'h'); p.set(28, 8 + hb, 'h'); p.set(28, 9 + hb, 'h');
+    });
+  } else if (hair === 'sidepony') {
+    layer(g, p => {
+      for (let i = 0; i <= 21; i++) {
+        const t = i / 21;
+        const y = 10 + hb + t * 19;
+        const x = 26.2 + Math.sin(t * Math.PI * 0.88) * 2.6 + w.tail * t * 1.2;
+        const r = 2.8 - t * 1.3;
+        p.ellipse(x, y, r, r, y > 22 + hb ? 'd' : 'H');
+      }
+      p.set(28, 12 + hb, 'h'); p.set(29, 13 + hb, 'h'); p.set(29, 14 + hb, 'h');
+    });
+  } else if (hair === 'halfup') {
+    layer(g, p => {
+      for (let i = 0; i <= 19; i++) {
+        const t = i / 19;
+        const y = Math.round(10 + b + (hb - b) * t + i);
+        const cx = CX + w.tail * t * 1.4;
+        const half = 8.2 + Math.sin(t * Math.PI * 0.82) * 3.8;
+        for (let x = Math.ceil(cx - half); x <= Math.floor(cx + half); x++) {
+          const dist = Math.abs(x - cx);
+          if (i >= 18 && Math.round(dist) % 4 === 2) continue;
+          p.set(x, y, (y > 23 + b || dist < 7.2) ? 'd' : 'H');
+        }
+      }
+    });
+  } else if (hair === 'braids') {
+    layer(g, p => {
+      for (let i = 0; i <= 19; i++) {
+        const t = i / 19;
+        const y = Math.round(12 + b + (hb - b) * t + i);
+        const sway = w.tail * t * 1.2;
+        const knot = i % 3;
+        const rx = knot === 1 ? 1.3 : 2.1;
+        const lx = 4.6 - t * 0.6 + sway;
+        const rxPos = 26.4 + t * 0.6 + sway;
+        const k = (knot === 2 || y > 26 + b) ? 'd' : 'H';
+        p.ellipse(lx, y, rx, 1.1, k);
+        p.ellipse(rxPos, y, rx, 1.1, k);
+        if (knot === 0 && i < 15) {
+          p.set(Math.round(lx), y, 'h');
+          p.set(Math.round(rxPos), y, 'h');
+        }
+      }
+    });
+  }
+
+  // 2. Legs and shoes (ground anchored, not affected by bob)
+  layer(g, p => {
+    for (const [x, lift] of [w.L, w.R]) {
+      p.rect(x, 30, 3, 7 - lift, 't');
+      p.rect(x, 37 - lift, 3, 2, 'c');
+    }
+  });
+
+  // 3. Hoodie body
+  layer(g, p => {
+    for (let y = 23; y <= 31; y++) {
+      const half = 4.5 + (y - 23) * 0.3;
+      for (let x = 0; x < 32; x++) if (Math.abs(x - CX) <= half) p.set(x, y + b, y === 31 ? 'c' : 'C');
+    }
+    for (let x = 13; x <= 18; x++) p.set(x, 23 + b, 'c');
+    for (let y = 24; y <= 30; y++) p.set(16, y + b, 'k');
+    p.set(14, 24 + b, 'c'); p.set(14, 25 + b, 'c'); p.set(18, 24 + b, 'c'); p.set(18, 25 + b, 'c');
+  });
+
+  // 4. Arms (symmetric 8-phase swing opposite to legs) with sleeve-paw cuffs
+  layer(g, p => {
+    const a = w.arm;
+    const lh = [8 + a, 28.5 - a * 0.5];
+    const rh = [23 + a, 28.5 + a * 0.5];
+    p.line(10.5, 24 + b, lh[0], lh[1] + b, 1.3, 'C');
+    p.line(20.5, 24 + b, rh[0], rh[1] + b, 1.3, 'C');
+    p.ellipse(lh[0], lh[1] + b + 0.5, 1.2, 1.1, 'c');
+    p.ellipse(rh[0], rh[1] + b + 0.5, 1.2, 1.1, 'c');
+  });
+
+  // 5. Upper buns (for 'bun', 'buns', and 'halfup', behind head crown)
+  if (hair === 'bun') {
+    layer(g, p => {
+      p.ellipse(CX, 2.5 + hb, 4.2, 2.8, 'H');
+      p.ellipse(CX, 2.5 + hb, 4.2, 2.8, 'd', (x, y) => y >= 4 + hb);
+      [[14, 1], [15, 1], [13, 2], [14, 2]].forEach(([x, y]) => p.set(x, y + hb, 'h'));
+    });
+  } else if (hair === 'buns') {
+    layer(g, p => {
+      for (const bcx of [6.5, 24.5]) {
+        p.ellipse(bcx, 5.5 + hb, 3.5, 3.5, 'H');
+        p.ellipse(bcx, 5.5 + hb, 3.5, 3.5, 'd', (x, y) => y >= 7 + hb);
+      }
+      [[5, 3], [6, 3], [4, 4], [23, 3], [24, 3], [22, 4]].forEach(([x, y]) => p.set(x, y + hb, 'h'));
+    });
+  } else if (hair === 'halfup') {
+    layer(g, p => {
+      for (const bcx of [4.5, 26.5]) {
+        p.ellipse(bcx, 6.0 + hb, 2.3, 2.3, 'H');
+        p.ellipse(bcx, 6.0 + hb, 2.3, 2.3, 'd', (x, y) => y >= 7 + hb);
+      }
+      p.set(4, 5 + hb, 'h'); p.set(26, 5 + hb, 'h');
+    });
+  }
+
+  // 6. Head: hair mass, face, bangs, side locks, highlight, ahoge, temple barrette
+  layer(g, p => {
+    if (hair === 'bob') {
+      p.ellipse(CX, 12 + b, 11.5, 10, 'H');
+      for (let x = 0; x < 32; x++) p.set(x, 22 + b, '.');
+      for (let y = 18; y <= 21; y++) {
+        const maxHalf = 11.2 - (y - 17) * 0.75;
+        for (let x = 0; x < 32; x++) {
+          if (Math.abs(x - CX) > maxHalf) p.set(x, y + b, '.');
+          else if (p.get(x, y + b) === 'H') p.set(x, y + b, 'd');
+        }
+      }
+    } else if (hair === 'pixie') {
+      p.ellipse(CX, 11.5 + b, 11.2, 9.2, 'H');
+      for (let y = 17; y <= 22; y++) {
+        const maxHalf = Math.max(7.2, 10.6 - (y - 16) * 1.1);
+        for (let x = 0; x < 32; x++) {
+          if (Math.abs(x - CX) > maxHalf || y >= 20) p.set(x, y + b, '.');
+          else if (p.get(x, y + b) === 'H') p.set(x, y + b, 'd');
+        }
+      }
+    } else {
+      p.ellipse(CX, 12 + b, 11.5, 10, 'H');
+      for (let y = 18; y <= 22; y++) for (let x = 0; x < 32; x++) if (p.get(x, y + b) === 'H') p.set(x, y + b, 'd');
+    }
+    p.ellipse(CX, 15.5 + b, 7.6, 6.3, 's');
+    const fringe = hair === 'pixie' ? [0, 0, 1, 2] : [0, 1, 2, 1];
+    for (let x = 7; x <= 24; x++) {
+      const bottom = 10 + fringe[x % 4];
+      for (let y = 3; y <= bottom; y++) if (p.get(x, y + b) === 's') p.set(x, y + b, 'H');
+    }
+    if (hair === 'bob') {
+      for (let y = 11; y <= 18; y++) {
+        p.set(7, y + b, 'H'); p.set(8, y + b, 'H');
+        p.set(23, y + b, 'H'); p.set(24, y + b, 'H');
+      }
+      for (let y = 19; y <= 20; y++) {
+        p.set(8, y + b, 'd'); p.set(9, y + b, 'd');
+        p.set(22, y + b, 'd'); p.set(23, y + b, 'd');
+      }
+    } else if (hair === 'pixie') {
+      for (let y = 11; y <= 15; y++) {
+        p.set(8, y + b, y === 15 ? 'd' : 'H');
+        p.set(23, y + b, y === 15 ? 'd' : 'H');
+      }
+    } else if (hair === 'buns' || hair === 'wavy') {
+      for (let y = 11; y <= 20; y++) {
+        p.set(8, y + b, 'H'); p.set(23, y + b, 'H');
+        if (y >= 14) { p.set(7, y + b, 'H'); p.set(24, y + b, 'H'); }
+      }
+      p.set(7, 21 + b, 'd'); p.set(8, 21 + b, 'd'); p.set(8, 22 + b, 'd');
+      p.set(23, 21 + b, 'd'); p.set(24, 21 + b, 'd'); p.set(23, 22 + b, 'd');
+    } else if (hair === 'long') {
+      for (let y = 11; y <= 20; y++) { p.set(8, y + b, 'H'); p.set(23, y + b, 'H'); }
+      p.set(8, 21 + b, 'd'); p.set(23, 21 + b, 'd');
+    } else {
+      for (let y = 11; y <= 19; y++) { p.set(8, y + b, 'H'); p.set(23, y + b, 'H'); }
+      p.set(8, 20 + b, 'd'); p.set(23, 20 + b, 'd');
+    }
+    [[10,5],[11,5],[12,5],[13,5],[9,6],[10,6],[14,4],[15,4]].forEach(([x, y]) => p.set(x, y + b, 'h'));
+    if (hair !== 'bun') {
+      p.set(16, 1 + hb, 'H'); p.set(17, 0 + hb, 'H'); p.set(15, 2 + b, 'H');
+    }
+    if (hair === 'long' || hair === 'bob' || hair === 'wavy') {
+      p.rect(6, 8 + hb, 3, 2, 'r'); p.set(7, 8 + hb, 'c');
+    }
+  });
+
+  // 7. Outer ribbons on tails/buns (follow delayed hair bounce)
+  if (hair === 'twintails') {
+    layer(g, p => {
+      for (const x0 of [2, 27]) { p.rect(x0, 6 + hb, 3, 3, 'r'); p.set(x0 + 1, 7 + hb, 'c'); }
+    });
+  } else if (hair === 'lowpigtails') {
+    layer(g, p => {
+      for (const x0 of [3, 26]) { p.rect(x0, 15 + hb, 3, 2, 'r'); p.set(x0 + 1, 15 + hb, 'c'); }
+    });
+  } else if (hair === 'ponytail') {
+    layer(g, p => {
+      p.rect(22, 4 + hb, 4, 3, 'r'); p.set(23, 5 + hb, 'c'); p.set(24, 5 + hb, 'c');
+    });
+  } else if (hair === 'sidepony') {
+    layer(g, p => {
+      p.rect(23, 8 + hb, 4, 3, 'r'); p.set(24, 9 + hb, 'c'); p.set(25, 9 + hb, 'c');
+    });
+  } else if (hair === 'bun') {
+    layer(g, p => {
+      p.rect(12, 4 + hb, 7, 2, 'r'); p.set(15, 4 + hb, 'c'); p.set(16, 4 + hb, 'c');
+    });
+  } else if (hair === 'buns') {
+    layer(g, p => {
+      for (const x0 of [5, 23]) {
+        p.rect(x0, 8 + hb, 4, 2, 'r'); p.set(x0 + 1, 8 + hb, 'c'); p.set(x0 + 2, 8 + hb, 'c');
+      }
+    });
+  } else if (hair === 'halfup') {
+    layer(g, p => {
+      for (const x0 of [4, 25]) { p.rect(x0, 7 + hb, 3, 2, 'r'); p.set(x0 + 1, 7 + hb, 'c'); }
+    });
+  } else if (hair === 'braids') {
+    layer(g, p => {
+      const sway = Math.round(w.tail);
+      for (const x0 of [3 + sway, 26 + sway]) {
+        p.rect(x0, 27 + hb, 3, 2, 'r'); p.set(x0 + 1, 27 + hb, 'c');
+      }
+    });
+  }
+
+  // 8. Face features (no outline pass; drawn directly)
+  const p = painter(g), dx = 1;
+  const eyeRows = {
+    open:   ['ooo', 'eEE', 'EEL', 'LLL'],
+    half:   ['...', 'ooo', 'EEL', 'LLL'],
+    closed: ['...', '...', 'ooo', '...'],
+    happy:  ['...', '.o.', 'o.o', '...']
+  }[eyes];
+  for (const ex of [10, 19]) eyeRows.forEach((row, ry) => [...row].forEach((k, rx) => {
+    if (k !== '.') p.set(ex + rx + dx, 14 + ry + b, k);
+  }));
+  p.set(9 + dx, 18 + b, 'b'); p.set(10 + dx, 18 + b, 'b');
+  p.set(21 + dx, 18 + b, 'b'); p.set(22 + dx, 18 + b, 'b');
+  if (mouth === 'happy') { p.set(15 + dx, 19 + b, 'm'); p.set(16 + dx, 20 + b, 'm'); p.set(17 + dx, 19 + b, 'm'); }
+  else p.set(16 + dx, 19 + b, 'm');
+  return g;
+}
+
+/* ---------- Cat Companions ---------- */
+const CW = 26, CH = 24;
+const newCatGrid = () => Array.from({ length: CH }, () => Array(CW).fill('.'));
+
+function catPainter(g) {
+  const set = (x, y, k) => {
+    x = Math.round(x) - 1; y = Math.round(y) - 1;
+    if (x >= 0 && y >= 0 && x < CW && y < CH) g[y][x] = k;
+  };
+  const ellipse = (cx, cy, rx, ry, k, test) => {
+    for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++)
+      for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+        const dx = (x - cx) / rx, dy = (y - cy) / ry;
+        if (dx * dx + dy * dy <= 1 && (!test || test(x, y))) set(x, y, k);
+      }
+  };
+  const rect = (x0, y0, w, h, k) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) set(x, y, k); };
+  const get = (x, y) => { x = Math.round(x) - 1; y = Math.round(y) - 1; return (x >= 0 && y >= 0 && x < CW && y < CH) ? g[y][x] : '.'; };
+  return { set, ellipse, rect, get };
+}
+
+function catLayer(main, draw) {
+  const g = newCatGrid();
+  draw(catPainter(g));
+  const out = g.map(r => r.slice());
+  for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
+    if (g[y][x] !== '.') continue;
+    if ((y > 0 && g[y - 1][x] !== '.') || (y < CH - 1 && g[y + 1][x] !== '.') ||
+        (x > 0 && g[y][x - 1] !== '.') || (x < CW - 1 && g[y][x + 1] !== '.')) out[y][x] = 'o';
+  }
+  for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) if (out[y][x] !== '.') main[y][x] = out[y][x];
+}
+
+// 0..7: 8-frame 1px-smooth quadruped walk cycle
+// 8..11: 4-frame idle/sitting tail-wag cycle
+// 12..13: 2-frame happy bounce + tail wag
+const CAT_WALK = [
+  { bob: 1, BL: [7, 0], BR: [8, 0],  FL: [13, 1], FR: [16, 0], tail:  0.0 },
+  { bob: 1, BL: [7, 0], BR: [8, 1],  FL: [14, 1], FR: [16, 0], tail:  0.5 },
+  { bob: 0, BL: [6, 0], BR: [9, 1],  FL: [14, 0], FR: [15, 0], tail:  1.0 },
+  { bob: 0, BL: [6, 0], BR: [10, 1], FL: [14, 0], FR: [15, 1], tail:  0.5 },
+  { bob: 1, BL: [5, 0], BR: [10, 0], FL: [13, 0], FR: [16, 1], tail:  0.0 },
+  { bob: 1, BL: [5, 1], BR: [10, 0], FL: [13, 0], FR: [17, 1], tail: -0.5 },
+  { bob: 0, BL: [6, 1], BR: [9, 0],  FL: [12, 0], FR: [17, 0], tail: -1.0 },
+  { bob: 0, BL: [7, 1], BR: [9, 0],  FL: [12, 1], FR: [17, 0], tail: -0.5 },
+  { bob: 1, BL: [6, 0], BR: [8, 0],  FL: [13, 0], FR: [15, 0], tail:  0.0 },
+  { bob: 1, BL: [6, 0], BR: [8, 0],  FL: [13, 0], FR: [15, 0], tail:  1.0 },
+  { bob: 1, BL: [6, 0], BR: [8, 0],  FL: [13, 0], FR: [15, 0], tail:  0.0 },
+  { bob: 1, BL: [6, 0], BR: [8, 0],  FL: [13, 0], FR: [15, 0], tail: -1.0 },
+  { bob: 0, BL: [6, 0], BR: [9, 0],  FL: [13, 0], FR: [16, 0], tail: -1.0 },
+  { bob: 1, BL: [6, 0], BR: [9, 0],  FL: [13, 0], FR: [16, 0], tail:  1.0 }
+];
+const CAT_EYE_STATES = ['open', 'half', 'closed', 'happy'];
+
+function buildCatSprite(frame, eyeState) {
+  const w = CAT_WALK[frame] || CAT_WALK[0];
+  const b = w.bob;
+  const g = newCatGrid();
+
+  // 1. Fluffy curved tail rising from the back rump on the left (x=2..7)
+  catLayer(g, p => {
+    for (let i = 0; i <= 16; i++) {
+      const t = i / 16;
+      const tx = 6.5 - t * 4.2 - Math.sin(t * Math.PI) * 0.8;
+      const ty = 16.5 + b - t * 8.5 + w.tail * t * 1.5;
+      p.ellipse(tx, ty, 1.3 - t * 0.2, 1.3 - t * 0.2, t > 0.7 ? 'h' : 'B');
+    }
+  });
+
+  // 2. Far-side paws (shaded fur S + white sock tips)
+  catLayer(g, p => {
+    for (const [x, lift] of [w.BL, w.FL]) {
+      p.rect(x, 19, 2, 3 - lift, 'S');
+      p.rect(x, 22 - lift, 2, 2, 'L');
+    }
+  });
+
+  // 3. Horizontal chubby kitten body with front-right white chest fluff
+  catLayer(g, p => {
+    p.ellipse(11.5, 17.0 + b, 6.0, 3.3, 'B');
+    for (let x = 6; x <= 14; x++) if (p.get(x, 19 + b) === 'B') p.set(x, 19 + b, 'S');
+    p.ellipse(15.0, 17.3 + b, 2.8, 2.2, 'L');
+  });
+
+  // 4. Near-side paws (main fur B + white marshmallow socks)
+  catLayer(g, p => {
+    for (const [x, lift] of [w.BR, w.FR]) {
+      p.rect(x, 19, 2, 3 - lift, 'B');
+      p.rect(x, 22 - lift, 2, 2, 'L');
+    }
+  });
+
+  // 5. Big round 3/4 chibi head on the right (facing direction of motion)
+  const headCX = 16.0;
+  catLayer(g, p => {
+    p.set(10, 2 + b, 'B');
+    p.rect(10, 3 + b, 2, 1, 'B');
+    p.rect(10, 4 + b, 3, 1, 'B');
+    p.rect(10, 5 + b, 4, 2, 'B');
+
+    p.set(22, 2 + b, 'B');
+    p.rect(21, 3 + b, 2, 1, 'B');
+    p.rect(20, 4 + b, 3, 1, 'B');
+    p.rect(19, 5 + b, 4, 2, 'B');
+
+    p.ellipse(headCX, 9.5 + b, 6.8, 5.2, 'B');
+
+    for (let y = 13; y <= 15; y++) {
+      for (let x = 8; x <= CW; x++) {
+        if (p.get(x, y + b) === 'B') p.set(x, y + b, 'S');
+      }
+    }
+
+    p.set(11, 4 + b, 'e');
+    p.set(11, 5 + b, 'e'); p.set(12, 5 + b, 'e');
+    p.set(11, 6 + b, 'e'); p.set(12, 6 + b, 'e');
+
+    p.set(21, 4 + b, 'e');
+    p.set(20, 5 + b, 'e'); p.set(21, 5 + b, 'e');
+    p.set(20, 6 + b, 'e'); p.set(21, 6 + b, 'e');
+
+    [[13,5],[14,5],[15,5],[12,6],[13,6]].forEach(([x, y]) => p.set(x, y + b, 'h'));
+  });
+
+  // 6. Face features & bell collar looking right
+  const p = catPainter(g);
+  for (let x = 13; x <= 18; x++) p.set(x, 15 + b, 'c');
+  p.set(16, 16 + b, 'g');
+
+  const eyeRows = {
+    open:   ['ooo', 'EEw', 'EEE', 'LLE'],
+    half:   ['...', 'ooo', 'EEE', 'LLE'],
+    closed: ['...', '...', 'ooo', '...'],
+    happy:  ['...', '.o.', 'o.o', '...']
+  }[eyeState || 'open'];
+  for (const ex of [12, 19]) {
+    eyeRows.forEach((row, ry) => [...row].forEach((k, rx) => {
+      if (k !== '.') p.set(ex + rx, 8 + ry + b, k);
+    }));
+  }
+
+  p.set(11, 12 + b, 'b'); p.set(12, 12 + b, 'b');
+  p.set(20, 12 + b, 'b'); p.set(21, 12 + b, 'b');
+  p.set(17, 11 + b, 'p');
+
+  return g;
+}
+
+const CAT_GRIDS = {};
+for (let f = 0; f < CAT_WALK.length; f++) {
+  for (const es of CAT_EYE_STATES) {
+    CAT_GRIDS[f + '_' + es] = buildCatSprite(f, es);
+  }
+}
+
+const CAT_CANVASES = {};
+function getCatPalettes() {
+  const p = activePalette || VARIANTS[0];
+  return {
+    purple: {
+      o: hexToRgb(p.o || BASE.o),
+      B: hexToRgb(p.H),
+      S: hexToRgb(p.d),
+      h: hexToRgb(p.h),
+      L: hexToRgb('#ffffff'),
+      e: hexToRgb('#ff80ab'),
+      E: hexToRgb('#ffd13b'),
+      w: hexToRgb('#ffffff'),
+      p: hexToRgb('#ff80ab'),
+      b: hexToRgb('#ff80ab'),
+      c: hexToRgb(p.c),
+      g: hexToRgb('#ffd13b')
+    },
+    black: {
+      o: hexToRgb('#0d0817'),
+      B: hexToRgb('#2a1f3d'),
+      S: hexToRgb('#181026'),
+      h: hexToRgb('#4a3869'),
+      L: hexToRgb('#ffffff'),
+      e: hexToRgb('#ff80ab'),
+      E: hexToRgb('#ffd13b'),
+      w: hexToRgb('#ffffff'),
+      p: hexToRgb('#ff80ab'),
+      b: hexToRgb('#ff80ab'),
+      c: hexToRgb('#c084fc'),
+      g: hexToRgb('#ffd13b')
+    },
+    calico: {
+      o: hexToRgb('#24120b'),
+      B: hexToRgb('#f4845f'),
+      S: hexToRgb('#c85a32'),
+      h: hexToRgb('#ffac8e'),
+      L: hexToRgb('#ffffff'),
+      e: hexToRgb('#ff80ab'),
+      E: hexToRgb('#2ec4b6'),
+      w: hexToRgb('#ffffff'),
+      p: hexToRgb('#ff80ab'),
+      b: hexToRgb('#ff80ab'),
+      c: hexToRgb('#fde2e4'),
+      g: hexToRgb('#ffd13b')
+    },
+    white: {
+      o: hexToRgb('#2d243d'),
+      B: hexToRgb('#ffffff'),
+      S: hexToRgb('#e2daf0'),
+      h: hexToRgb('#ffffff'),
+      L: hexToRgb('#f3eefc'),
+      e: hexToRgb('#ff80ab'),
+      E: hexToRgb('#38bdf8'),
+      w: hexToRgb('#ffffff'),
+      p: hexToRgb('#ff80ab'),
+      b: hexToRgb('#ff80ab'),
+      c: hexToRgb('#c084fc'),
+      g: hexToRgb('#ffd13b')
+    }
+  };
+}
+
+function bakeCat(rows, pal) {
+  const c = document.createElement('canvas');
+  c.width = CW; c.height = CH;
+  const cx = c.getContext('2d');
+  const img = cx.createImageData(CW, CH);
+  for (let y = 0; y < CH; y++) {
+    for (let x = 0; x < CW; x++) {
+      const k = rows[y][x];
+      if (k === '.') continue;
+      const rgb = pal[k];
+      if (!rgb) continue;
+      const i = (y * CW + x) * 4;
+      img.data[i] = rgb[0];
+      img.data[i + 1] = rgb[1];
+      img.data[i + 2] = rgb[2];
+      img.data[i + 3] = 255;
+    }
+  }
+  cx.putImageData(img, 0, 0);
+  return c;
+}
+
+function bakeAllCats() {
+  const pals = getCatPalettes();
+  for (const breed in pals) {
+    for (let f = 0; f < CAT_WALK.length; f++) {
+      for (const es of CAT_EYE_STATES) {
+        const key = f + '_' + es;
+        CAT_CANVASES[breed + '_' + key] = bakeCat(CAT_GRIDS[key], pals[breed]);
+      }
+    }
+  }
+}
+
+let cats = [];
+const BREED_LIST = ['purple', 'black', 'calico', 'white'];
+function normalizeCatList(val) {
+  if (Array.isArray(val)) {
+    return val.filter((b, idx, arr) => BREED_LIST.includes(b) && arr.indexOf(b) === idx);
+  }
+  if (typeof val === 'number' || (typeof val === 'string' && /^[0-4]$/.test(val.trim()))) {
+    return BREED_LIST.slice(0, Math.max(0, Math.min(4, +val)));
+  }
+  return ['purple', 'black'];
+}
+function initCats(selected) {
+  cats = [];
+  const list = normalizeCatList(selected);
+  for (let i = 0; i < list.length; i++) {
+    const breed = list[i];
+    const targetDist = 26 + i * 26;
+    const initX = char.dir > 0
+      ? Math.max(0, char.x - targetDist)
+      : Math.min(LW - CW, char.x + SW + targetDist - CW);
+    cats.push({
+      breed,
+      x: initX,
+      yOffset: 0,
+      dir: char.dir,
+      frame: (i * 2) % 8,
+      frameAcc: 0,
+      state: 'walk',
+      stateT: 0,
+      targetDist,
+      eyes: 'open',
+      blinkT: 1800 + i * 900 + Math.random() * 2500,
+      blinkPhase: -1,
+      meowT: 14000 + i * 9000 + Math.random() * 12000
+    });
+  }
+}
+
+const catBubbleEl = document.getElementById('cat-bubble');
+const catBubble = { visible: false, cat: null, t: 0, w: 0, lastTail: -1 };
+const MEOWS = ['meow~', 'nya~', 'mew!', 'purr~', 'prrrt~', 'nyaa~'];
+
+function showCatMessage(cat, text) {
+  if (!catBubbleEl) return;
+  catBubble.cat = cat;
+  catBubble.t = 2200;
+  catBubble.visible = true;
+  catBubbleEl.textContent = text;
+  catBubble.w = catBubbleEl.offsetWidth;
+  catBubble.lastTail = -1;
+  catBubbleEl.classList.add('show');
+  positionCatBubble();
+}
+
+function updateCatBubble(dt) {
+  if (!catBubble.visible) return;
+  catBubble.t -= dt;
+  if (catBubble.t <= 0) {
+    catBubble.visible = false;
+    catBubble.cat = null;
+    catBubbleEl.classList.remove('show');
+  }
+}
+
+function positionCatBubble() {
+  if (!catBubble.visible || !catBubble.cat) return;
+  const cat = catBubble.cat;
+  const px = scale / dpr;
+  const catHeadX = (cat.x + (cat.dir > 0 ? 16 : 10)) * px;
+  const top = innerHeight - (CH + 2 - cat.yOffset) * px - 4;
+  const w = catBubble.w || (catBubble.w = catBubbleEl.offsetWidth);
+  const left = Math.min(innerWidth - w * 0.5 - 4, Math.max(w * 0.5 + 4, catHeadX));
+  catBubbleEl.style.translate = left.toFixed(2) + 'px ' + top.toFixed(2) + 'px';
+  const tail = Math.round(Math.min(w - 6, Math.max(6, w * 0.5 + (catHeadX - left))));
+  if (tail !== catBubble.lastTail) {
+    catBubble.lastTail = tail;
+    catBubbleEl.style.setProperty('--tail', tail + 'px');
+  }
+}
+
+function triggerCatMeow(cat) {
+  const text = MEOWS[Math.floor(Math.random() * MEOWS.length)];
+  showCatMessage(cat, text);
+  for (let i = 0; i < 2 && hearts.length < 30; i++) {
+    const x0 = cat.x + (cat.dir > 0 ? 13 : 7) + Math.random() * 6;
+    hearts.push({
+      x0, x: x0,
+      y: LH - CH - 2,
+      age: 0,
+      seed: Math.random() * 6
+    });
+  }
+}
+
+function updateCats(dt) {
+  const isHappy = char.happyT > 0;
+  for (let i = 0; i < cats.length; i++) {
+    const cat = cats[i];
+    if (cat.yOffset < 0) {
+      cat.yOffset += dt * 0.009;
+      if (cat.yOffset > 0) cat.yOffset = 0;
+    }
+    if (cat.stateT > 0) {
+      cat.stateT -= dt;
+      if (cat.stateT <= 0) cat.state = 'walk';
+    }
+    if (cat.blinkPhase < 0) {
+      cat.blinkT -= dt;
+      if (cat.blinkT <= 0) { cat.blinkPhase = 0; cat.blinkT = 0; }
+    } else {
+      cat.blinkT += dt;
+      cat.blinkPhase = Math.floor(cat.blinkT / 45);
+      if (cat.blinkPhase > 3) {
+        cat.blinkPhase = -1;
+        cat.blinkT = 2200 + Math.random() * 3800;
+      }
+    }
+    cat.meowT -= dt;
+    if (cat.meowT <= 0) {
+      cat.meowT = 20000 + Math.random() * 25000;
+      if (Math.random() < 0.65 && !reduceMotion.matches) {
+        triggerCatMeow(cat);
+      }
+    }
+    const happyActive = isHappy || cat.state === 'happy';
+    cat.eyes = happyActive
+      ? 'happy'
+      : (cat.blinkPhase < 0 ? 'open' : ['half', 'closed', 'closed', 'half'][cat.blinkPhase]);
+
+    if (reduceMotion.matches) {
+      cat.frame = 8;
+      continue;
+    }
+    if (happyActive) {
+      cat.frameAcc += dt;
+      cat.frame = 12 + (Math.floor(cat.frameAcc / 160) % 2);
+      if (cat.x < char.x) cat.dir = 1;
+      else if (cat.x > char.x + SW) cat.dir = -1;
+      continue;
+    }
+    const rawTargetX = char.dir > 0
+      ? char.x - cat.targetDist
+      : char.x + SW + (cat.targetDist - CW);
+    const targetX = Math.max(0, Math.min(LW - CW, rawTargetX));
+    const diff = targetX - cat.x;
+    const dist = Math.abs(diff);
+
+    if (dist < 0.05 && rawTargetX !== targetX) {
+      cat.x = targetX;
+      cat.dir = char.dir;
+      cat.frameAcc += dt;
+      cat.frame = 8 + (Math.floor(cat.frameAcc / 200) % 4);
+    } else {
+      const speed = dist > 20 ? (1 / 45) : (dist > 6 ? (1 / 55) : (1 / 70));
+      if (dist > 0.001) {
+        const step = Math.min(dist, speed * dt);
+        cat.x += (diff > 0 ? 1 : -1) * step;
+      }
+      cat.dir = dist > 4 ? (diff > 0 ? 1 : -1) : char.dir;
+      const frameInterval = dist > 20 ? 45 : (dist > 6 ? 56 : 70);
+      cat.frameAcc += dt;
+      while (cat.frameAcc >= frameInterval) {
+        cat.frameAcc -= frameInterval;
+        cat.frame = (cat.frame + 1) % 8;
+      }
+    }
+    if (cat.x < 0) cat.x = 0;
+    if (cat.x > LW - CW) cat.x = LW - CW;
+  }
+}
+
+/* ---------- Rendering ---------- */
+const canvas = document.getElementById('scene');
+const ctx = canvas.getContext('2d');
+
+function getCharSprite(frame, eyes, mouth) {
+  const hair = (typeof settings !== 'undefined' && HAIR_STYLES.includes(settings.hair))
+    ? settings.hair
+    : 'twintails';
+  const key = hair + '_' + frame + '_' + eyes + '_' + mouth;
+  let entry = CHAR_CACHE[key];
+  if (!entry) {
+    const grid = buildSprite(frame, eyes, mouth);
+    const c = document.createElement('canvas');
+    c.width = SW; c.height = SH;
+    const cx = c.getContext('2d');
+    const img = cx.createImageData(SW, SH);
+    for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) {
+      const k = grid[y][x];
+      if (k === '.') continue;
+      const rgb = RGB[k], i = (y * SW + x) * 4;
+      img.data[i] = rgb[0]; img.data[i + 1] = rgb[1]; img.data[i + 2] = rgb[2]; img.data[i + 3] = 255;
+    }
+    cx.putImageData(img, 0, 0);
+    entry = CHAR_CACHE[key] = { canvas: c, grid };
+  }
+  return entry;
+}
+
+const HEART = ['pp.pp', 'ppppp', '.ppp.', '..p..'];
+const HEART_RGB = ['#ff6fae', '#ff9fd0'];
+const HEART_CANVAS = (() => {
+  const c = document.createElement('canvas');
+  c.width = 5; c.height = 4;
+  const hx = c.getContext('2d');
+  HEART.forEach((row, ry) => [...row].forEach((k, rx) => {
+    if (k === '.') return;
+    hx.fillStyle = (rx === 1 && ry === 1) ? HEART_RGB[1] : HEART_RGB[0];
+    hx.fillRect(rx, ry, 1, 1);
+  }));
+  return c;
+})();
+
+let scale = 4, dpr = 1, LW = 100, devW = 400, devH = 256;
+const LH = 64;
+function fit() {
+  dpr = window.devicePixelRatio || 1;
+  scale = Math.max(3, Math.min(6, Math.floor(innerHeight * dpr * 0.75 / LH) || 3));
+  devW = Math.max(1, Math.round(innerWidth * dpr));
+  devH = LH * scale;
+  LW = devW / scale;
+  canvas.width = devW; canvas.height = devH;
+  canvas.style.width = (devW / dpr) + 'px';
+  canvas.style.height = (devH / dpr) + 'px';
+  ctx.imageSmoothingEnabled = false;
+  if (typeof char !== 'undefined') {
+    if (char.x > LW - SW) char.x = Math.max(0, LW - SW);
+    for (const cat of cats) if (cat.x > LW - CW) cat.x = Math.max(0, LW - CW);
+  }
+  if (typeof bubble !== 'undefined' && bubble.visible) bubble.w = bubbleEl.offsetWidth;
+  if (typeof catBubble !== 'undefined' && catBubble.visible) catBubble.w = catBubbleEl.offsetWidth;
+}
+
+/* ---------- State ---------- */
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const char = { x: 0, dir: 1, frame: 0, frameAcc: 0, eyes: 'open', mouth: 'neutral', happyT: 0, blinkT: 3000, blinkPhase: -1 };
+const hearts = [];
+
+function update(dt) {
+  // Blink: open -> half -> closed -> half -> open
+  if (char.blinkPhase < 0) {
+    char.blinkT -= dt;
+    if (char.blinkT <= 0) { char.blinkPhase = 0; char.blinkT = 0; }
+  } else {
+    char.blinkT += dt;
+    char.blinkPhase = Math.floor(char.blinkT / 40);
+    if (char.blinkPhase > 3) { char.blinkPhase = -1; char.blinkT = 2500 + Math.random() * 3000; }
+  }
+
+  if (char.happyT > 0) {
+    char.happyT -= dt;
+    char.eyes = 'happy'; char.mouth = 'happy';
+  } else {
+    char.mouth = 'neutral';
+    char.eyes = char.blinkPhase < 0 ? 'open' : ['half', 'closed', 'closed', 'half'][char.blinkPhase];
+    if (!reduceMotion.matches) {
+      // Smooth continuous motion at native display FPS + 8-frame walk cycle (70ms per frame)
+      char.x += char.dir * (dt / 70);
+      if (char.x >= LW - SW) { char.x = LW - SW; char.dir = -1; }
+      else if (char.x <= 0) { char.x = 0; char.dir = 1; }
+      char.frameAcc += dt;
+      while (char.frameAcc >= 70) { char.frameAcc -= 70; char.frame = (char.frame + 1) % 8; }
+    } else {
+      char.frame = 0;
+    }
+  }
+
+  for (let i = hearts.length - 1; i >= 0; i--) {
+    const h = hearts[i];
+    h.age += dt;
+    if (!reduceMotion.matches) { h.y -= dt * 0.012; h.x = h.x0 + Math.sin(h.age / 120 + h.seed) * 1.5; }
+    if (h.age > 1200) hearts.splice(i, 1);
+  }
+}
+
+function render() {
+  const charEntry = getCharSprite(char.frame, char.eyes, char.mouth);
+  ctx.clearRect(0, 0, devW, devH);
+  const sy = (LH - SH) * scale;
+  const catSy = (LH - CH) * scale;
+  const cwPx = CW * scale, chPx = CH * scale;
+  const swPx = SW * scale, shPx = SH * scale;
+
+  // Companion cats (rendered at native device-pixel precision with integer scale texels)
+  for (const cat of cats) {
+    const ccv = CAT_CANVASES[cat.breed + '_' + cat.frame + '_' + (cat.eyes || 'open')];
+    if (!ccv) continue;
+    ctx.save();
+    const cx = Math.round(cat.x * scale);
+    const cy = catSy + Math.round(cat.yOffset * scale);
+    if (cat.dir < 0) {
+      ctx.translate(cx + cwPx, cy); ctx.scale(-1, 1);
+    } else {
+      ctx.translate(cx, cy);
+    }
+    ctx.drawImage(ccv, 0, 0, cwPx, chPx);
+    ctx.restore();
+  }
+
+  // Chibi girl
+  ctx.save();
+  const gx = Math.round(char.x * scale);
+  if (char.dir < 0) {
+    ctx.translate(gx + swPx, sy); ctx.scale(-1, 1);
+  } else {
+    ctx.translate(gx, sy);
+  }
+  ctx.drawImage(charEntry.canvas, 0, 0, swPx, shPx);
+  ctx.restore();
+
+  // Floating hearts
+  const hwPx = 5 * scale, hhPx = 4 * scale;
+  for (const h of hearts) {
+    if (h.age < 0) continue;
+    ctx.drawImage(HEART_CANVAS, Math.round(h.x * scale), Math.round(h.y * scale), hwPx, hhPx);
+  }
+}
+
+let last = performance.now();
+function tick(now) {
+  const dt = Math.min(now - last, 100);
+  last = now;
+  update(dt);
+  updateCats(dt);
+  updateBubble(dt);
+  updateCatBubble(dt);
+  render();
+  positionBubble();
+  positionCatBubble();
+  requestAnimationFrame(tick);
+}
+
+/* ---------- Speech bubble and settings ---------- */
+const DEFAULTS = {
+  msgs: ['Hi chat!', 'Thanks for the follow!', 'Stay hydrated~', 'Welcome to the stream!'],
+  dur: 4, gap: 8, order: 'seq', pal: 0,
+  hair: 'twintails', hc: '#7b3fe4', oc: '#9b5cf0',
+  cats: ['purple', 'black']
+};
+const STORE_KEY = 'purpleChibiSettings';
+function getUrlParams() {
+  const q = location.search.length > 1 && location.search.includes('overlay=')
+    ? location.search.slice(1)
+    : (location.hash.length > 1 ? location.hash.replace(/^#\/?\??/, '') : location.search.slice(1));
+  return new URLSearchParams(q);
+}
+let params = getUrlParams();
+let isOverlay = params.get('editor') === '1' ? false : true;
+if (isOverlay) document.body.classList.add('overlay');
+
+function encodeSettings(o) {
+  const bytes = new TextEncoder().encode(JSON.stringify(o));
+  let bin = ''; bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function decodeSettings(str) {
+  const b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const bin = atob(b64 + '==='.slice((b64.length + 3) % 4));
+  return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))));
+}
+function sanitize(o) {
+  const raw = o || {};
+  const s = Object.assign({}, DEFAULTS, raw);
+  s.msgs = (Array.isArray(s.msgs) ? s.msgs : []).map(m => String(m).slice(0, 200)).filter(m => m.trim());
+  s.dur = Math.min(60, Math.max(1, +s.dur || DEFAULTS.dur));
+  s.gap = Math.min(600, Math.max(0, isFinite(+s.gap) ? +s.gap : DEFAULTS.gap));
+  s.order = s.order === 'random' ? 'random' : 'seq';
+  s.pal = [0, 1, 2, 3].includes(+s.pal) ? +s.pal : 0;
+  s.hair = HAIR_STYLES.includes(s.hair) ? s.hair : DEFAULTS.hair;
+  const fallbackVar = VARIANTS[s.pal] || VARIANTS[0];
+  s.hc = normalizeHex(raw.hc !== undefined ? raw.hc : fallbackVar.H, fallbackVar.H);
+  s.oc = normalizeHex(raw.oc !== undefined ? raw.oc : fallbackVar.C, fallbackVar.C);
+  s.cats = normalizeCatList(raw.cats !== undefined ? raw.cats : DEFAULTS.cats);
+  return s;
+}
+function loadSettings() {
+  try { if (params.get('c')) return sanitize(decodeSettings(params.get('c'))); } catch (e) { console.warn('Bad overlay settings in URL', e); }
+  try { const raw = localStorage.getItem(STORE_KEY); if (raw) return sanitize(JSON.parse(raw)); } catch (e) { /* storage unavailable */ }
+  return sanitize({});
+}
+let settings = loadSettings();
+
+addEventListener('hashchange', () => {
+  params = getUrlParams();
+  isOverlay = params.get('overlay') === '1';
+  document.body.classList.toggle('overlay', isOverlay);
+  settings = loadSettings();
+  applyCustomColors(settings.hc, settings.oc);
+  initCats(settings.cats);
+  bubble.idx = -1;
+});
+
+const bubbleEl = document.getElementById('bubble');
+const bubble = { visible: false, t: 1500, idx: -1, w: 0, lastTail: -1 };
+function showMessage(text) {
+  bubbleEl.textContent = text;
+  bubble.w = bubbleEl.offsetWidth;
+  bubble.lastTail = -1;
+  bubbleEl.classList.add('show');
+  bubble.visible = true; bubble.t = settings.dur * 1000;
+  positionBubble();
+}
+function nextMessage() {
+  const list = settings.msgs;
+  if (!list.length) return;
+  if (settings.order === 'random' && list.length > 1) {
+    let i; do { i = Math.floor(Math.random() * list.length); } while (i === bubble.idx);
+    bubble.idx = i;
+  } else bubble.idx = (bubble.idx + 1) % list.length;
+  showMessage(list[bubble.idx]);
+}
+function updateBubble(dt) {
+  bubble.t -= dt;
+  if (bubble.t > 0) return;
+  if (bubble.visible) {
+    bubbleEl.classList.remove('show');
+    bubble.visible = false; bubble.t = Math.max(300, settings.gap * 1000);
+  } else nextMessage();
+}
+function positionBubble() {
+  if (!bubble.visible) return;
+  const px = scale / dpr;
+  const headX = (char.x + SW * 0.5) * px;
+  const top = innerHeight - (SH - 1) * px - 6;
+  const w = bubble.w || (bubble.w = bubbleEl.offsetWidth);
+  const left = Math.min(innerWidth - w * 0.5 - 4, Math.max(w * 0.5 + 4, headX));
+  bubbleEl.style.translate = left.toFixed(2) + 'px ' + top.toFixed(2) + 'px';
+  const tail = Math.round(Math.min(w - 10, Math.max(10, w * 0.5 + (headX - left))));
+  if (tail !== bubble.lastTail) {
+    bubble.lastTail = tail;
+    bubbleEl.style.setProperty('--tail', tail + 'px');
+  }
+}
+
+/* Editor panel */
+const $ = id => document.getElementById(id);
+function syncColorControls(hc, oc) {
+  const hNorm = normalizeHex(hc, DEFAULTS.hc);
+  const oNorm = normalizeHex(oc, DEFAULTS.oc);
+  if ($('hairColor')) $('hairColor').value = hNorm;
+  if ($('outfitColor')) $('outfitColor').value = oNorm;
+  if ($('hairPreset')) {
+    const hMatch = Array.from($('hairPreset').options).some(opt => opt.value.toLowerCase() === hNorm);
+    $('hairPreset').value = hMatch ? hNorm : 'custom';
+  }
+  if ($('outfitPreset')) {
+    const oMatch = Array.from($('outfitPreset').options).some(opt => opt.value.toLowerCase() === oNorm);
+    $('outfitPreset').value = oMatch ? oNorm : 'custom';
+  }
+}
+function getSelectedCats() {
+  return Array.from(document.querySelectorAll('#catChecks input[type="checkbox"]:checked')).map(cb => cb.value);
+}
+function setSelectedCats(list) {
+  const norm = normalizeCatList(list);
+  document.querySelectorAll('#catChecks input[type="checkbox"]').forEach(cb => {
+    cb.checked = norm.includes(cb.value);
+  });
+}
+function fillForm() {
+  $('msgs').value = settings.msgs.join('\n');
+  $('dur').value = settings.dur; $('gap').value = settings.gap; $('order').value = settings.order;
+  $('hairStyle').value = settings.hair;
+  syncColorControls(settings.hc, settings.oc);
+  setSelectedCats(settings.cats);
+}
+function readForm() {
+  return sanitize({
+    msgs: $('msgs').value.split(/\r?\n/),
+    dur: $('dur').value,
+    gap: $('gap').value,
+    order: $('order').value,
+    pal: paletteIndex >= 0 ? paletteIndex : settings.pal,
+    hair: $('hairStyle').value,
+    hc: $('hairColor').value,
+    oc: $('outfitColor').value,
+    cats: getSelectedCats()
+  });
+}
+function overlayLink() {
+  const clean = location.href.split(/[?#]/)[0];
+  if (location.protocol === 'file:') {
+    return clean + '?overlay=1&c=' + encodeSettings(settings);
+  }
+  const dir = clean.replace(/\/(index\.html|live\.svg|overlay\.svg)?$/, '');
+  return dir + '/live.svg?v=6#overlay=1&c=' + encodeSettings(settings);
+}
+function status(msg) { $('status').textContent = msg; clearTimeout(status.t); status.t = setTimeout(() => $('status').textContent = '', 3500); }
+function saveSettings() {
+  settings = readForm();
+  applyCustomColors(settings.hc, settings.oc);
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ }
+  bubble.idx = -1;
+  initCats(settings.cats);
+  status('Saved. ' + settings.msgs.length + ' message(s), ' + settings.cats.length + ' cat(s).');
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
+    ta.remove(); return ok;
+  }
+}
+if (!isOverlay) {
+  fillForm();
+  if (location.protocol.startsWith('http')) {
+    fetch('live.svg?v=6', { credentials: 'include' }).catch(() => {});
+  }
+  $('save').addEventListener('click', saveSettings);
+  $('hairStyle').addEventListener('change', () => {
+    settings.hair = $('hairStyle').value;
+    CHAR_CACHE = {};
+  });
+  $('hairPreset').addEventListener('change', () => {
+    if ($('hairPreset').value !== 'custom') {
+      $('hairColor').value = $('hairPreset').value;
+      settings.hc = $('hairColor').value;
+      applyCustomColors(settings.hc, settings.oc);
+    }
+  });
+  $('hairColor').addEventListener('input', () => {
+    settings.hc = $('hairColor').value;
+    syncColorControls(settings.hc, settings.oc);
+    applyCustomColors(settings.hc, settings.oc);
+  });
+  $('outfitPreset').addEventListener('change', () => {
+    if ($('outfitPreset').value !== 'custom') {
+      $('outfitColor').value = $('outfitPreset').value;
+      settings.oc = $('outfitColor').value;
+      applyCustomColors(settings.hc, settings.oc);
+    }
+  });
+  $('outfitColor').addEventListener('input', () => {
+    settings.oc = $('outfitColor').value;
+    syncColorControls(settings.hc, settings.oc);
+    applyCustomColors(settings.hc, settings.oc);
+  });
+  document.querySelectorAll('#catChecks input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      settings.cats = getSelectedCats();
+      initCats(settings.cats);
+    });
+  });
+  $('test').addEventListener('click', () => {
+    const s = readForm();
+    showMessage(s.msgs[0] || '...');
+  });
+  $('copy').addEventListener('click', async () => {
+    saveSettings();
+    if (location.protocol.startsWith('http')) {
+      fetch('live.svg?v=6', { credentials: 'include' }).catch(() => {});
+    }
+    const ok = await copyText(overlayLink());
+    status(ok ? 'Overlay link copied.' : 'Copy blocked.');
+  });
+}
+
+/* ---------- Interaction ---------- */
+function makeHappy() {
+  char.happyT = 1200;
+  for (let i = 0; i < 4 && hearts.length < 30; i++) {
+    const x0 = char.x + 8 + Math.floor(Math.random() * 14);
+    hearts.push({ x0, x: x0, y: LH - SH - 2 + Math.random() * 4, age: -i * 120, seed: Math.random() * 6 });
+  }
+  for (const cat of cats) {
+    cat.state = 'happy';
+    cat.stateT = 1200;
+    cat.yOffset = -2;
+  }
+}
+canvas.addEventListener('pointerdown', e => {
+  const r = canvas.getBoundingClientRect();
+  const lx = (e.clientX - r.left) * dpr / scale;
+  const ly = Math.floor((e.clientY - r.top) * dpr / scale);
+
+  if (ly >= LH - CH - 4 && ly <= LH) {
+    for (const cat of cats) {
+      if (lx >= cat.x - 2 && lx <= cat.x + CW + 2) {
+        cat.state = 'happy';
+        cat.stateT = 1600;
+        cat.yOffset = -3;
+        triggerCatMeow(cat);
+        return;
+      }
+    }
+  }
+
+  let gx = Math.floor(lx - char.x);
+  const gy = ly - (LH - SH);
+  if (char.dir < 0) gx = SW - 1 - gx;
+  const curSprite = getCharSprite(char.frame, char.eyes, char.mouth);
+  if (curSprite && gx >= 0 && gy >= 0 && gx < SW && gy < SH && curSprite.grid[gy][gx] !== '.') makeHappy();
+});
+canvas.addEventListener('keydown', e => {
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); makeHappy(); }
+});
+addEventListener('keydown', e => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  if (e.key >= '1' && e.key <= '4') applyPalette(+e.key - 1);
+});
+document.querySelectorAll('[data-palette]').forEach(b =>
+  b.addEventListener('click', () => applyPalette(+b.dataset.palette)));
+
+document.getElementById('export').addEventListener('click', () => {
+  const S = 8, out = document.createElement('canvas');
+  out.width = SW * S; out.height = SH * S;
+  const o = out.getContext('2d');
+  o.imageSmoothingEnabled = false;
+  const curSprite = getCharSprite(char.frame, char.eyes, char.mouth);
+  o.drawImage(curSprite.canvas, 0, 0, SW * S, SH * S);
+  const save = url => { const a = document.createElement('a'); a.href = url; a.download = 'purple-chibi.png'; a.click(); };
+  if (out.toBlob) out.toBlob(bl => { const u = URL.createObjectURL(bl); save(u); setTimeout(() => URL.revokeObjectURL(u), 1000); }, 'image/png');
+  else save(out.toDataURL('image/png'));
+});
+
+addEventListener('resize', fit);
+fit();
+applyCustomColors(settings.hc, settings.oc);
+char.x = Math.max(0, Math.floor((LW - SW) / 2));
+initCats(settings.cats);
+
+/* ---------- WebSocket Realtime Integration ---------- */
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(proto + '//' + location.host);
+  ws.onmessage = evt => {
+    try {
+      const data = JSON.parse(evt.data);
+      if (data.type === 'init' && data.settings?.companion) {
+        applyCompanionSettings(data.settings.companion);
+      } else if (data.type === 'settings:update' && data.settings?.companion) {
+        applyCompanionSettings(data.settings.companion);
+      } else if (data.type === 'gift') {
+        makeHappy();
+        const user = data.nickname || data.user || data.uniqueId || 'Viewer';
+        const gift = data.giftName || 'Gift';
+        showMessage('Thank you ' + user + ' for the ' + gift + '!');
+        for (const c of cats) {
+          c.state = 'happy';
+          c.yOffset = -4;
+          c.stateT = 1600;
+        }
+        if (cats.length > 0) {
+          const c = cats[Math.floor(Math.random() * cats.length)];
+          showCatMessage(c, 'Purr! Meow~');
+        }
+      } else if (data.type === 'chat') {
+        const user = data.nickname || data.user || data.uniqueId || 'friend';
+        if (cats.length > 0 && Math.random() < 0.65) {
+          const c = cats[Math.floor(Math.random() * cats.length)];
+          const catPhrases = ['Meow~', 'Purr!', 'Nya~', 'Meow ' + user + '!'];
+          showCatMessage(c, catPhrases[Math.floor(Math.random() * catPhrases.length)]);
+          c.state = 'happy';
+          c.stateT = 1200;
+        } else if (!bubbleTimer) {
+          showMessage('Hi ' + user + '!');
+        }
+      } else if (data.type === 'follow') {
+        makeHappy();
+        const user = data.nickname || data.user || data.uniqueId || 'friend';
+        showMessage('Welcome ' + user + '! Thanks for following!');
+        if (cats.length > 0) {
+          const c = cats[Math.floor(Math.random() * cats.length)];
+          showCatMessage(c, 'Meow!');
+        }
+      } else if (data.type === 'like') {
+        if (cats.length > 0) {
+          const c = cats[Math.floor(Math.random() * cats.length)];
+          showCatMessage(c, 'Purr~');
+          c.state = 'happy';
+          c.stateT = 1400;
+        }
+      } else if (data.type === 'join') {
+        const user = data.nickname || data.user || data.uniqueId || 'friend';
+        showMessage('Hi ' + user + '! Welcome to the stream!');
+      }
+    } catch (e) {
+      console.warn('WS error in companion', e);
+    }
+  };
+  ws.onclose = () => setTimeout(connectWS, 2000);
+  ws.onerror = () => ws.close();
+}
+
+function applyCompanionSettings(comp) {
+  if (!comp) return;
+  if (comp.hair && HAIR_STYLES.includes(comp.hair)) {
+    settings.hair = comp.hair;
+  }
+  if (comp.hc) settings.hc = comp.hc;
+  if (comp.oc) settings.oc = comp.oc;
+  if (Array.isArray(comp.cats)) settings.cats = comp.cats;
+  CHAR_CACHE = {};
+  applyCustomColors(settings.hc, settings.oc);
+  initCats(settings.cats);
+}
+connectWS();
+
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

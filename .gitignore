@@ -1,0 +1,7 @@
+node_modules/
+desktop/node_modules/
+desktop/dist/
+desktop/settings.json
+desktop/settings.json.bak
+.deploy-cache.json
+*.log
