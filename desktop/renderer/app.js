@@ -311,6 +311,15 @@ if (typeof window.api !== 'undefined' && window.api.onTikTokEvent) {
   });
 }
 
+// Live Preview helper for chat avatar shape
+function updateChatPreviewBox() {
+  const wrap = document.querySelector('.preview-pfp-wrap');
+  if (wrap && $('chat-avatar-shape')) {
+    const shape = $('chat-avatar-shape').value;
+    wrap.className = `preview-pfp-wrap shape-${shape}`;
+  }
+}
+
 // Load & populate settings
 async function initSettings() {
   appSettings = await window.api.getSettings();
