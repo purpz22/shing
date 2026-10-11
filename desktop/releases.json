@@ -1,40 +1,40 @@
-﻿{
-    "latest":  "1.1.0",
-    "releases":  [
-                     {
-                         "version":  "1.1.0",
-                         "releaseName":  "Shing Studio v1.1.0 - Viewer Display Names \u0026 Coins HUD",
-                         "releaseDate":  "2026-10-11",
-                         "type":  "feature",
-                         "summary":  "Full viewer display name support, accurate TikTok coin currency HUD, and in-app update manager.",
-                         "downloadUrl":  "https://github.com/purpz22/shing/releases/download/v1.1.0/shing-studio-v1.1.0.zip",
-                         "packageSize":  "3.89 MB",
-                         "checksum":  "bca373e21e3e133925fbc4b6e484fcc77396fd960dbd9a04c73984f515d4acb6",
-                         "highlights":  [
-                                            "Viewer Display Names: Overlays now display viewers\u0027 customized nicknames instead of username handles",
-                                            "TikTok Coins Currency: Standardized all alert badges and jar physics from Diamonds to Coins",
-                                            "Chat Message Cap: Added configurable maximum visible messages limit (default: 8 messages)",
-                                            "6 Chibi Hair Styles: Twintails, Long, Bob, High Ponytail, Space Buns, Half-Up with custom color palettes",
-                                            "In-App Updater: Built-in update checker, one-click installer, and release notes history",
-                                            "Offline Live Mode: Graceful test mode simulation with gift catalog mappings"
-                                        ],
-                         "notes":  "Recommended update for all TikTok Live streamers."
-                     },
-                     {
-                         "version":  "1.0.0",
-                         "releaseName":  "Shing Studio v1.0.0 - Initial Release",
-                         "releaseDate":  "2026-10-10",
-                         "type":  "major",
-                         "summary":  "Initial release of Shing Studio for TikTok Live streamers.",
-                         "highlights":  [
-                                            "Account verification modal with avatar and bio preview",
-                                            "Matter.js 2D physics glass jar overlay for TikTok gifts",
-                                            "Cute speech bubble chat overlay with animated avatar shapes",
-                                            "Pixel art chibi and cat companion interactive stage reactions",
-                                            "Multi-tier triggers and alert overlays for follows, gifts, and likes",
-                                            "Lower third animated banner for social links",
-                                            "Pastel purple theme with 6 customizable color themes"
-                                        ]
-                     }
-                 ]
+{
+  "latest": "1.1.0",
+  "releases": [
+    {
+      "version": "1.1.0",
+      "releaseName": "Shing Studio v1.1.0 - Viewer Display Names & Coins HUD",
+      "releaseDate": "2026-10-11",
+      "type": "feature",
+      "summary": "Full viewer display name support, accurate TikTok coin currency HUD, and in-app update manager.",
+      "downloadUrl": "https://github.com/purpz22/shing/releases/download/v1.1.0/shing-studio-v1.1.0.zip",
+      "packageSize": "3.89 MB",
+      "checksum": "853b2684a3493aa3222cb27465a52719e3147620f9bff8bcd7c1bfb8f3c69aba",
+      "highlights": [
+        "Viewer Display Names: Overlays now display viewers' customized nicknames instead of username handles",
+        "TikTok Coins Currency: Standardized all alert badges and jar physics from Diamonds to Coins",
+        "Chat Message Cap: Added configurable maximum visible messages limit (default: 8 messages)",
+        "6 Chibi Hair Styles: Twintails, Long, Bob, High Ponytail, Space Buns, Half-Up with custom color palettes",
+        "In-App Updater: Built-in update checker, one-click installer, and release notes history",
+        "Offline Live Mode: Graceful test mode simulation with gift catalog mappings"
+      ],
+      "notes": "Recommended update for all TikTok Live streamers."
+    },
+    {
+      "version": "1.0.0",
+      "releaseName": "Shing Studio v1.0.0 - Initial Release",
+      "releaseDate": "2026-10-10",
+      "type": "major",
+      "summary": "Initial release of Shing Studio for TikTok Live streamers.",
+      "highlights": [
+        "Account verification modal with avatar and bio preview",
+        "Matter.js 2D physics glass jar overlay for TikTok gifts",
+        "Cute speech bubble chat overlay with animated avatar shapes",
+        "Pixel art chibi and cat companion interactive stage reactions",
+        "Multi-tier triggers and alert overlays for follows, gifts, and likes",
+        "Lower third animated banner for social links",
+        "Pastel purple theme with 6 customizable color themes"
+      ]
+    }
+  ]
 }

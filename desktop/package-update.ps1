@@ -54,7 +54,9 @@ if (Test-Path $releasesPath) {
       if ($rel.PSObject.Properties['checksum']) { $rel.checksum = $hash } else { $rel | Add-Member -NotePropertyName "checksum" -NotePropertyValue $hash }
       if ($rel.PSObject.Properties['packageSize']) { $rel.packageSize = "$sizeMB MB" } else { $rel | Add-Member -NotePropertyName "packageSize" -NotePropertyValue "$sizeMB MB" }
     }
-    $json | ConvertTo-Json -Depth 10 | Set-Content $releasesPath -Encoding UTF8
+    $jsonTxt = $json | ConvertTo-Json -Depth 10
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($releasesPath, $jsonTxt, $utf8NoBom)
     Write-Host "  Updated releases.json with latest checksum and size."
   } catch {
     Write-Warning "Could not update releases.json: $_"

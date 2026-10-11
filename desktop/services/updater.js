@@ -55,7 +55,7 @@ class AppUpdater {
           res.on('data', chunk => { data += chunk; });
           res.on('end', () => {
             try {
-              resolve(JSON.parse(data));
+              resolve(JSON.parse(data.replace(/^\uFEFF/, '')));
             } catch (err) {
               reject(err);
             }
@@ -74,7 +74,7 @@ class AppUpdater {
   getLocalReleases() {
     try {
       if (fs.existsSync(this.releasesPath)) {
-        return JSON.parse(fs.readFileSync(this.releasesPath, 'utf8'));
+        return JSON.parse(fs.readFileSync(this.releasesPath, 'utf8').replace(/^\uFEFF/, ''));
       }
     } catch (e) {
       console.warn('Failed to read local releases.json', e.message);
