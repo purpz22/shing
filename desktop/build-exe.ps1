@@ -26,6 +26,14 @@ if (!(Test-Path $distDir)) {
   New-Item -ItemType Directory -Path $distDir | Out-Null
 }
 
+# Stop any running Shing Live processes to avoid Windows file locks
+$running = Get-Process -Name "Shing Live" -ErrorAction SilentlyContinue
+if ($running) {
+  Write-Host "Closing running Shing Live process(es) before packaging..."
+  Stop-Process -Name "Shing Live" -Force -ErrorAction SilentlyContinue
+  Start-Sleep -Seconds 1
+}
+
 Write-Host "`nRunning electron-packager..."
 & npx electron-packager $desktopDir "Shing Live" `
   --platform=win32 `

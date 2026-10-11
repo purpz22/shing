@@ -1,10 +1,13 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 app.name = 'Shing Live';
+
+// Remove the default Electron application menu bar (File, Edit, View, Window, Help)
+Menu.setApplicationMenu(null);
 
 const OverlayServer = require('./server/overlayServer');
 const AppUpdater = require('./services/updater');
@@ -38,10 +41,26 @@ function createWindow() {
     title: 'Shing Live',
     icon: path.join(__dirname, 'assets', process.platform === 'win32' ? 'app-icon.ico' : 'app-icon.png'),
     backgroundColor: '#f6f0ff',
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false
+    }
+  });
+
+  mainWindow.removeMenu();
+  mainWindow.setMenuBarVisibility(false);
+
+  // Retain standard developer and refresh shortcuts (F12, Ctrl+Shift+I, F5, Ctrl+R)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+      mainWindow.webContents.toggleDevTools();
+      event.preventDefault();
+    } else if (input.key === 'F5' || (input.control && input.key.toLowerCase() === 'r')) {
+      mainWindow.webContents.reload();
+      event.preventDefault();
     }
   });
 
