@@ -1,10 +1,16 @@
 'use strict';
 
-const { app, BrowserWindow, Menu, ipcMain, shell, dialog } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, shell, dialog, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
 
 app.name = 'Shing Live';
+
+// Ensure Windows taskbar and system tray uses Shing Live identity and icon
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.shing.live');
+}
 
 // Remove the default Electron application menu bar (File, Edit, View, Window, Help)
 Menu.setApplicationMenu(null);
@@ -33,13 +39,16 @@ try {
 } catch (e) {}
 
 function createWindow() {
+  const iconPath = path.join(__dirname, 'assets', process.platform === 'win32' ? 'app-icon.ico' : 'app-icon.png');
+  const appIcon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : null;
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 840,
     minWidth: 1040,
     minHeight: 680,
     title: 'Shing Live',
-    icon: path.join(__dirname, 'assets', process.platform === 'win32' ? 'app-icon.ico' : 'app-icon.png'),
+    icon: appIcon || iconPath,
     backgroundColor: '#f6f0ff',
     autoHideMenuBar: true,
     webPreferences: {
@@ -48,6 +57,10 @@ function createWindow() {
       nodeIntegration: false
     }
   });
+
+  if (appIcon) {
+    mainWindow.setIcon(appIcon);
+  }
 
   mainWindow.removeMenu();
   mainWindow.setMenuBarVisibility(false);
@@ -145,18 +158,73 @@ ipcMain.handle('settings:import', async () => {
   }
 });
 
+function fetchTikTokProfile(username) {
+  return new Promise((resolve) => {
+    const clean = (username || '').replace(/^@/, '').trim();
+    if (!clean) return resolve(null);
+    const options = {
+      hostname: 'www.tiktok.com',
+      path: `/@${encodeURIComponent(clean)}`,
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9'
+      },
+      timeout: 3500
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => {
+        body += chunk;
+        if (body.length > 500000) req.destroy();
+      });
+      res.on('end', () => {
+        try {
+          const mAvatar = body.match(/"avatarLarger":"(https:[^"]+)"/) ||
+                          body.match(/"avatarMedium":"(https:[^"]+)"/) ||
+                          body.match(/"avatarThumb":"(https:[^"]+)"/);
+          const mNick = body.match(/"nickname":"([^"]+)"/);
+          const mBio = body.match(/"signature":"([^"]+)"/);
+
+          const avatar = mAvatar ? mAvatar[1].replace(/\\u002F/g, '/') : null;
+          const nickname = mNick ? mNick[1].replace(/\\u002F/g, '/') : null;
+          const bio = mBio ? mBio[1].replace(/\\u002F/g, '/') : null;
+
+          if (avatar || nickname) {
+            return resolve({ avatar, nickname, bio });
+          }
+        } catch (e) {}
+        resolve(null);
+      });
+    });
+
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => {
+      try { req.destroy(); } catch (e) {}
+      resolve(null);
+    });
+    req.end();
+  });
+}
+
 // TikTok User Search & Profile lookup
 ipcMain.handle('tiktok:search', async (evt, username) => {
   const cleanUser = (username || 'shimmy_ming').replace(/^@/, '').trim();
-  const avatarPath = '/assets/avatar.png'; // default cute anime girl avatar provided by user
+  const defaultAvatar = '../assets/avatar.png';
 
-  // Return account card
+  let profile = null;
+  try {
+    profile = await fetchTikTokProfile(cleanUser);
+  } catch (e) {}
+
   return {
     success: true,
     uniqueId: cleanUser,
-    nickname: cleanUser === 'shimmy_ming' ? 'Shimmy Ming' : cleanUser,
-    avatar: avatarPath,
-    bio: 'TikTok Live Streamer',
+    nickname: profile?.nickname || (cleanUser.toLowerCase() === 'shimmy_ming' ? 'Shimmy Ming' : cleanUser),
+    avatar: profile?.avatar || defaultAvatar,
+    bio: profile?.bio || 'TikTok Live Streamer',
     isDefault: cleanUser.toLowerCase() === 'shimmy_ming'
   };
 });

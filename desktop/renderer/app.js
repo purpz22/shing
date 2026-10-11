@@ -711,11 +711,21 @@ function showAccountModal() {
 
 async function handleSearchUser() {
   const username = $('modal-username-input').value.trim() || 'shimmy_ming';
+  const imgEl = $('modal-avatar-img');
+  if (imgEl) {
+    imgEl.onerror = function() {
+      this.onerror = null;
+      this.src = '../assets/avatar.png';
+    };
+  }
+
   const profile = await window.api.searchTikTokUser(username);
 
   $('modal-display-name').textContent = profile.nickname || username;
   $('modal-unique-id').textContent = `@${profile.uniqueId || username}`;
-  $('modal-avatar-img').src = profile.avatar || '/assets/avatar.png';
+  if (imgEl) {
+    imgEl.src = profile.avatar || '../assets/avatar.png';
+  }
 
   $('modal-step-search').style.display = 'none';
   $('modal-step-confirm').style.display = 'block';
@@ -723,7 +733,7 @@ async function handleSearchUser() {
 
 // App Updater Manager Logic
 const updateState = {
-  currentVersion: '1.0.0',
+  currentVersion: '1.2.1',
   latestVersion: null,
   hasUpdate: false,
   release: null,
@@ -774,6 +784,10 @@ async function checkAppUpdates(manual = true) {
     updateState.release = result.release;
     updateState.allReleases = result.allReleases || [];
 
+    // Ensure installed version and header version are always synchronized
+    if ($('stat-installed-ver')) $('stat-installed-ver').textContent = `v${result.currentVersion}`;
+    if ($('header-version-text')) $('header-version-text').textContent = `v${result.currentVersion}`;
+
     // Format last checked time
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -786,7 +800,7 @@ async function checkAppUpdates(manual = true) {
         $('header-version-badge').textContent = `Update v${result.latestVersion}!`;
         $('header-version-badge').className = 'ver-badge-tag has-update';
       }
-      if ($('stat-latest-ver')) $('stat-latest-ver').textContent = `v${result.latestVersion}`;
+      if ($('stat-latest-ver')) $('stat-latest-ver').textContent = `v${result.latestVersion} (New Update!)`;
 
       // Show banner
       const banner = $('update-banner');
@@ -803,7 +817,7 @@ async function checkAppUpdates(manual = true) {
         $('header-version-badge').textContent = 'Up to Date';
         $('header-version-badge').className = 'ver-badge-tag';
       }
-      if ($('stat-latest-ver')) $('stat-latest-ver').textContent = `v${result.currentVersion} (Latest)`;
+      if ($('stat-latest-ver')) $('stat-latest-ver').textContent = `v${result.latestVersion || result.currentVersion} (Latest)`;
       if ($('update-banner')) $('update-banner').classList.add('hidden');
 
       if (manual) {

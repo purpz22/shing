@@ -21,12 +21,12 @@ class AppUpdater {
     try {
       if (fs.existsSync(this.packagePath)) {
         const pkg = JSON.parse(fs.readFileSync(this.packagePath, 'utf8').replace(/^\uFEFF/, ''));
-        return pkg.version || '1.1.0';
+        return pkg.version || '1.2.1';
       }
     } catch (e) {
       console.warn('Failed to read package.json version', e.message);
     }
-    return '1.0.0';
+    return '1.2.1';
   }
 
   compareVersions(v1, v2) {
