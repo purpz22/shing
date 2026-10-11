@@ -19,16 +19,30 @@ if (Test-Path $zipPath) {
 }
 
 $items = @("assets", "overlays", "renderer", "server", "services", "main.js", "preload.js", "package.json", "releases.json")
-$srcPaths = @()
+$stagingDir = Join-Path $env:TEMP "shing-pkg-$Version"
+if (Test-Path $stagingDir) { Remove-Item $stagingDir -Recurse -Force }
+New-Item -ItemType Directory -Path $stagingDir | Out-Null
+
 foreach ($item in $items) {
   $p = Join-Path $baseDir $item
   if (Test-Path $p) {
-    $srcPaths += $p
+    if ((Get-Item $p).PSIsContainer) {
+      Copy-Item -Path $p -Destination $stagingDir -Recurse -Force
+    } else {
+      Copy-Item -Path $p -Destination $stagingDir -Force
+    }
   }
 }
 
-Write-Host "Compressing $($srcPaths.Count) items to $zipName..."
-Compress-Archive -Path $srcPaths -DestinationPath $zipPath -Force
+# Remove in-use locked icons from update archive so client never encounters file lock
+$icoFile = Join-Path $stagingDir "assets/app-icon.ico"
+if (Test-Path $icoFile) { Remove-Item $icoFile -Force }
+$pngFile = Join-Path $stagingDir "assets/app-icon.png"
+if (Test-Path $pngFile) { Remove-Item $pngFile -Force }
+
+Write-Host "Compressing components to $zipName..."
+Compress-Archive -Path "$stagingDir\*" -DestinationPath $zipPath -Force
+Remove-Item $stagingDir -Recurse -Force
 
 $hasher = [System.Security.Cryptography.SHA256]::Create()
 $fileStream = [System.IO.File]::OpenRead($zipPath)
