@@ -373,6 +373,37 @@ class AppUpdater {
         }
 
         try {
+          // Check if destination directory is writable by standard user process
+          let isWritable = true;
+          const testFile = path.join(this.baseDir, `.shing-write-test-${Date.now()}`);
+          try {
+            fs.writeFileSync(testFile, 'test');
+            fs.unlinkSync(testFile);
+          } catch (permErr) {
+            isWritable = false;
+          }
+
+          if (!isWritable) {
+            // Protected directory (e.g. C:\Program Files (x86)): run elevated PowerShell worker
+            const elevatedCmd = `Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList '-NoProfile -ExecutionPolicy Bypass -Command Copy-Item -Path \"\"${stagingDir}\\*\"\" -Destination \"\"${this.baseDir}\"\" -Recurse -Force -Exclude settings.json,settings.json.bak,app-icon.ico'`;
+            const psRunner = `powershell -NoProfile -Command "${elevatedCmd}"`;
+
+            exec(psRunner, (elevErr) => {
+              try { fs.rmSync(stagingDir, { recursive: true, force: true }); } catch (e) {}
+              if (elevErr) {
+                return reject(new Error(`Elevated installation failed or was cancelled: ${elevErr.message}`));
+              }
+              this.ensureSettingsIntact();
+              const newVersion = this.getCurrentVersion();
+              resolve({
+                success: true,
+                newVersion,
+                message: `Update package installed successfully with administrator elevation (v${newVersion})!`
+              });
+            });
+            return;
+          }
+
           // Copy updated files over app directory, explicitly preserving settings.json and backups
           this.copyDirRecursive(stagingDir, this.baseDir, ['settings.json', 'settings.json.bak', 'backups', 'node_modules', '.git']);
 
@@ -407,7 +438,19 @@ class AppUpdater {
       if (entry.isDirectory()) {
         this.copyDirRecursive(srcPath, destPath, ignoreList);
       } else {
-        fs.copyFileSync(srcPath, destPath);
+        // Skip in-use icons if already present to prevent Windows file lock EPERM
+        if ((entry.name === 'app-icon.ico' || entry.name === 'app-icon.png') && fs.existsSync(destPath)) {
+          continue;
+        }
+        try {
+          fs.copyFileSync(srcPath, destPath);
+        } catch (copyErr) {
+          if (entry.name.endsWith('.ico') || entry.name.endsWith('.png')) {
+            console.warn(`Skipping in-use asset ${entry.name}:`, copyErr.message);
+            continue;
+          }
+          throw copyErr;
+        }
       }
     }
   }
