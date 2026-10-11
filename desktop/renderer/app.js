@@ -311,6 +311,32 @@ if (typeof window.api !== 'undefined' && window.api.onTikTokEvent) {
   });
 }
 
+if (typeof window.api !== 'undefined' && window.api.onTikTokStatus) {
+  window.api.onTikTokStatus(statusData => {
+    const pill = $('account-pill');
+    const dot = pill ? pill.querySelector('.status-dot') : null;
+    const nameEl = $('header-username');
+
+    if (statusData.username && nameEl) {
+      nameEl.textContent = `@${statusData.username}`;
+    }
+
+    if (dot) {
+      dot.className = 'status-dot';
+      if (statusData.status === 'connected') {
+        dot.classList.add('online');
+        if (pill) pill.title = `Live on TikTok (Room: ${statusData.roomId || 'Active'}) - Click to change`;
+      } else if (statusData.status === 'waiting') {
+        dot.classList.add('waiting');
+        if (pill) pill.title = statusData.message || `@${statusData.username} is offline. Auto-connecting when you go live...`;
+      } else {
+        dot.classList.add('offline');
+        if (pill) pill.title = `Disconnected - Click to reconnect`;
+      }
+    }
+  });
+}
+
 // Live Preview helper for chat avatar shape
 function updateChatPreviewBox() {
   const wrap = document.querySelector('.preview-pfp-wrap');

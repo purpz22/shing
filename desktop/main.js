@@ -229,182 +229,236 @@ ipcMain.handle('tiktok:search', async (evt, username) => {
   };
 });
 
-// TikTok Connect
-ipcMain.handle('tiktok:connect', async (evt, username) => {
-  const cleanUser = (username || 'shimmy_ming').replace(/^@/, '').trim();
-  if (tiktokConnection) {
-    try { tiktokConnection.disconnect(); } catch (e) {}
-    tiktokConnection = null;
+let currentTargetUser = null;
+let reconnectTimer = null;
+let isConnecting = false;
+
+function stopTikTokConnection() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
   }
-
-  try {
-    const { WebcastPushConnection } = require('tiktok-live-connector');
-    tiktokConnection = new WebcastPushConnection(cleanUser, {
-      processInitialData: false,
-      enableExtendedGiftInfo: true
-    });
-
-    tiktokConnection.connect().then(state => {
-      isConnected = true;
-      if (mainWindow) {
-        mainWindow.webContents.send('tiktok:status', {
-          status: 'connected',
-          roomId: state.roomId,
-          username: cleanUser
-        });
-      }
-    }).catch(err => {
-      isConnected = false;
-      if (mainWindow) {
-        mainWindow.webContents.send('tiktok:status', {
-          status: 'offline',
-          username: cleanUser,
-          message: err.message || 'Streamer is currently offline. Test mode active!'
-        });
-      }
-    });
-
-    // Listeners
-    tiktokConnection.on('chat', data => {
-      const viewerName = data.nickname || data.uniqueId || 'Viewer';
-      const username = (data.uniqueId || '').toLowerCase();
-      let role = 'viewer';
-      if (username === cleanUser.toLowerCase() || viewerName.toLowerCase() === cleanUser.toLowerCase()) role = 'streamer';
-      else if (data.isModerator) role = 'moderator';
-      else if (data.isSubscriber) role = 'subscriber';
-      else if (data.isTopGifter || data.topGifter) role = 'top_gifter';
-
-      const payload = {
-        type: 'chat',
-        user: viewerName,
-        nickname: viewerName,
-        username: data.uniqueId || '',
-        comment: data.comment,
-        avatar: data.profilePictureUrl || '/assets/avatar.png',
-        badge: data.userBadges?.[0]?.name || (role !== 'viewer' ? role.replace('_', ' ') : null),
-        role
-      };
-      overlayServer.broadcast(payload);
-      if (mainWindow) mainWindow.webContents.send('tiktok:event', payload);
-    });
-
-    tiktokConnection.on('gift', data => {
-      let giftPic = data.giftPictureUrl ||
-                    data.extendedGiftInfo?.image?.url_list?.[0] ||
-                    data.extendedGiftInfo?.icon?.url_list?.[0] ||
-                    data.image?.url_list?.[0] || null;
-
-      const safeKey = (data.giftName || 'rose').toLowerCase().replace(/\s+/g, '_');
-
-      // Check catalog by ID or name
-      if (!giftPic && giftCatalog.length > 0) {
-        const match = giftCatalog.find(g => g.id === data.giftId || (g.name && data.giftName && g.name.toLowerCase() === data.giftName.toLowerCase()));
-        if (match) giftPic = match.image;
-      }
-
-      // Check local bundled gift icons
-      if (!giftPic) {
-        const localPath = path.join(__dirname, 'assets', 'gifts', `${safeKey}.png`);
-        if (fs.existsSync(localPath)) giftPic = `/assets/gifts/${safeKey}.png`;
-      }
-
-      const coinCount = data.diamondCount || data.extendedGiftInfo?.diamond_count || data.coins || 1;
-      const viewerName = data.nickname || data.uniqueId || 'Viewer';
-      const payload = {
-        type: 'gift',
-        user: viewerName,
-        nickname: viewerName,
-        username: data.uniqueId || '',
-        giftId: safeKey,
-        giftName: data.giftName || 'Gift',
-        giftPictureUrl: giftPic,
-        count: data.repeatCount || data.count || 1,
-        coins: coinCount,
-        diamonds: coinCount,
-        avatar: data.profilePictureUrl || '/assets/avatar.png'
-      };
-      overlayServer.broadcast(payload);
-      if (mainWindow) mainWindow.webContents.send('tiktok:event', payload);
-    });
-
-    tiktokConnection.on('like', data => {
-      const viewerName = data.nickname || data.uniqueId || 'Viewer';
-      const payload = {
-        type: 'like',
-        user: viewerName,
-        nickname: viewerName,
-        username: data.uniqueId || '',
-        count: data.likeCount || 1,
-        totalLikes: data.totalLikeCount || 0
-      };
-      overlayServer.broadcast(payload);
-      if (mainWindow) mainWindow.webContents.send('tiktok:event', payload);
-    });
-
-    tiktokConnection.on('member', data => {
-      const viewerName = data.nickname || data.uniqueId || 'Viewer';
-      const payload = {
-        type: 'join',
-        user: viewerName,
-        nickname: viewerName,
-        username: data.uniqueId || '',
-        avatar: data.profilePictureUrl || '/assets/avatar.png'
-      };
-      overlayServer.broadcast(payload);
-      if (mainWindow) mainWindow.webContents.send('tiktok:event', payload);
-    });
-
-    tiktokConnection.on('follow', data => {
-      const viewerName = data.nickname || data.uniqueId || 'Viewer';
-      const payload = {
-        type: 'follow',
-        user: viewerName,
-        nickname: viewerName,
-        username: data.uniqueId || '',
-        avatar: data.profilePictureUrl || '/assets/avatar.png'
-      };
-      overlayServer.broadcast(payload);
-      if (mainWindow) mainWindow.webContents.send('tiktok:event', payload);
-    });
-
-    tiktokConnection.on('share', data => {
-      const viewerName = data.nickname || data.uniqueId || 'Viewer';
-      const payload = {
-        type: 'share',
-        user: viewerName,
-        nickname: viewerName,
-        username: data.uniqueId || ''
-      };
-      overlayServer.broadcast(payload);
-      if (mainWindow) mainWindow.webContents.send('tiktok:event', payload);
-    });
-
-    tiktokConnection.on('disconnected', () => {
-      isConnected = false;
-      if (mainWindow) mainWindow.webContents.send('tiktok:status', { status: 'disconnected', username: cleanUser });
-    });
-
-    return { success: true, status: 'connecting', username: cleanUser };
-  } catch (e) {
-    console.warn('TikTok Live Connector initialization note:', e.message);
-    if (mainWindow) {
-      mainWindow.webContents.send('tiktok:status', {
-        status: 'offline',
-        username: cleanUser,
-        message: 'Live stream listener initialized in offline test mode.'
-      });
-    }
-    return { success: true, status: 'test-mode', username: cleanUser };
-  }
-});
-
-// TikTok Disconnect
-ipcMain.handle('tiktok:disconnect', () => {
   if (tiktokConnection) {
     try { tiktokConnection.disconnect(); } catch (e) {}
     tiktokConnection = null;
   }
   isConnected = false;
+  isConnecting = false;
+}
+
+function attachTikTokListeners(conn, targetUser) {
+  conn.on('chat', data => {
+    const viewerName = data.nickname || data.uniqueId || 'Viewer';
+    const username = (data.uniqueId || '').toLowerCase();
+    let role = 'viewer';
+    if (username === targetUser.toLowerCase() || viewerName.toLowerCase() === targetUser.toLowerCase()) role = 'streamer';
+    else if (data.isModerator) role = 'moderator';
+    else if (data.isSubscriber) role = 'subscriber';
+    else if (data.isTopGifter || data.topGifter) role = 'top_gifter';
+
+    const payload = {
+      type: 'chat',
+      user: viewerName,
+      nickname: viewerName,
+      username: data.uniqueId || '',
+      comment: data.comment,
+      avatar: data.profilePictureUrl || '../assets/avatar.png',
+      badge: data.userBadges?.[0]?.name || (role !== 'viewer' ? role.replace('_', ' ') : null),
+      role
+    };
+    overlayServer.broadcast(payload);
+    if (mainWindow) mainWindow.webContents.send('tiktok:event', payload);
+  });
+
+  conn.on('gift', data => {
+    let giftPic = data.giftPictureUrl ||
+                  data.extendedGiftInfo?.image?.url_list?.[0] ||
+                  data.extendedGiftInfo?.icon?.url_list?.[0] ||
+                  data.image?.url_list?.[0] || null;
+
+    const safeKey = (data.giftName || 'rose').toLowerCase().replace(/\s+/g, '_');
+
+    if (!giftPic && giftCatalog.length > 0) {
+      const match = giftCatalog.find(g => g.id === data.giftId || (g.name && data.giftName && g.name.toLowerCase() === data.giftName.toLowerCase()));
+      if (match) giftPic = match.image;
+    }
+
+    if (!giftPic) {
+      const localPath = path.join(__dirname, 'assets', 'gifts', `${safeKey}.png`);
+      if (fs.existsSync(localPath)) giftPic = `/assets/gifts/${safeKey}.png`;
+    }
+
+    const coinCount = data.diamondCount || data.extendedGiftInfo?.diamond_count || data.coins || 1;
+    const viewerName = data.nickname || data.uniqueId || 'Viewer';
+    const payload = {
+      type: 'gift',
+      user: viewerName,
+      nickname: viewerName,
+      username: data.uniqueId || '',
+      giftId: safeKey,
+      giftName: data.giftName || 'Gift',
+      giftPictureUrl: giftPic,
+      count: data.repeatCount || data.count || 1,
+      coins: coinCount,
+      diamonds: coinCount,
+      avatar: data.profilePictureUrl || '../assets/avatar.png'
+    };
+    overlayServer.broadcast(payload);
+    if (mainWindow) mainWindow.webContents.send('tiktok:event', payload);
+  });
+
+  conn.on('like', data => {
+    const viewerName = data.nickname || data.uniqueId || 'Viewer';
+    const payload = {
+      type: 'like',
+      user: viewerName,
+      nickname: viewerName,
+      username: data.uniqueId || '',
+      count: data.likeCount || 1,
+      totalLikes: data.totalLikeCount || 0
+    };
+    overlayServer.broadcast(payload);
+    if (mainWindow) mainWindow.webContents.send('tiktok:event', payload);
+  });
+
+  conn.on('member', data => {
+    const viewerName = data.nickname || data.uniqueId || 'Viewer';
+    const payload = {
+      type: 'join',
+      user: viewerName,
+      nickname: viewerName,
+      username: data.uniqueId || '',
+      avatar: data.profilePictureUrl || '../assets/avatar.png'
+    };
+    overlayServer.broadcast(payload);
+    if (mainWindow) mainWindow.webContents.send('tiktok:event', payload);
+  });
+
+  conn.on('follow', data => {
+    const viewerName = data.nickname || data.uniqueId || 'Viewer';
+    const payload = {
+      type: 'follow',
+      user: viewerName,
+      nickname: viewerName,
+      username: data.uniqueId || '',
+      avatar: data.profilePictureUrl || '../assets/avatar.png'
+    };
+    overlayServer.broadcast(payload);
+    if (mainWindow) mainWindow.webContents.send('tiktok:event', payload);
+  });
+
+  conn.on('share', data => {
+    const viewerName = data.nickname || data.uniqueId || 'Viewer';
+    const payload = {
+      type: 'share',
+      user: viewerName,
+      nickname: viewerName,
+      username: data.uniqueId || ''
+    };
+    overlayServer.broadcast(payload);
+    if (mainWindow) mainWindow.webContents.send('tiktok:event', payload);
+  });
+
+  conn.on('disconnected', () => {
+    isConnected = false;
+    isConnecting = false;
+    console.log(`Stream disconnected for @${targetUser}. Resuming background auto-reconnect...`);
+    if (mainWindow) {
+      mainWindow.webContents.send('tiktok:status', {
+        status: 'waiting',
+        username: targetUser,
+        message: 'Live stream ended or disconnected. Reconnecting automatically...'
+      });
+    }
+    if (!reconnectTimer && currentTargetUser) {
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        attemptConnect(targetUser);
+      }, 8000);
+    }
+  });
+}
+
+function attemptConnect(targetUser) {
+  if (!targetUser || isConnected || isConnecting) return;
+  isConnecting = true;
+
+  try {
+    const { WebcastPushConnection } = require('tiktok-live-connector');
+    const conn = new WebcastPushConnection(targetUser, {
+      processInitialData: false,
+      enableExtendedGiftInfo: true
+    });
+    tiktokConnection = conn;
+
+    conn.connect().then(state => {
+      isConnecting = false;
+      if (tiktokConnection !== conn) return;
+      isConnected = true;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+
+      console.log(`Successfully connected to TikTok Live for @${targetUser} (Room: ${state.roomId})`);
+      if (mainWindow) {
+        mainWindow.webContents.send('tiktok:status', {
+          status: 'connected',
+          roomId: state.roomId,
+          username: targetUser
+        });
+      }
+    }).catch(err => {
+      isConnecting = false;
+      isConnected = false;
+      if (tiktokConnection !== conn) return;
+
+      console.log(`@${targetUser} is offline (${err.message || 'not live'}). Auto-checking again in 10s...`);
+      if (mainWindow) {
+        mainWindow.webContents.send('tiktok:status', {
+          status: 'waiting',
+          username: targetUser,
+          message: `@${targetUser} is not live yet. Shing Live will auto-connect when you start streaming.`
+        });
+      }
+
+      if (!reconnectTimer && currentTargetUser === targetUser) {
+        reconnectTimer = setTimeout(() => {
+          reconnectTimer = null;
+          attemptConnect(targetUser);
+        }, 10000);
+      }
+    });
+
+    attachTikTokListeners(conn, targetUser);
+  } catch (err) {
+    isConnecting = false;
+    isConnected = false;
+    console.warn('Connector initialization note:', err.message);
+    if (!reconnectTimer && currentTargetUser === targetUser) {
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        attemptConnect(targetUser);
+      }, 12000);
+    }
+  }
+}
+
+// TikTok Connect
+ipcMain.handle('tiktok:connect', async (evt, username) => {
+  const cleanUser = (username || 'shimmy_ming').replace(/^@/, '').trim();
+  currentTargetUser = cleanUser;
+  stopTikTokConnection();
+  currentTargetUser = cleanUser;
+
+  attemptConnect(cleanUser);
+  return { success: true, status: 'connecting', username: cleanUser };
+});
+
+// TikTok Disconnect
+ipcMain.handle('tiktok:disconnect', () => {
+  currentTargetUser = null;
+  stopTikTokConnection();
   if (mainWindow) mainWindow.webContents.send('tiktok:status', { status: 'disconnected' });
   return { success: true };
 });
