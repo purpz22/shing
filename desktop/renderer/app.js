@@ -1203,7 +1203,7 @@ async function handleSearchUser() {
 
 // App Updater Manager Logic
 const updateState = {
-  currentVersion: '1.2.9',
+  currentVersion: '1.3.0',
   latestVersion: null,
   hasUpdate: false,
   release: null,

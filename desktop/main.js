@@ -672,7 +672,8 @@ ipcMain.handle('jar:clear', () => {
 
 // Open overlay URL in external browser
 ipcMain.handle('overlay:open', (evt, name) => {
-  const url = `http://localhost:${PORT}/overlays/${name}`;
+  const clean = String(name || '').replace(/\.html?$/i, '');
+  const url = `http://localhost:${PORT}/overlays/${clean}.html`;
   shell.openExternal(url);
   return { success: true, url };
 });

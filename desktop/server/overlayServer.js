@@ -514,10 +514,10 @@ class OverlayServer {
       return res.end(JSON.stringify({ latest: '1.0.0', releases: [] }));
     }
 
-    // Serve overlays
+    // Serve overlays (supports both /overlays/triggers and /overlays/triggers.html for TikTok LIVE Studio)
     if (pathname.startsWith('/overlays/')) {
-      const name = pathname.replace('/overlays/', '').split('?')[0];
-      const safeName = name.replace(/[^a-zA-Z0-9_-]/g, '');
+      const rawName = pathname.replace('/overlays/', '').split('?')[0].replace(/\/+$/, '').replace(/\.html?$/i, '');
+      const safeName = rawName.replace(/[^a-zA-Z0-9_-]/g, '');
       const filePath = path.join(this.baseDir, 'overlays', `${safeName}.html`);
       return this.serveFile(filePath, 'text/html', res);
     }
