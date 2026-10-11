@@ -114,6 +114,7 @@ class OverlayServer {
         interval: 30
       },
       chat: {
+        theme: 'pastel-purple',
         fontSize: 14,
         bubbleRadius: 16,
         autoFadeSec: 15,

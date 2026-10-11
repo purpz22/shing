@@ -389,6 +389,7 @@ async function initSettings() {
 
   // Populate Chat
   if (appSettings.chat) {
+    if ($('chat-theme')) $('chat-theme').value = appSettings.chat.theme || 'pastel-purple';
     $('chat-font-size').value = appSettings.chat.fontSize || 14;
     $('chat-font-val').textContent = `${$('chat-font-size').value}px`;
     $('chat-radius').value = appSettings.chat.bubbleRadius || 16;
@@ -920,6 +921,18 @@ function openChangelogModal() {
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
     {
+      version: '1.2.2',
+      releaseName: 'Shing Live v1.2.2 - Chat Overlay Themes & Stream Auto-Polling',
+      releaseDate: '2026-10-11',
+      summary: '8 visual themes for the chat overlay, live preview box syncing, and background auto-reconnect stream polling.',
+      highlights: [
+        'Chat Overlay Themes: 8 themes including Pastel Purple, Dark Cyber Neon, Strawberry Milk, Matcha Latte, Sunset Peach, Frosted Glass, Midnight Dark, and Retro Arcade',
+        'Live Preview Sync: Real-time visual theme updates directly inside the settings tab',
+        'Continuous Stream Polling: Auto-connect loop so launching the app before going live seamlessly connects as soon as stream starts',
+        'TikTok Avatars: Profile picture and bio extraction directly from live streams with offline fallback'
+      ]
+    },
+    {
       version: '1.1.0',
       releaseName: 'Shing Studio v1.1.0 - Viewer Display Names & Coins HUD',
       releaseDate: '2026-10-11',
@@ -1247,13 +1260,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Chat Settings & Live Preview
   function updateChatPreviewBox() {
+    const previewContainer = $('dashboard-chat-preview');
+    const theme = $('chat-theme') ? $('chat-theme').value : 'pastel-purple';
+    const shape = $('chat-avatar-shape') ? $('chat-avatar-shape').value : 'circle';
+    const radius = $('chat-radius') ? $('chat-radius').value : 16;
+
+    if (previewContainer) {
+      previewContainer.className = `chat-dash-preview theme-${theme}`;
+      previewContainer.style.setProperty('--bubble-radius', `${radius}px`);
+    }
+
     const wrap = document.querySelector('.preview-pfp-wrap');
-    if (wrap && $('chat-avatar-shape')) {
-      const shape = $('chat-avatar-shape').value;
+    if (wrap) {
       wrap.className = `preview-pfp-wrap shape-${shape}`;
     }
   }
 
+  $('chat-theme')?.addEventListener('change', updateChatPreviewBox);
   $('chat-avatar-shape')?.addEventListener('change', updateChatPreviewBox);
 
   $('chat-font-size').addEventListener('input', () => {
@@ -1261,9 +1284,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   $('chat-radius').addEventListener('input', () => {
     $('chat-radius-val').textContent = `${$('chat-radius').value}px`;
+    updateChatPreviewBox();
   });
   $('save-chat-btn').addEventListener('click', () => {
     appSettings.chat = {
+      theme: $('chat-theme') ? $('chat-theme').value : 'pastel-purple',
       fontSize: +$('chat-font-size').value,
       bubbleRadius: +$('chat-radius').value,
       autoFadeSec: +$('chat-autofade').value,
@@ -1285,13 +1310,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const previewContainer = $('dashboard-chat-preview');
     if (previewContainer) {
+      const theme = $('chat-theme') ? $('chat-theme').value : 'pastel-purple';
+      const shape = $('chat-avatar-shape') ? $('chat-avatar-shape').value : 'circle';
+      const radius = $('chat-radius') ? $('chat-radius').value : 16;
+      previewContainer.className = `chat-dash-preview theme-${theme}`;
+      previewContainer.style.setProperty('--bubble-radius', `${radius}px`);
+
       const roleBadgeText = role === 'streamer' ? 'Streamer' : (role === 'moderator' ? 'Mod' : (role === 'top_gifter' ? 'Top Gifter' : (role === 'subscriber' ? 'Sub' : '')));
       const badgeHtml = roleBadgeText ? `<span class="badge badge-${role === 'top_gifter' ? 'gifter' : role}">${roleBadgeText}</span>` : '';
-      const shape = $('chat-avatar-shape') ? $('chat-avatar-shape').value : 'circle';
       previewContainer.innerHTML = `
         <div class="preview-chat-msg role-${role}">
           <div class="preview-pfp-wrap shape-${shape}">
-            <img src="/assets/avatar.png" class="preview-pfp-img" alt="PFP">
+            <img src="../assets/avatar.png" class="preview-pfp-img" alt="PFP">
           </div>
           <div class="preview-chat-body">
             <div class="preview-chat-hdr">

@@ -1,6 +1,23 @@
 {
-    "latest":  "1.2.1",
+    "latest":  "1.2.2",
     "releases":  [
+                     {
+                         "version":  "1.2.2",
+                         "releaseName":  "Shing Live v1.2.2 - Chat Overlay Themes \u0026 Stream Auto-Polling",
+                         "releaseDate":  "2026-10-11",
+                         "type":  "feature",
+                         "summary":  "8 custom visual themes for the cute speech bubble chat overlay with live preview syncing and stream auto-polling reconnect.",
+                         "downloadUrl":  "https://github.com/purpz22/shing/releases/download/v1.2.2/shing-live-v1.2.2.zip",
+                         "highlights":  [
+                                            "Chat Overlay Themes: 8 themes (Pastel Purple, Dark Cyber Neon, Strawberry Milk, Matcha Latte, Sunset Peach, Frosted Glass, Midnight Dark, Retro Arcade)",
+                                            "Live Dashboard Sync: Real-time visual updates in settings tab when switching themes",
+                                            "Automatic Stream Polling: Background reconnect loop for streamers launching before starting live stream",
+                                            "TikTok Profile Avatars: Reliable profile picture extraction directly from live streams"
+                                        ],
+                         "notes":  "Visual chat theme customization and streamer connection improvements.",
+                         "packageSize":  "4.29 MB",
+                         "checksum":  "8392cbadceacedcbd08b8d12e28bddfd833fe9ee879e2ebdd02296851aead36c"
+                     },
                      {
                          "version":  "1.2.1",
                          "releaseName":  "Shing Live v1.2.1 - Companion Cat Meow Audio \u0026 20s-30s Timer",

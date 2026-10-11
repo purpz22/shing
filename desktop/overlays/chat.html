@@ -25,17 +25,373 @@
     pointer-events: none;
   }
 
+  /* Chat Theme Presets */
+  :root {
+    --bubble-bg: rgba(255, 255, 255, 0.95);
+    --bubble-border: #dcd0f8;
+    --bubble-shadow: 0 6px 18px rgba(123, 63, 228, 0.12);
+    --bubble-backdrop: blur(10px);
+    --text-color: #231737;
+    --uname-color: #4a218c;
+    --uname-streamer: #6b21a8;
+    --uname-moderator: #0369a1;
+    --uname-gifter: #b45309;
+    --uname-subscriber: #be185d;
+    --badge-streamer-bg: #ede9fe;
+    --badge-streamer-color: #6d28d9;
+    --badge-streamer-border: #ddd6fe;
+    --badge-mod-bg: #e0f2fe;
+    --badge-mod-color: #0284c7;
+    --badge-mod-border: #bae6fd;
+    --badge-gifter-bg: #fef3c7;
+    --badge-gifter-color: #d97706;
+    --badge-gifter-border: #fde68a;
+    --badge-sub-bg: #fce7f3;
+    --badge-sub-color: #db2777;
+    --badge-sub-border: #fbcfe8;
+    --badge-viewer-bg: #f3f0f9;
+    --badge-viewer-color: #7c6f93;
+    --badge-viewer-border: transparent;
+    --ring-streamer: #7b3fe4;
+    --ring-streamer-glow: rgba(123, 63, 228, 0.55);
+    --ring-mod: #0284c7;
+    --ring-mod-glow: rgba(2, 132, 199, 0.5);
+    --ring-gifter: #f59e0b;
+    --ring-gifter-glow: rgba(245, 158, 11, 0.6);
+    --ring-sub: #ec4899;
+    --ring-sub-glow: rgba(236, 72, 153, 0.5);
+    --ring-viewer: #c4b5fd;
+    --ring-viewer-glow: rgba(196, 181, 253, 0.4);
+    --avatar-tag-bg: #ffffff;
+  }
+
+  body.theme-pastel-purple {
+    --bubble-bg: rgba(255, 255, 255, 0.95);
+    --bubble-border: #dcd0f8;
+    --bubble-shadow: 0 6px 18px rgba(123, 63, 228, 0.12);
+    --bubble-backdrop: blur(10px);
+    --text-color: #231737;
+    --uname-color: #4a218c;
+    --uname-streamer: #6b21a8;
+    --uname-moderator: #0369a1;
+    --uname-gifter: #b45309;
+    --uname-subscriber: #be185d;
+    --badge-streamer-bg: #ede9fe;
+    --badge-streamer-color: #6d28d9;
+    --badge-streamer-border: #ddd6fe;
+    --badge-mod-bg: #e0f2fe;
+    --badge-mod-color: #0284c7;
+    --badge-mod-border: #bae6fd;
+    --badge-gifter-bg: #fef3c7;
+    --badge-gifter-color: #d97706;
+    --badge-gifter-border: #fde68a;
+    --badge-sub-bg: #fce7f3;
+    --badge-sub-color: #db2777;
+    --badge-sub-border: #fbcfe8;
+    --badge-viewer-bg: #f3f0f9;
+    --badge-viewer-color: #7c6f93;
+    --badge-viewer-border: transparent;
+    --ring-streamer: #7b3fe4;
+    --ring-streamer-glow: rgba(123, 63, 228, 0.55);
+    --ring-mod: #0284c7;
+    --ring-mod-glow: rgba(2, 132, 199, 0.5);
+    --ring-gifter: #f59e0b;
+    --ring-gifter-glow: rgba(245, 158, 11, 0.6);
+    --ring-sub: #ec4899;
+    --ring-sub-glow: rgba(236, 72, 153, 0.5);
+    --ring-viewer: #c4b5fd;
+    --ring-viewer-glow: rgba(196, 181, 253, 0.4);
+    --avatar-tag-bg: #ffffff;
+  }
+
+  body.theme-dark-neon {
+    --bubble-bg: rgba(15, 17, 26, 0.92);
+    --bubble-border: #00e5ff;
+    --bubble-shadow: 0 8px 24px rgba(0, 229, 255, 0.18), inset 0 0 12px rgba(0, 229, 255, 0.05);
+    --bubble-backdrop: blur(12px);
+    --text-color: #e2e8f0;
+    --uname-color: #38bdf8;
+    --uname-streamer: #f43f5e;
+    --uname-moderator: #22d3ee;
+    --uname-gifter: #fbbf24;
+    --uname-subscriber: #ec4899;
+    --badge-streamer-bg: rgba(244, 63, 94, 0.2);
+    --badge-streamer-color: #fb7185;
+    --badge-streamer-border: #f43f5e;
+    --badge-mod-bg: rgba(34, 211, 238, 0.2);
+    --badge-mod-color: #38bdf8;
+    --badge-mod-border: #22d3ee;
+    --badge-gifter-bg: rgba(251, 191, 36, 0.2);
+    --badge-gifter-color: #fde047;
+    --badge-gifter-border: #fbbf24;
+    --badge-sub-bg: rgba(236, 72, 153, 0.2);
+    --badge-sub-color: #f472b6;
+    --badge-sub-border: #ec4899;
+    --badge-viewer-bg: rgba(30, 41, 59, 0.8);
+    --badge-viewer-color: #94a3b8;
+    --badge-viewer-border: #334155;
+    --ring-streamer: #f43f5e;
+    --ring-streamer-glow: rgba(244, 63, 94, 0.7);
+    --ring-mod: #22d3ee;
+    --ring-mod-glow: rgba(34, 211, 238, 0.7);
+    --ring-gifter: #fbbf24;
+    --ring-gifter-glow: rgba(251, 191, 36, 0.8);
+    --ring-sub: #ec4899;
+    --ring-sub-glow: rgba(236, 72, 153, 0.7);
+    --ring-viewer: #00e5ff;
+    --ring-viewer-glow: rgba(0, 229, 255, 0.4);
+    --avatar-tag-bg: #0f172a;
+  }
+
+  body.theme-strawberry-pink {
+    --bubble-bg: rgba(255, 245, 248, 0.96);
+    --bubble-border: #fbcfe8;
+    --bubble-shadow: 0 6px 20px rgba(244, 63, 94, 0.12);
+    --bubble-backdrop: blur(10px);
+    --text-color: #4c0519;
+    --uname-color: #be123c;
+    --uname-streamer: #e11d48;
+    --uname-moderator: #0284c7;
+    --uname-gifter: #d97706;
+    --uname-subscriber: #db2777;
+    --badge-streamer-bg: #ffe4e6;
+    --badge-streamer-color: #e11d48;
+    --badge-streamer-border: #fecdd3;
+    --badge-mod-bg: #e0f2fe;
+    --badge-mod-color: #0284c7;
+    --badge-mod-border: #bae6fd;
+    --badge-gifter-bg: #fef3c7;
+    --badge-gifter-color: #d97706;
+    --badge-gifter-border: #fde68a;
+    --badge-sub-bg: #fdf2f8;
+    --badge-sub-color: #db2777;
+    --badge-sub-border: #fbcfe8;
+    --badge-viewer-bg: #fff1f2;
+    --badge-viewer-color: #9f1239;
+    --badge-viewer-border: #ffe4e6;
+    --ring-streamer: #f43f5e;
+    --ring-streamer-glow: rgba(244, 63, 94, 0.5);
+    --ring-mod: #38bdf8;
+    --ring-mod-glow: rgba(56, 189, 248, 0.4);
+    --ring-gifter: #f59e0b;
+    --ring-gifter-glow: rgba(245, 158, 11, 0.5);
+    --ring-sub: #fb7185;
+    --ring-sub-glow: rgba(251, 113, 133, 0.5);
+    --ring-viewer: #f472b6;
+    --ring-viewer-glow: rgba(244, 114, 182, 0.35);
+    --avatar-tag-bg: #ffffff;
+  }
+
+  body.theme-matcha-green {
+    --bubble-bg: rgba(250, 252, 248, 0.96);
+    --bubble-border: #c7d2b8;
+    --bubble-shadow: 0 6px 18px rgba(77, 112, 60, 0.12);
+    --bubble-backdrop: blur(10px);
+    --text-color: #1e2d14;
+    --uname-color: #3b5e28;
+    --uname-streamer: #2d5a1b;
+    --uname-moderator: #0d6e6e;
+    --uname-gifter: #b45309;
+    --uname-subscriber: #15803d;
+    --badge-streamer-bg: #e6f4ea;
+    --badge-streamer-color: #1e7e34;
+    --badge-streamer-border: #b7e1cd;
+    --badge-mod-bg: #e0f2f1;
+    --badge-mod-color: #00796b;
+    --badge-mod-border: #b2dfdb;
+    --badge-gifter-bg: #fef9e7;
+    --badge-gifter-color: #b7791f;
+    --badge-gifter-border: #fef08a;
+    --badge-sub-bg: #edf7ed;
+    --badge-sub-color: #2e7d32;
+    --badge-sub-border: #c8e6c9;
+    --badge-viewer-bg: #f1f5eb;
+    --badge-viewer-color: #4a5d3f;
+    --badge-viewer-border: #dce4d2;
+    --ring-streamer: #2e7d32;
+    --ring-streamer-glow: rgba(46, 125, 50, 0.5);
+    --ring-mod: #00796b;
+    --ring-mod-glow: rgba(0, 121, 107, 0.4);
+    --ring-gifter: #f59e0b;
+    --ring-gifter-glow: rgba(245, 158, 11, 0.5);
+    --ring-sub: #16a34a;
+    --ring-sub-glow: rgba(22, 163, 74, 0.5);
+    --ring-viewer: #84cc16;
+    --ring-viewer-glow: rgba(132, 204, 22, 0.35);
+    --avatar-tag-bg: #ffffff;
+  }
+
+  body.theme-sunset-peach {
+    --bubble-bg: rgba(255, 248, 242, 0.96);
+    --bubble-border: #fed7aa;
+    --bubble-shadow: 0 6px 18px rgba(234, 88, 12, 0.12);
+    --bubble-backdrop: blur(10px);
+    --text-color: #431407;
+    --uname-color: #c2410c;
+    --uname-streamer: #ea580c;
+    --uname-moderator: #0284c7;
+    --uname-gifter: #d97706;
+    --uname-subscriber: #db2777;
+    --badge-streamer-bg: #ffedd5;
+    --badge-streamer-color: #ea580c;
+    --badge-streamer-border: #fed7aa;
+    --badge-mod-bg: #e0f2fe;
+    --badge-mod-color: #0284c7;
+    --badge-mod-border: #bae6fd;
+    --badge-gifter-bg: #fef3c7;
+    --badge-gifter-color: #d97706;
+    --badge-gifter-border: #fde68a;
+    --badge-sub-bg: #fce7f3;
+    --badge-sub-color: #db2777;
+    --badge-sub-border: #fbcfe8;
+    --badge-viewer-bg: #fff7ed;
+    --badge-viewer-color: #9a3412;
+    --badge-viewer-border: #ffedd5;
+    --ring-streamer: #f97316;
+    --ring-streamer-glow: rgba(249, 115, 22, 0.55);
+    --ring-mod: #0284c7;
+    --ring-mod-glow: rgba(2, 132, 199, 0.4);
+    --ring-gifter: #f59e0b;
+    --ring-gifter-glow: rgba(245, 158, 11, 0.6);
+    --ring-sub: #fb7185;
+    --ring-sub-glow: rgba(251, 113, 133, 0.5);
+    --ring-viewer: #fdba74;
+    --ring-viewer-glow: rgba(253, 186, 116, 0.4);
+    --avatar-tag-bg: #ffffff;
+  }
+
+  body.theme-glassmorphism {
+    --bubble-bg: rgba(255, 255, 255, 0.52);
+    --bubble-border: rgba(255, 255, 255, 0.85);
+    --bubble-shadow: 0 8px 32px rgba(31, 38, 135, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+    --bubble-backdrop: blur(18px);
+    --text-color: #0f172a;
+    --uname-color: #334155;
+    --uname-streamer: #6366f1;
+    --uname-moderator: #0284c7;
+    --uname-gifter: #d97706;
+    --uname-subscriber: #ec4899;
+    --badge-streamer-bg: rgba(99, 102, 241, 0.15);
+    --badge-streamer-color: #4f46e5;
+    --badge-streamer-border: rgba(99, 102, 241, 0.35);
+    --badge-mod-bg: rgba(2, 132, 199, 0.15);
+    --badge-mod-color: #0284c7;
+    --badge-mod-border: rgba(2, 132, 199, 0.35);
+    --badge-gifter-bg: rgba(217, 119, 6, 0.15);
+    --badge-gifter-color: #b45309;
+    --badge-gifter-border: rgba(217, 119, 6, 0.35);
+    --badge-sub-bg: rgba(236, 72, 153, 0.15);
+    --badge-sub-color: #db2777;
+    --badge-sub-border: rgba(236, 72, 153, 0.35);
+    --badge-viewer-bg: rgba(255, 255, 255, 0.6);
+    --badge-viewer-color: #475569;
+    --badge-viewer-border: rgba(255, 255, 255, 0.8);
+    --ring-streamer: #6366f1;
+    --ring-streamer-glow: rgba(99, 102, 241, 0.6);
+    --ring-mod: #0284c7;
+    --ring-mod-glow: rgba(2, 132, 199, 0.5);
+    --ring-gifter: #f59e0b;
+    --ring-gifter-glow: rgba(245, 158, 11, 0.6);
+    --ring-sub: #ec4899;
+    --ring-sub-glow: rgba(236, 72, 153, 0.5);
+    --ring-viewer: rgba(255, 255, 255, 0.95);
+    --ring-viewer-glow: rgba(255, 255, 255, 0.5);
+    --avatar-tag-bg: rgba(255, 255, 255, 0.9);
+  }
+
+  body.theme-midnight-oled {
+    --bubble-bg: rgba(9, 9, 11, 0.96);
+    --bubble-border: #27272a;
+    --bubble-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+    --bubble-backdrop: blur(14px);
+    --text-color: #f4f4f5;
+    --uname-color: #a1a1aa;
+    --uname-streamer: #a855f7;
+    --uname-moderator: #38bdf8;
+    --uname-gifter: #facc15;
+    --uname-subscriber: #f472b6;
+    --badge-streamer-bg: rgba(168, 85, 247, 0.2);
+    --badge-streamer-color: #c084fc;
+    --badge-streamer-border: #9333ea;
+    --badge-mod-bg: rgba(56, 189, 248, 0.2);
+    --badge-mod-color: #7dd3fc;
+    --badge-mod-border: #0284c7;
+    --badge-gifter-bg: rgba(250, 204, 21, 0.2);
+    --badge-gifter-color: #fde047;
+    --badge-gifter-border: #ca8a04;
+    --badge-sub-bg: rgba(244, 114, 182, 0.2);
+    --badge-sub-color: #f472b6;
+    --badge-sub-border: #db2777;
+    --badge-viewer-bg: #18181b;
+    --badge-viewer-color: #a1a1aa;
+    --badge-viewer-border: #27272a;
+    --ring-streamer: #a855f7;
+    --ring-streamer-glow: rgba(168, 85, 247, 0.7);
+    --ring-mod: #38bdf8;
+    --ring-mod-glow: rgba(56, 189, 248, 0.6);
+    --ring-gifter: #facc15;
+    --ring-gifter-glow: rgba(250, 204, 21, 0.7);
+    --ring-sub: #f472b6;
+    --ring-sub-glow: rgba(244, 114, 182, 0.6);
+    --ring-viewer: #52525b;
+    --ring-viewer-glow: rgba(82, 82, 91, 0.4);
+    --avatar-tag-bg: #18181b;
+  }
+
+  body.theme-retro-pixel {
+    --bubble-bg: #fffdf5;
+    --bubble-border: #18181b;
+    --bubble-shadow: 4px 4px 0px #18181b;
+    --bubble-backdrop: none;
+    --text-color: #18181b;
+    --uname-color: #3f3f46;
+    --uname-streamer: #7c3aed;
+    --uname-moderator: #0284c7;
+    --uname-gifter: #d97706;
+    --uname-subscriber: #db2777;
+    --badge-streamer-bg: #ede9fe;
+    --badge-streamer-color: #6d28d9;
+    --badge-streamer-border: #18181b;
+    --badge-mod-bg: #e0f2fe;
+    --badge-mod-color: #0284c7;
+    --badge-mod-border: #18181b;
+    --badge-gifter-bg: #fef3c7;
+    --badge-gifter-color: #d97706;
+    --badge-gifter-border: #18181b;
+    --badge-sub-bg: #fce7f3;
+    --badge-sub-color: #db2777;
+    --badge-sub-border: #18181b;
+    --badge-viewer-bg: #f4f4f5;
+    --badge-viewer-color: #18181b;
+    --badge-viewer-border: #18181b;
+    --ring-streamer: #7c3aed;
+    --ring-streamer-glow: none;
+    --ring-mod: #0284c7;
+    --ring-mod-glow: none;
+    --ring-gifter: #d97706;
+    --ring-gifter-glow: none;
+    --ring-sub: #db2777;
+    --ring-sub-glow: none;
+    --ring-viewer: #18181b;
+    --ring-viewer-glow: none;
+    --avatar-tag-bg: #fffdf5;
+  }
+  body.theme-retro-pixel .chat-msg {
+    border-width: 2px !important;
+  }
+
   /* Chat Message Card */
   .chat-msg {
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    background: rgba(255, 255, 255, 0.95);
-    border: 1.5px solid #dcd0f8;
-    box-shadow: 0 6px 18px rgba(123, 63, 228, 0.12);
+    background: var(--bubble-bg, rgba(255, 255, 255, 0.95));
+    border: 1.5px solid var(--bubble-border, #dcd0f8);
+    box-shadow: var(--bubble-shadow, 0 6px 18px rgba(123, 63, 228, 0.12));
     border-radius: var(--bubble-radius, 16px);
     padding: 10px 14px;
-    backdrop-filter: blur(10px);
+    backdrop-filter: var(--bubble-backdrop, blur(10px));
+    -webkit-backdrop-filter: var(--bubble-backdrop, blur(10px));
     transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
     animation: bubbleEnter 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.25);
     will-change: transform, opacity;
@@ -128,16 +484,16 @@
 
   /* Role Themes */
   .role-streamer .avatar-ring {
-    border-color: #7b3fe4;
-    box-shadow: 0 0 10px rgba(123, 63, 228, 0.55), inset 0 0 4px rgba(123, 63, 228, 0.3);
+    border-color: var(--ring-streamer, #7b3fe4);
+    box-shadow: 0 0 10px var(--ring-streamer-glow, rgba(123, 63, 228, 0.55)), inset 0 0 4px var(--ring-streamer-glow, rgba(123, 63, 228, 0.3));
   }
   .role-moderator .avatar-ring {
-    border-color: #0284c7;
-    box-shadow: 0 0 10px rgba(2, 132, 199, 0.5);
+    border-color: var(--ring-mod, #0284c7);
+    box-shadow: 0 0 10px var(--ring-mod-glow, rgba(2, 132, 199, 0.5));
   }
   .role-top_gifter .avatar-ring {
-    border-color: #f59e0b;
-    box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+    border-color: var(--ring-gifter, #f59e0b);
+    box-shadow: 0 0 10px var(--ring-gifter-glow, rgba(245, 158, 11, 0.6));
     animation: ringRotate 5s linear infinite;
   }
   @keyframes ringRotate {
@@ -145,12 +501,12 @@
     100% { transform: rotate(360deg); }
   }
   .role-subscriber .avatar-ring {
-    border-color: #ec4899;
-    box-shadow: 0 0 8px rgba(236, 72, 153, 0.5);
+    border-color: var(--ring-sub, #ec4899);
+    box-shadow: 0 0 8px var(--ring-sub-glow, rgba(236, 72, 153, 0.5));
   }
   .role-viewer .avatar-ring {
-    border-color: #c4b5fd;
-    box-shadow: 0 0 4px rgba(196, 181, 253, 0.4);
+    border-color: var(--ring-viewer, #c4b5fd);
+    box-shadow: 0 0 4px var(--ring-viewer-glow, rgba(196, 181, 253, 0.4));
   }
 
   /* Role Tag Badge on Avatar */
@@ -164,7 +520,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #fff;
+    background: var(--avatar-tag-bg, #fff);
+    border: 1px solid var(--bubble-border, transparent);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
   }
   .avatar-tag svg {
@@ -191,16 +548,16 @@
   .username {
     font-size: 13px;
     font-weight: 700;
-    color: #4a218c;
+    color: var(--uname-color, #4a218c);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     letter-spacing: -0.2px;
   }
-  .role-streamer .username { color: #6b21a8; }
-  .role-moderator .username { color: #0369a1; }
-  .role-top_gifter .username { color: #b45309; }
-  .role-subscriber .username { color: #be185d; }
+  .role-streamer .username { color: var(--uname-streamer, #6b21a8); }
+  .role-moderator .username { color: var(--uname-moderator, #0369a1); }
+  .role-top_gifter .username { color: var(--uname-gifter, #b45309); }
+  .role-subscriber .username { color: var(--uname-subscriber, #be185d); }
 
   /* Pill Badges */
   .badge {
@@ -214,11 +571,11 @@
     align-items: center;
     gap: 3px;
   }
-  .badge-streamer { background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; }
-  .badge-moderator { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
-  .badge-gifter { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
-  .badge-subscriber { background: #fce7f3; color: #db2777; border: 1px solid #fbcfe8; }
-  .badge-viewer { background: #f3f0f9; color: #7c6f93; }
+  .badge-streamer { background: var(--badge-streamer-bg, #ede9fe); color: var(--badge-streamer-color, #6d28d9); border: 1px solid var(--badge-streamer-border, #ddd6fe); }
+  .badge-moderator { background: var(--badge-mod-bg, #e0f2fe); color: var(--badge-mod-color, #0284c7); border: 1px solid var(--badge-mod-border, #bae6fd); }
+  .badge-gifter { background: var(--badge-gifter-bg, #fef3c7); color: var(--badge-gifter-color, #d97706); border: 1px solid var(--badge-gifter-border, #fde68a); }
+  .badge-subscriber { background: var(--badge-sub-bg, #fce7f3); color: var(--badge-sub-color, #db2777); border: 1px solid var(--badge-sub-border, #fbcfe8); }
+  .badge-viewer { background: var(--badge-viewer-bg, #f3f0f9); color: var(--badge-viewer-color, #7c6f93); border: 1px solid var(--badge-viewer-border, transparent); }
 
   /* Comment Text & Grouping */
   .comment-group {
@@ -228,7 +585,7 @@
   }
   .comment-line {
     font-size: var(--chat-font-size, 14px);
-    color: #231737;
+    color: var(--text-color, #231737);
     line-height: 1.38;
     word-break: break-word;
     animation: lineFadeIn 0.25s ease;
@@ -245,7 +602,7 @@
   }
 </style>
 </head>
-<body class="shape-circle anim-elastic">
+<body class="theme-pastel-purple shape-circle anim-elastic">
 <div id="chat-container"></div>
 
 <script>
@@ -253,6 +610,7 @@
 
 const container = document.getElementById('chat-container');
 let chatSettings = {
+  theme: 'pastel-purple',
   fontSize: 14,
   bubbleRadius: 16,
   autoFadeSec: 15,
@@ -269,7 +627,10 @@ let lastMsgTime = 0;
 
 // Apply styles & shapes to body
 function updateChatVisualStyles() {
-  document.body.className = `shape-${chatSettings.avatarShape || 'circle'} anim-${chatSettings.avatarAnim || 'elastic'}`;
+  const theme = chatSettings.theme || 'pastel-purple';
+  const shape = chatSettings.avatarShape || 'circle';
+  const anim = chatSettings.avatarAnim || 'elastic';
+  document.body.className = `theme-${theme} shape-${shape} anim-${anim}`;
   document.documentElement.style.setProperty('--chat-font-size', `${chatSettings.fontSize || 14}px`);
   document.documentElement.style.setProperty('--bubble-radius', `${chatSettings.bubbleRadius || 16}px`);
 }
