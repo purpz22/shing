@@ -89,9 +89,10 @@ class AppUpdater {
     const currentVersion = this.getCurrentVersion();
     let manifest = null;
 
-    const targetUrl = (customFeedUrl && typeof customFeedUrl === 'string' && customFeedUrl.startsWith('http'))
+    const baseUrl = (customFeedUrl && typeof customFeedUrl === 'string' && customFeedUrl.startsWith('http'))
       ? customFeedUrl
       : 'https://raw.githubusercontent.com/purpz22/shing/main/desktop/releases.json';
+    const targetUrl = baseUrl.includes('?') ? `${baseUrl}&_=${Date.now()}` : `${baseUrl}?_=${Date.now()}`;
 
     try {
       manifest = await this.fetchRemoteManifest(targetUrl);
