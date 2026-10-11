@@ -1,12 +1,12 @@
 {
     "name": "shing-live",
     "productName": "Shing Live",
-    "version": "1.2.5",
+    "version": "1.2.6",
     "description": "Cute pastel streaming companion and OBS overlays for TikTok Live streamers",
     "main": "main.js",
     "scripts": {
         "start": "electron .",
-        "check": "node -e \"require('./main.js')\"",
+        "check": "node --check main.js",
         "package-exe": "powershell -ExecutionPolicy Bypass -File ./build-exe.ps1",
         "build-installer": "powershell -ExecutionPolicy Bypass -File ./build-installer.ps1",
         "build-all": "powershell -ExecutionPolicy Bypass -File ./build-exe.ps1 -BuildInstaller",
@@ -25,7 +25,7 @@
     "license": "MIT",
     "dependencies": {
         "matter-js": "^0.19.0",
-        "tiktok-live-connector": "^1.1.8",
+        "tiktok-live-connector": "^2.5.0",
         "ws": "^8.18.0"
     },
     "devDependencies": {

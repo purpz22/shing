@@ -1333,6 +1333,19 @@ function openChangelogModal() {
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
     {
+      version: '1.2.6',
+      releaseName: 'Shing Live v1.2.6 - Reliable TikTok Live Auto-Connect & Protocol Upgrade',
+      releaseDate: '2026-10-11',
+      summary: 'Upgraded TikTok Live WebSocket connector to latest v2.5.0 protocol, resolved EulerStream signing failures, and implemented resilient auto-connect with instant live detection.',
+      highlights: [
+        'Protocol Upgrade: Migrated to modern TikTokLiveConnection v2.5.0 protocol architecture',
+        'Live Stream Auto-Connect: Fixed dead signing endpoints (EulerStream 403/404) that previously prevented the app from connecting to active streams',
+        'Background Polling: Zero-friction auto-connect that automatically monitors and locks onto the stream the instant the streamer goes live',
+        'Full Message Parsing: High-reliability parsing for chat comments, gifts, likes, joins, follows, and shares with comprehensive attribute fallbacks',
+        'Graceful Error Recovery: Clean disconnect handling, memory leak prevention, and automated 10-second polling retry loops'
+      ]
+    },
+    {
       version: '1.2.5',
       releaseName: 'Shing Live v1.2.5 - Biggest Gift Spotlight, Overflow Physics & Jar Visuals',
       releaseDate: '2026-10-11',

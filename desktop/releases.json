@@ -1,6 +1,24 @@
 {
-    "latest":  "1.2.5",
+    "latest":  "1.2.6",
     "releases":  [
+                     {
+                         "version":  "1.2.6",
+                         "releaseName":  "Shing Live v1.2.6 - Reliable TikTok Live Auto-Connect \u0026 Protocol Upgrade",
+                         "releaseDate":  "2026-10-11",
+                         "type":  "feature",
+                         "summary":  "Upgraded TikTok Live WebSocket connector to latest v2.5.0 protocol, resolved EulerStream signing failures, and implemented resilient auto-connect with instant live detection.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.2.6.zip",
+                         "highlights":  [
+                                            "Protocol Upgrade: Migrated from legacy v1 to modern TikTokLiveConnection v2.5.0 protocol architecture",
+                                            "Live Stream Auto-Connect: Fixed dead signing endpoints (EulerStream 403/404) that previously prevented the app from connecting to active streams",
+                                            "Background Polling: Zero-friction auto-connect that automatically monitors and locks onto the stream the instant the streamer goes live",
+                                            "Full Message Parsing: High-reliability parsing for chat comments, gifts, likes, joins, follows, and shares with comprehensive attribute fallbacks",
+                                            "Graceful Error Recovery: Clean disconnect handling, memory leak prevention, and automated 10-second polling retry loops"
+                                        ],
+                         "notes":  "Critical network and connection engine update restoring seamless TikTok Live streaming integration.",
+                         "packageSize":  "3.99 MB",
+                         "checksum":  "416f4b7fc5e87b257bf46365949634b1a381ec01b791f5b08efab42dcc448f27"
+                     },
                      {
                          "version":  "1.2.5",
                          "releaseName":  "Shing Live v1.2.5 - Biggest Gift Spotlight, Overflow Physics \u0026 Jar Visuals",
