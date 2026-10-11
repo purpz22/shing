@@ -7,7 +7,9 @@
     "scripts": {
         "start": "electron .",
         "check": "node -e \"require('./main.js')\"",
-        "package-exe": "electron-packager . \"Shing Live\" --platform=win32 --arch=x64 --out=dist --icon=assets/app-icon.ico --executable-name=\"Shing Live\" --overwrite --prune=true --win32metadata.ProductName=\"Shing Live\" --win32metadata.FileDescription=\"Shing Live - TikTok Live Streamer Companion\" --win32metadata.OriginalFilename=\"Shing Live.exe\"",
+        "package-exe": "powershell -ExecutionPolicy Bypass -File ./build-exe.ps1",
+        "build-installer": "powershell -ExecutionPolicy Bypass -File ./build-installer.ps1",
+        "build-all": "powershell -ExecutionPolicy Bypass -File ./build-exe.ps1 -BuildInstaller",
         "package-update": "powershell -ExecutionPolicy Bypass -File ./package-update.ps1",
         "sync": "powershell -ExecutionPolicy Bypass -File ./sync-app.ps1"
     },
@@ -28,6 +30,7 @@
     },
     "devDependencies": {
         "electron": "^31.0.2",
-        "electron-packager": "^17.1.2"
+        "electron-packager": "^17.1.2",
+        "innosetup-compiler": "^6.3.1"
     }
 }

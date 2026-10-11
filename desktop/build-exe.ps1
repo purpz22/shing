@@ -1,5 +1,6 @@
 param(
-  [string]$Version = ""
+  [string]$Version = "",
+  [switch]$BuildInstaller
 )
 
 $ErrorActionPreference = "Stop"
@@ -53,6 +54,11 @@ if (Test-Path $exePath) {
   Compress-Archive -Path "$exeDir\*" -DestinationPath $portableZip -Force
   Write-Host "Portable archive created at:"
   Write-Host "  $portableZip"
+  if ($BuildInstaller) {
+    Write-Host "`nInvoking Windows Installer compiler..."
+    & (Join-Path $desktopDir "build-installer.ps1") -Version $appVersion
+  }
+
   Write-Host "`n===================================================="
   Write-Host "Build complete! You can run 'Shing Live.exe' directly."
   Write-Host "===================================================="
