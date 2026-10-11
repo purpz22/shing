@@ -5,6 +5,13 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('api', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
+  exportSettings: () => ipcRenderer.invoke('settings:export'),
+  importSettings: () => ipcRenderer.invoke('settings:import'),
+  onSettingsLoaded: (cb) => {
+    const sub = (evt, data) => cb(data);
+    ipcRenderer.on('settings:loaded', sub);
+    return () => ipcRenderer.removeListener('settings:loaded', sub);
+  },
 
   searchTikTokUser: (username) => ipcRenderer.invoke('tiktok:search', username),
   connectTikTok: (username) => ipcRenderer.invoke('tiktok:connect', username),

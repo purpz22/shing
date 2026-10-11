@@ -19,22 +19,65 @@ class OverlayServer {
     return path.join(this.baseDir, 'settings.json');
   }
 
+  getBackupPath() {
+    return path.join(this.baseDir, 'settings.json.bak');
+  }
+
+  getSettings() {
+    return this.settings;
+  }
+
+  deepMerge(defaults, current) {
+    if (!current || typeof current !== 'object') return defaults;
+    const output = Object.assign({}, defaults);
+    for (const key of Object.keys(current)) {
+      if (current[key] && typeof current[key] === 'object' && !Array.isArray(current[key])) {
+        output[key] = this.deepMerge(defaults[key] || {}, current[key]);
+      } else {
+        output[key] = current[key];
+      }
+    }
+    return output;
+  }
+
   loadSettings() {
+    const defaults = this.getDefaultSettings();
+    const p = this.getSettingsPath();
+    const bak = this.getBackupPath();
+
+    let raw = null;
     try {
-      const p = this.getSettingsPath();
       if (fs.existsSync(p)) {
-        return JSON.parse(fs.readFileSync(p, 'utf8'));
+        raw = JSON.parse(fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, ''));
       }
     } catch (e) {
-      console.warn('Failed to read settings.json, using defaults', e.message);
+      console.warn('Failed to parse settings.json, attempting recovery from backup:', e.message);
+      try {
+        if (fs.existsSync(bak)) {
+          raw = JSON.parse(fs.readFileSync(bak, 'utf8').replace(/^\uFEFF/, ''));
+          fs.copyFileSync(bak, p);
+          console.log('Successfully recovered settings.json from backup!');
+        }
+      } catch (bakErr) {
+        console.error('Backup recovery failed', bakErr.message);
+      }
     }
-    return this.getDefaultSettings();
+
+    if (raw) {
+      return this.deepMerge(defaults, raw);
+    }
+    return defaults;
   }
 
   saveSettings(newSettings) {
-    this.settings = Object.assign({}, this.settings, newSettings);
+    this.settings = this.deepMerge(this.settings, newSettings);
+    const p = this.getSettingsPath();
+    const bak = this.getBackupPath();
     try {
-      fs.writeFileSync(this.getSettingsPath(), JSON.stringify(this.settings, null, 2), 'utf8');
+      if (fs.existsSync(p)) {
+        fs.copyFileSync(p, bak);
+      }
+      fs.writeFileSync(p, JSON.stringify(this.settings, null, 2), 'utf8');
       this.broadcast({ type: 'settings:update', settings: this.settings });
     } catch (e) {
       console.error('Failed to save settings.json', e.message);

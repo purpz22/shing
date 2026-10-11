@@ -116,7 +116,37 @@ if (typeof window.api === 'undefined') {
         const i = eventListeners.indexOf(cb);
         if (i >= 0) eventListeners.splice(i, 1);
       };
-    }
+    },
+    exportSettings: async () => {
+      const blob = new Blob([JSON.stringify(appSettings, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `shing-settings-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return { success: true, filePath: a.download };
+    },
+    importSettings: async () => {
+      return new Promise(resolve => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async () => {
+          if (!input.files.length) return resolve({ canceled: true });
+          try {
+            const text = await input.files[0].text();
+            const settings = JSON.parse(text);
+            await window.api.saveSettings(settings);
+            resolve({ success: true, settings, filePath: input.files[0].name });
+          } catch (e) {
+            resolve({ success: false, error: e.message });
+          }
+        };
+        input.click();
+      });
+    },
+    onSettingsLoaded: () => () => {}
   };
 }
 
@@ -555,6 +585,47 @@ function openChangelogModal() {
   $('modal-changelog').classList.add('active');
 }
 
+// Settings Export & Import Handlers
+async function handleExportSettings() {
+  const feedback = $('backup-action-feedback');
+  try {
+    if (feedback) feedback.textContent = 'Opening save dialog...';
+    const res = await window.api.exportSettings();
+    if (res && res.success) {
+      if (feedback) feedback.textContent = `Backup exported successfully to: ${res.filePath}`;
+      alert(`Settings backup saved successfully!\n\nLocation: ${res.filePath}`);
+    } else if (res && !res.canceled) {
+      if (feedback) feedback.textContent = 'Export cancelled or failed.';
+    } else {
+      if (feedback) feedback.textContent = '';
+    }
+  } catch (err) {
+    if (feedback) feedback.textContent = `Export error: ${err.message}`;
+    alert(`Could not export backup: ${err.message}`);
+  }
+}
+
+async function handleImportSettings() {
+  const feedback = $('backup-action-feedback');
+  try {
+    if (feedback) feedback.textContent = 'Opening file selector...';
+    const res = await window.api.importSettings();
+    if (res && res.success) {
+      if (feedback) feedback.textContent = `Configuration restored successfully from: ${res.filePath}`;
+      alert('Settings restored successfully! UI and overlays have been updated.');
+      await initSettings();
+    } else if (res && res.error) {
+      if (feedback) feedback.textContent = `Import error: ${res.error}`;
+      alert(`Could not restore settings: ${res.error}`);
+    } else {
+      if (feedback) feedback.textContent = '';
+    }
+  } catch (err) {
+    if (feedback) feedback.textContent = `Import error: ${err.message}`;
+    alert(`Failed to import configuration: ${err.message}`);
+  }
+}
+
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
   initSettings();
@@ -933,4 +1004,15 @@ document.addEventListener('DOMContentLoaded', () => {
     appSettings.updates.feedUrl = $('input-update-feed').value.trim();
     saveCurrentSettings();
   });
+
+  // Settings Backup & Restore Listeners
+  $('btn-export-settings')?.addEventListener('click', handleExportSettings);
+  $('btn-import-settings')?.addEventListener('click', handleImportSettings);
+
+  if (typeof window.api !== 'undefined' && window.api.onSettingsLoaded) {
+    window.api.onSettingsLoaded(async newSettings => {
+      appSettings = newSettings;
+      await initSettings();
+    });
+  }
 });

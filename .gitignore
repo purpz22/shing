@@ -3,5 +3,6 @@ desktop/node_modules/
 desktop/dist/
 desktop/settings.json
 desktop/settings.json.bak
+desktop/backups/
 .deploy-cache.json
 *.log

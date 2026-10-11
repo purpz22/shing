@@ -217,13 +217,69 @@ class AppUpdater {
     return { success: true };
   }
 
+  createSettingsBackup(tag = 'update') {
+    try {
+      if (fs.existsSync(this.settingsPath)) {
+        fs.copyFileSync(this.settingsPath, this.backupPath);
+
+        const backupsDir = path.join(this.baseDir, 'backups');
+        if (!fs.existsSync(backupsDir)) fs.mkdirSync(backupsDir, { recursive: true });
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const snapPath = path.join(backupsDir, `settings-${tag}-${timestamp}.json`);
+        fs.copyFileSync(this.settingsPath, snapPath);
+
+        const files = fs.readdirSync(backupsDir)
+          .filter(f => f.startsWith('settings-') && f.endsWith('.json'))
+          .sort()
+          .reverse();
+        if (files.length > 10) {
+          for (let i = 10; i < files.length; i++) {
+            try { fs.unlinkSync(path.join(backupsDir, files[i])); } catch (e) {}
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Backup creation notice:', e.message);
+    }
+  }
+
+  ensureSettingsIntact() {
+    try {
+      if (!fs.existsSync(this.settingsPath) || fs.statSync(this.settingsPath).size === 0) {
+        if (fs.existsSync(this.backupPath)) {
+          fs.copyFileSync(this.backupPath, this.settingsPath);
+          console.log('Restored settings.json from primary backup!');
+        } else {
+          const backupsDir = path.join(this.baseDir, 'backups');
+          if (fs.existsSync(backupsDir)) {
+            const files = fs.readdirSync(backupsDir)
+              .filter(f => f.startsWith('settings-') && f.endsWith('.json'))
+              .sort()
+              .reverse();
+            if (files.length > 0) {
+              fs.copyFileSync(path.join(backupsDir, files[0]), this.settingsPath);
+              console.log('Restored settings.json from historical snapshot:', files[0]);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Settings verification note:', e.message);
+    }
+  }
+
   async applyUpdate(updateInfo) {
+    // 1. Create multi-layer snapshot backups before touching any file
+    this.createSettingsBackup('pre-update');
+
     // If we downloaded a real zip from online, extract it
     if (this.stagedZipPath && fs.existsSync(this.stagedZipPath)) {
       try {
         const res = await this.applyLocalZip(this.stagedZipPath);
         try { fs.unlinkSync(this.stagedZipPath); } catch (e) {}
         this.stagedZipPath = null;
+        this.ensureSettingsIntact();
         return res;
       } catch (err) {
         throw new Error(`Failed to extract downloaded update: ${err.message}`);
@@ -232,19 +288,10 @@ class AppUpdater {
 
     const targetVersion = updateInfo?.latestVersion || '1.1.0';
 
-    // 1. Safeguard user settings
-    try {
-      if (fs.existsSync(this.settingsPath)) {
-        fs.copyFileSync(this.settingsPath, this.backupPath);
-      }
-    } catch (e) {
-      console.warn('Settings backup warning:', e.message);
-    }
-
     // 2. Update package.json version
     try {
       if (fs.existsSync(this.packagePath)) {
-        const pkg = JSON.parse(fs.readFileSync(this.packagePath, 'utf8'));
+        const pkg = JSON.parse(fs.readFileSync(this.packagePath, 'utf8').replace(/^\uFEFF/, ''));
         pkg.version = targetVersion;
         fs.writeFileSync(this.packagePath, JSON.stringify(pkg, null, 2), 'utf8');
       }
@@ -255,13 +302,15 @@ class AppUpdater {
     // 3. Mark update timestamp in settings
     try {
       if (fs.existsSync(this.settingsPath)) {
-        const settings = JSON.parse(fs.readFileSync(this.settingsPath, 'utf8'));
+        const settings = JSON.parse(fs.readFileSync(this.settingsPath, 'utf8').replace(/^\uFEFF/, ''));
         if (!settings.updates) settings.updates = {};
         settings.updates.lastUpdated = new Date().toISOString();
         settings.updates.installedVersion = targetVersion;
         fs.writeFileSync(this.settingsPath, JSON.stringify(settings, null, 2), 'utf8');
       }
     } catch (e) {}
+
+    this.ensureSettingsIntact();
 
     return {
       success: true,
@@ -275,12 +324,8 @@ class AppUpdater {
       throw new Error(`Specified update package not found: ${zipPath}`);
     }
 
-    // Backup settings
-    try {
-      if (fs.existsSync(this.settingsPath)) {
-        fs.copyFileSync(this.settingsPath, this.backupPath);
-      }
-    } catch (e) {}
+    // 1. Create multi-layer snapshot backups
+    this.createSettingsBackup('pre-local-update');
 
     // Extract using Windows PowerShell Expand-Archive
     const stagingDir = path.join(app.getPath('temp'), `shing-update-${Date.now()}`);
@@ -294,8 +339,11 @@ class AppUpdater {
         }
 
         try {
-          // Copy updated files over app directory, protecting user settings
-          this.copyDirRecursive(stagingDir, this.baseDir, ['settings.json', 'node_modules', '.git']);
+          // Copy updated files over app directory, explicitly preserving settings.json and backups
+          this.copyDirRecursive(stagingDir, this.baseDir, ['settings.json', 'settings.json.bak', 'backups', 'node_modules', '.git']);
+
+          // Safeguard: Guarantee settings.json exists and is valid
+          this.ensureSettingsIntact();
 
           // Read newly installed version
           const newVersion = this.getCurrentVersion();
@@ -307,7 +355,6 @@ class AppUpdater {
         } catch (copyErr) {
           reject(copyErr);
         } finally {
-          // Clean staging folder
           try { fs.rmSync(stagingDir, { recursive: true, force: true }); } catch (e) {}
         }
       });

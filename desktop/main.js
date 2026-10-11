@@ -82,6 +82,47 @@ ipcMain.handle('settings:save', (evt, newSettings) => {
   return overlayServer.saveSettings(newSettings);
 });
 
+// Settings Export / Backup
+ipcMain.handle('settings:export', async () => {
+  const currentSettings = overlayServer.getSettings();
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const res = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export Shing Studio Configuration Backup',
+    defaultPath: `shing-settings-backup-${dateStr}.json`,
+    filters: [{ name: 'JSON Backup', extensions: ['json'] }]
+  });
+
+  if (res.canceled || !res.filePath) return { canceled: true };
+
+  fs.writeFileSync(res.filePath, JSON.stringify(currentSettings, null, 2), 'utf8');
+  return { success: true, filePath: res.filePath };
+});
+
+// Settings Import / Restore
+ipcMain.handle('settings:import', async () => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: 'Import Shing Studio Configuration Backup',
+    filters: [{ name: 'JSON Backup', extensions: ['json'] }],
+    properties: ['openFile']
+  });
+
+  if (res.canceled || !res.filePaths.length) return { canceled: true };
+
+  const targetPath = res.filePaths[0];
+  try {
+    const raw = fs.readFileSync(targetPath, 'utf8').replace(/^\uFEFF/, '');
+    const importedSettings = JSON.parse(raw);
+
+    const saved = overlayServer.saveSettings(importedSettings);
+    if (mainWindow) {
+      mainWindow.webContents.send('settings:loaded', saved);
+    }
+    return { success: true, settings: saved, filePath: targetPath };
+  } catch (err) {
+    return { success: false, error: 'Invalid configuration file: ' + err.message };
+  }
+});
+
 // TikTok User Search & Profile lookup
 ipcMain.handle('tiktok:search', async (evt, username) => {
   const cleanUser = (username || 'shimmy_ming').replace(/^@/, '').trim();

@@ -641,6 +641,42 @@
           </div>
         </div>
 
+        <!-- Configuration Safety & Backup Card -->
+        <div class="form-card full-width" id="card-settings-backup">
+          <div class="card-header-row">
+            <div>
+              <h3>Configuration Safety & Backup</h3>
+              <p class="hint-text">Automatic multi-layer protection guarantees your settings, custom colors, companion style, and jar physics are never lost during updates.</p>
+            </div>
+            <div class="update-status-pill" style="border-color: #22c55e; background: rgba(34, 197, 94, 0.1); color: #16a34a;">
+              <span class="status-indicator-dot" style="background: #22c55e;"></span>
+              <span>100% Protected</span>
+            </div>
+          </div>
+
+          <div style="background: var(--bg-app); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px; margin-top: 10px;">
+            <div style="font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 6px;">How Your Configuration Is Protected:</div>
+            <ul class="changelog-ul" style="margin-bottom: 10px;">
+              <li><strong>Zero-Overwrite Packages:</strong> Official update archives do not contain settings files and cannot overwrite your active configurations.</li>
+              <li><strong>Pre-Update Historical Snapshots:</strong> A timestamped snapshot is saved to your local backups folder prior to every update.</li>
+              <li><strong>Live Dual-Mirror Backup:</strong> Every time you adjust colors, companion styles, or settings, a mirror backup is immediately synced.</li>
+              <li><strong>Self-Healing Recovery:</strong> If settings.json is ever corrupted or deleted, Shing Studio auto-recovers from the nearest snapshot on boot.</li>
+            </ul>
+            <div class="hint-text" id="backup-action-feedback" style="min-height: 18px; color: var(--text-muted); font-weight: 600;"></div>
+          </div>
+
+          <div class="btn-row" style="margin-top: 14px; flex-wrap: wrap; gap: 10px;">
+            <button class="btn btn-primary" id="btn-export-settings">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+              <span>Export Backup (.json)</span>
+            </button>
+            <button class="btn btn-secondary" id="btn-import-settings">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM12 17l-5-5h3V8h4v4h3l-5 5z"/></svg>
+              <span>Restore from File (.json)</span>
+            </button>
+          </div>
+        </div>
+
         <!-- App Updates & Version Manager Card -->
         <div class="form-card full-width" id="card-app-updates">
           <div class="card-header-row">

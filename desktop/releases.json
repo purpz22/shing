@@ -9,7 +9,7 @@
                          "summary":  "Full viewer display name support, accurate TikTok coin currency HUD, and in-app update manager.",
                          "downloadUrl":  "https://github.com/purpz22/shing/releases/download/v1.1.0/shing-studio-v1.1.0.zip",
                          "packageSize":  "3.89 MB",
-                         "checksum":  "cd0155b075e308932246e045c2f33ab5a45a45ffbd2df701e42b6c33782f3936",
+                         "checksum":  "df63c00342ddb4189c5ddcaca86a8c9db773ea846e4d51da5740e49ecafddf92",
                          "highlights":  [
                                             "Viewer Display Names: Overlays now display viewers\u0027 customized nicknames instead of username handles",
                                             "TikTok Coins Currency: Standardized all alert badges and jar physics from Diamonds to Coins",
