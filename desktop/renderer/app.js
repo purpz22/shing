@@ -348,6 +348,274 @@ function renderIcons() {
   });
 }
 
+// Overlay Card Live Demo Loops Manager
+const OverlayDemoManager = {
+  isRunning: false,
+  chatInterval: null,
+  jarInterval: null,
+  ltInterval: null,
+  alertInterval: null,
+  timerInterval: null,
+  simSeconds: 1800,
+  chatIdx: 0,
+  ltIdx: 0,
+  alertIdx: 0,
+  jarItemCount: 42,
+
+  chatSamples: [
+    { user: 'CuteFan', role: 'top_gifter', tag: 'Top Gifter', tagClass: 'tag-gifter', text: 'Sent 100x Roses!' },
+    { user: 'SparkleWren', role: 'streamer', tag: 'Streamer', tagClass: 'tag-streamer', text: 'Welcome to the stream everyone!' },
+    { user: 'NekoGamer', role: 'subscriber', tag: 'Sub', tagClass: 'tag-sub', text: 'The stream overlay is so cozy!' },
+    { user: 'ModKitten', role: 'moderator', tag: 'Mod', tagClass: 'tag-mod', text: 'Tap the screen and share the LIVE!' },
+    { user: 'MochiBoba', role: 'viewer', tag: '', tagClass: '', text: 'Hello streamer! Love the vibes!' }
+  ],
+
+  jarIcons: [
+    `<svg viewBox="0 0 24 24" fill="#ff4081"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`,
+    `<svg viewBox="0 0 24 24" fill="#ffd700"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M15 9.5H9.5a2.5 2.5 0 0 1 0-5H14" stroke="#b8860b" stroke-width="2" fill="none"/></svg>`,
+    `<svg viewBox="0 0 24 24" fill="#9c27b0"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`,
+    `<svg viewBox="0 0 24 24" fill="#00e5ff"><path d="M19 3H5L2 9l10 12L22 9l-3-6z"/></svg>`
+  ],
+
+  ltIcons: {
+    tiktok: `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.89 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.34 0 .66.06.96.16v-3.52a6.37 6.37 0 0 0-.96-.08A6.34 6.34 0 0 0 3 15.67 6.34 6.34 0 0 0 9.34 22a6.34 6.34 0 0 0 6.34-6.33V8.8a8.28 8.28 0 0 0 3.91.95v-3.06z"/></svg>`,
+    instagram: `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>`,
+    youtube: `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`,
+    discord: `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>`
+  },
+
+  alertTemplates: [
+    { type: 'follow', title: 'New Follower!', sub: 'SparkleFan joined the stream', icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>` },
+    { type: 'gift', title: 'Rose Gift Alert!', sub: 'StarGamer sent 10x Roses', icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="#ff4081"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>` },
+    { type: 'big_gift', title: 'Big Gift Galaxy!', sub: 'DiamondVIP sent Galaxy (1,000 Coins)', icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="#9c27b0"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>` },
+    { type: 'like', title: 'Likes Milestone!', sub: '50 Likes reached! Tap the screen!', icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="#ff9100"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>` }
+  ],
+
+  start() {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    this.sync();
+
+    // 1. Chat Demo Timer
+    this.spawnChatBubble();
+    this.chatInterval = setInterval(() => this.spawnChatBubble(), 2400);
+
+    // 2. Jar Demo Timer
+    this.jarInterval = setInterval(() => this.dropJarGift(), 1800);
+
+    // 3. Lower Third Demo Timer
+    this.ltInterval = setInterval(() => this.cycleLowerThird(), 3000);
+
+    // 4. Alert Banner Demo Timer
+    this.alertInterval = setInterval(() => this.cycleAlertBanner(), 3400);
+
+    // 5. Timer Demo Countdown
+    this.simSeconds = (appSettings.timer?.durationMin || 30) * 60;
+    this.updateTimerDisplay();
+    this.timerInterval = setInterval(() => {
+      this.simSeconds = Math.max(0, this.simSeconds - 1);
+      this.updateTimerDisplay();
+      if (this.simSeconds % 14 === 0) {
+        this.triggerTimerBonus();
+      }
+    }, 1000);
+  },
+
+  stop() {
+    this.isRunning = false;
+    clearInterval(this.chatInterval);
+    clearInterval(this.jarInterval);
+    clearInterval(this.ltInterval);
+    clearInterval(this.alertInterval);
+    clearInterval(this.timerInterval);
+    this.chatInterval = null;
+    this.jarInterval = null;
+    this.ltInterval = null;
+    this.alertInterval = null;
+    this.timerInterval = null;
+  },
+
+  sync() {
+    // Sync Chat Card Theme & Shapes
+    const chatBox = $('ov-demo-chat-box');
+    const theme = appSettings.chat?.theme || 'pastel-purple';
+    const radius = appSettings.chat?.bubbleRadius || 16;
+    if (chatBox) {
+      chatBox.className = `card-preview chat-preview-box chat-dash-preview theme-${theme}`;
+      chatBox.style.setProperty('--bubble-radius', `${radius}px`);
+    }
+
+    // Sync Lower Third Handle
+    this.updateLowerThirdCard();
+
+    // Sync Companion iframe if exists
+    const compIframe = $('ov-demo-comp-iframe');
+    if (compIframe && !compIframe.src.includes('localhost:3333')) {
+      compIframe.src = 'http://localhost:3333/overlays/companion';
+    }
+  },
+
+  spawnChatBubble() {
+    const feed = $('ov-demo-chat-feed');
+    if (!feed) return;
+
+    const data = this.chatSamples[this.chatIdx % this.chatSamples.length];
+    this.chatIdx++;
+
+    const shape = appSettings.chat?.avatarShape || 'circle';
+    const item = document.createElement('div');
+    item.className = 'demo-chat-bubble-item';
+
+    const tagHtml = data.tag ? `<span class="demo-chat-tag ${data.tagClass}">${escapeNotifHtml(data.tag)}</span>` : '';
+
+    item.innerHTML = `
+      <img src="../assets/avatar.png" class="demo-chat-pfp shape-${shape}" alt="PFP">
+      <div class="demo-chat-content">
+        <div class="demo-chat-meta">
+          <span class="demo-chat-user">${escapeNotifHtml(data.user)}</span>
+          ${tagHtml}
+        </div>
+        <div class="demo-chat-text">${escapeNotifHtml(data.text)}</div>
+      </div>
+    `;
+
+    feed.appendChild(item);
+
+    // Keep max 2 items visible in 140px card
+    while (feed.children.length > 2) {
+      feed.removeChild(feed.children[0]);
+    }
+  },
+
+  dropJarGift() {
+    const giftsLayer = $('ov-demo-jar-gifts');
+    const badge = $('ov-demo-jar-badge');
+    if (!giftsLayer) return;
+
+    const iconSvg = this.jarIcons[Math.floor(Math.random() * this.jarIcons.length)];
+    const giftEl = document.createElement('div');
+    giftEl.className = 'demo-jar-gift-drop';
+    giftEl.innerHTML = iconSvg;
+
+    giftsLayer.appendChild(giftEl);
+
+    this.jarItemCount = (this.jarItemCount >= 55) ? 42 : this.jarItemCount + 1;
+    if (badge) {
+      const maxGifts = appSettings.jar?.maxGifts || 500;
+      badge.textContent = `${this.jarItemCount} / ${maxGifts}`;
+    }
+
+    while (giftsLayer.children.length > 12) {
+      giftsLayer.removeChild(giftsLayer.children[0]);
+    }
+  },
+
+  cycleLowerThird() {
+    this.ltIdx++;
+    this.updateLowerThirdCard();
+  },
+
+  updateLowerThirdCard() {
+    const platformEl = $('ov-demo-lt-platform');
+    const handleEl = $('ov-demo-lt-handle');
+    const iconEl = $('ov-demo-lt-icon');
+    const cardEl = $('ov-demo-lt-card');
+    if (!platformEl || !handleEl) return;
+
+    const lt = appSettings.lowerThird || {};
+    const uname = appSettings.username ? `@${appSettings.username}` : '@shimmy_ming';
+
+    const platforms = [
+      { id: 'tiktok', name: 'TikTok', handle: lt.tiktok || uname, icon: this.ltIcons.tiktok },
+      { id: 'instagram', name: 'Instagram', handle: lt.instagram || '@shimmy.live', icon: this.ltIcons.instagram },
+      { id: 'youtube', name: 'YouTube', handle: lt.youtube || 'Shimmy Live', icon: this.ltIcons.youtube },
+      { id: 'discord', name: 'Discord', handle: lt.discord || 'discord.gg/shimmy', icon: this.ltIcons.discord }
+    ];
+
+    const current = platforms[this.ltIdx % platforms.length];
+
+    if (cardEl) {
+      cardEl.style.transform = 'scale(0.95)';
+      setTimeout(() => {
+        platformEl.textContent = current.name;
+        handleEl.textContent = current.handle;
+        if (iconEl) iconEl.innerHTML = current.icon;
+        cardEl.style.transform = 'scale(1)';
+      }, 150);
+    } else {
+      platformEl.textContent = current.name;
+      handleEl.textContent = current.handle;
+      if (iconEl) iconEl.innerHTML = current.icon;
+    }
+  },
+
+  cycleAlertBanner() {
+    const banner = $('ov-demo-alert-banner');
+    const titleEl = $('ov-demo-alert-title');
+    const subEl = $('ov-demo-alert-sub');
+    const iconEl = $('ov-demo-alert-icon');
+    if (!banner || !titleEl || !subEl) return;
+
+    this.alertIdx++;
+    const tpl = this.alertTemplates[this.alertIdx % this.alertTemplates.length];
+
+    let subMsg = tpl.sub;
+    if (tpl.type === 'follow' && appSettings.triggers?.followMessage) {
+      subMsg = appSettings.triggers.followMessage.replace(/\{user\}|\[user\]/g, 'SparkleFan');
+    } else if (tpl.type === 'gift' && appSettings.triggers?.giftMessage) {
+      subMsg = appSettings.triggers.giftMessage.replace(/\{user\}|\[user\]/g, 'StarGamer').replace(/\{gift\}|\[gift\]/g, 'Rose');
+    }
+
+    banner.style.transform = 'translateY(-6px) scale(0.96)';
+    banner.style.opacity = '0.5';
+
+    setTimeout(() => {
+      titleEl.textContent = tpl.title;
+      subEl.textContent = subMsg;
+      if (iconEl) iconEl.innerHTML = tpl.icon;
+      banner.style.transform = 'translateY(0) scale(1)';
+      banner.style.opacity = '1';
+    }, 180);
+  },
+
+  updateTimerDisplay() {
+    const digitsEl = $('ov-demo-timer-digits');
+    if (!digitsEl) return;
+
+    const s = Math.max(0, this.simSeconds);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    const h = Math.floor(m / 60);
+    const remM = m % 60;
+
+    const hh = String(h).padStart(2, '0');
+    const mm = String(remM).padStart(2, '0');
+    const ss = String(sec).padStart(2, '0');
+
+    digitsEl.textContent = h > 0 ? `${hh}:${mm}:${ss}` : `00:${mm}:${ss}`;
+  },
+
+  triggerTimerBonus() {
+    const bonusPill = $('ov-demo-timer-bonus');
+    const digitsEl = $('ov-demo-timer-digits');
+    const bonusSec = appSettings.timer?.addSecondsPerGift || 15;
+
+    this.simSeconds += bonusSec;
+    this.updateTimerDisplay();
+
+    if (bonusPill) {
+      bonusPill.textContent = `+${bonusSec}s Bonus Added`;
+      bonusPill.style.transform = 'scale(1.25)';
+      if (digitsEl) digitsEl.style.transform = 'scale(1.08)';
+
+      setTimeout(() => {
+        bonusPill.style.transform = 'scale(1)';
+        if (digitsEl) digitsEl.style.transform = 'scale(1)';
+      }, 350);
+    }
+  }
+};
+
 // Tab Switching
 function switchTab(tabId) {
   document.querySelectorAll('.nav-item').forEach(b => {
@@ -356,6 +624,11 @@ function switchTab(tabId) {
   document.querySelectorAll('.tab-pane').forEach(p => {
     p.classList.toggle('active', p.id === `tab-${tabId}`);
   });
+  if (tabId === 'overlays') {
+    OverlayDemoManager.start();
+  } else {
+    OverlayDemoManager.stop();
+  }
   if (tabId === 'companion') {
     const ifr = $('comp-preview-iframe');
     if (ifr && ifr.contentWindow) {
@@ -576,6 +849,9 @@ async function initSettings() {
   await refreshSoundDropdowns();
   await populateGiftCatalogSelect();
   initUpdater();
+  if (typeof OverlayDemoManager !== 'undefined') {
+    OverlayDemoManager.start();
+  }
 }
 
 let currentPreviewAudio = null;
@@ -857,6 +1133,9 @@ function syncPresetSelect(selectId, hex) {
 
 function saveCurrentSettings() {
   window.api.saveSettings(appSettings);
+  if (typeof OverlayDemoManager !== 'undefined') {
+    OverlayDemoManager.sync();
+  }
 }
 
 // Account Modal Workflow
@@ -1269,6 +1548,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Triggers Save & Multi-Tier Tests
+  $('trig-follow-msg')?.addEventListener('input', () => {
+    if (!appSettings.triggers) appSettings.triggers = {};
+    appSettings.triggers.followMessage = $('trig-follow-msg').value;
+    if (typeof OverlayDemoManager !== 'undefined') OverlayDemoManager.sync();
+  });
+  $('trig-gift-msg')?.addEventListener('input', () => {
+    if (!appSettings.triggers) appSettings.triggers = {};
+    appSettings.triggers.giftMessage = $('trig-gift-msg').value;
+    if (typeof OverlayDemoManager !== 'undefined') OverlayDemoManager.sync();
+  });
+
   $('save-triggers-btn').addEventListener('click', () => {
     appSettings.triggers = {
       followMessage: $('trig-follow-msg').value,
@@ -1389,6 +1679,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Lower Third Save & Preview
   $('lt-tiktok').addEventListener('input', () => {
     $('lt-preview-handle').textContent = $('lt-tiktok').value || '@shimmy_ming';
+    if (!appSettings.lowerThird) appSettings.lowerThird = {};
+    appSettings.lowerThird.tiktok = $('lt-tiktok').value;
+    if (typeof OverlayDemoManager !== 'undefined') OverlayDemoManager.sync();
+  });
+  ['lt-instagram', 'lt-youtube', 'lt-discord'].forEach(id => {
+    $(id)?.addEventListener('input', () => {
+      if (!appSettings.lowerThird) appSettings.lowerThird = {};
+      const key = id.replace('lt-', '');
+      appSettings.lowerThird[key] = $(id).value;
+      if (typeof OverlayDemoManager !== 'undefined') OverlayDemoManager.sync();
+    });
   });
   $('save-lowerthird-btn').addEventListener('click', () => {
     appSettings.lowerThird = {
@@ -1409,6 +1710,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const shape = $('chat-avatar-shape') ? $('chat-avatar-shape').value : 'circle';
     const radius = $('chat-radius') ? $('chat-radius').value : 16;
 
+    if (!appSettings.chat) appSettings.chat = {};
+    appSettings.chat.theme = theme;
+    appSettings.chat.avatarShape = shape;
+    appSettings.chat.bubbleRadius = +radius;
+
     if (previewContainer) {
       previewContainer.className = `chat-dash-preview theme-${theme}`;
       previewContainer.style.setProperty('--bubble-radius', `${radius}px`);
@@ -1417,6 +1723,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const wrap = document.querySelector('.preview-pfp-wrap');
     if (wrap) {
       wrap.className = `preview-pfp-wrap shape-${shape}`;
+    }
+
+    if (typeof OverlayDemoManager !== 'undefined') {
+      OverlayDemoManager.sync();
     }
   }
 
@@ -1538,6 +1848,20 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Timer Controls
+  $('timer-duration')?.addEventListener('input', () => {
+    if (!appSettings.timer) appSettings.timer = {};
+    appSettings.timer.durationMin = +$('timer-duration').value || 30;
+    if (typeof OverlayDemoManager !== 'undefined') {
+      OverlayDemoManager.simSeconds = appSettings.timer.durationMin * 60;
+      OverlayDemoManager.sync();
+    }
+  });
+  $('timer-bonus')?.addEventListener('input', () => {
+    if (!appSettings.timer) appSettings.timer = {};
+    appSettings.timer.addSecondsPerGift = +$('timer-bonus').value || 15;
+    if (typeof OverlayDemoManager !== 'undefined') OverlayDemoManager.sync();
+  });
+
   $('save-timer-btn').addEventListener('click', () => {
     appSettings.timer = {
       durationMin: +$('timer-duration').value || 30,

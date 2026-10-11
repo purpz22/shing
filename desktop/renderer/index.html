@@ -139,8 +139,12 @@
       <div class="overlay-grid">
         <!-- Jar Card -->
         <div class="overlay-card" data-goto="jar">
-          <div class="card-preview">
-            <img src="../assets/jar/jar-front.png" class="preview-img jar-mini" alt="Jar Preview">
+          <div class="card-preview jar-preview-box">
+            <div class="demo-jar-wrapper">
+              <img src="../assets/jar/jar-front.png" class="demo-jar-glass" alt="Jar Preview">
+              <div class="demo-jar-gifts" id="ov-demo-jar-gifts"></div>
+              <div class="demo-jar-badge" id="ov-demo-jar-badge">42 / 500</div>
+            </div>
           </div>
           <div class="card-info">
             <h3>Physics Gift Jar</h3>
@@ -155,7 +159,8 @@
         <!-- Companion Card -->
         <div class="overlay-card" data-goto="companion">
           <div class="card-preview companion-preview-box">
-            <div class="mini-companion-badge">Pixel Cats & Chibi</div>
+            <iframe src="http://localhost:3333/overlays/companion" class="demo-companion-iframe" id="ov-demo-comp-iframe" tabindex="-1"></iframe>
+            <div class="demo-comp-badge">Live Companion</div>
           </div>
           <div class="card-info">
             <h3>Companion Cats</h3>
@@ -169,8 +174,10 @@
 
         <!-- Chat Card -->
         <div class="overlay-card" data-goto="chat">
-          <div class="card-preview chat-preview-box">
-            <div class="mini-chat-bubble">Hi chat! Welcome~</div>
+          <div class="card-preview chat-preview-box" id="ov-demo-chat-box">
+            <div class="demo-chat-feed" id="ov-demo-chat-feed">
+              <!-- Dynamically populated and animated speech bubbles -->
+            </div>
           </div>
           <div class="card-info">
             <h3>Cute Chat</h3>
@@ -185,7 +192,15 @@
         <!-- Lower Third Card -->
         <div class="overlay-card" data-goto="lowerthird">
           <div class="card-preview lt-preview-box">
-            <div class="mini-lt-badge">TikTok @shimmy_ming</div>
+            <div class="demo-lt-card" id="ov-demo-lt-card">
+              <div class="demo-lt-icon-wrap" id="ov-demo-lt-icon">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.89 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.34 0 .66.06.96.16v-3.52a6.37 6.37 0 0 0-.96-.08A6.34 6.34 0 0 0 3 15.67 6.34 6.34 0 0 0 9.34 22a6.34 6.34 0 0 0 6.34-6.33V8.8a8.28 8.28 0 0 0 3.91.95v-3.06z"/></svg>
+              </div>
+              <div class="demo-lt-text-group">
+                <span class="demo-lt-platform" id="ov-demo-lt-platform">TikTok</span>
+                <span class="demo-lt-handle" id="ov-demo-lt-handle">@shimmy_ming</span>
+              </div>
+            </div>
           </div>
           <div class="card-info">
             <h3>Lower 3rd Socials</h3>
@@ -200,7 +215,15 @@
         <!-- Triggers Card -->
         <div class="overlay-card" data-goto="triggers">
           <div class="card-preview trigger-preview-box">
-            <div class="mini-alert-badge">Gift Alert Banner</div>
+            <div class="demo-alert-banner" id="ov-demo-alert-banner">
+              <div class="demo-alert-icon-wrap" id="ov-demo-alert-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              </div>
+              <div class="demo-alert-body">
+                <div class="demo-alert-title" id="ov-demo-alert-title">New Follower!</div>
+                <div class="demo-alert-sub" id="ov-demo-alert-sub">SparkleFan joined the stream</div>
+              </div>
+            </div>
           </div>
           <div class="card-info">
             <h3>Popup Alerts</h3>
@@ -215,7 +238,11 @@
         <!-- Timer Card -->
         <div class="overlay-card" data-goto="timer">
           <div class="card-preview timer-preview-box">
-            <div class="mini-timer-badge">00:30:00</div>
+            <div class="demo-timer-wrap">
+              <div class="demo-timer-digits" id="ov-demo-timer-digits">00:29:48</div>
+              <div class="demo-timer-bonus-pill" id="ov-demo-timer-bonus">+15s Bonus Added</div>
+              <div class="demo-timer-sub">SUBATHON COUNTDOWN</div>
+            </div>
           </div>
           <div class="card-info">
             <h3>Stream Timer</h3>

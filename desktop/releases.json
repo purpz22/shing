@@ -15,8 +15,8 @@
                                             "Zero Native Dialogs: Global window.alert override ensuring consistent streaming experience"
                                         ],
                          "notes":  "Streamer dashboard UX upgrade eliminating disruptive native alert popups.",
-                         "packageSize":  "4.03 MB",
-                         "checksum":  "60cb71ef621a321e94137f8236a409375104ab64c1ad0d03d63dfad94ca44018"
+                         "packageSize":  "4.04 MB",
+                         "checksum":  "68229a515d5ac2cb57bf73d8466ef75e02a7b51f6e9700a3caa091ca23ffe83c"
                      },
                      {
                          "version":  "1.2.2",
