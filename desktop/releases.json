@@ -1,6 +1,22 @@
 {
-    "latest":  "1.3.2",
+    "latest":  "1.3.3",
     "releases":  [
+                     {
+                         "version":  "1.3.3",
+                         "releaseName":  "Shing Live v1.3.3 - Authentic Petpetgif.com Hand Animation for Headpat Overlay",
+                         "releaseDate":  "2026-10-12",
+                         "type":  "feature",
+                         "summary":  "Updated the Pet-Pet Headpat overlay and dashboard preview to use the authentic 10-frame petpetgif.com patting hand sprite animation.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.3.3.zip",
+                         "highlights":  [
+                                            "Authentic Petpetgif.com Hand Sprites: Replaced vector hand drawing with the original 10-frame pet0.gif-pet9.gif hand sprite animation from petpetgif.com",
+                                            "Exact Pet-Pet Squish Physics: Implemented the exact 10-frame petpetgif.com width/height/offset squish formula on the viewer TikTok profile picture",
+                                            "Instant Update Detection: Added uncached GitHub Contents API fallback alongside raw.githubusercontent.com so new updates are detected immediately without CDN delay"
+                                        ],
+                         "notes":  "Authentic petpetgif.com hand animation for Pet-Pet Headpat overlay.",
+                         "packageSize":  "4.04 MB",
+                         "checksum":  "ca791ddf6e3f0c0bca743dcd69d8f859f16ae01f0e0c47402698cf80802aee70"
+                     },
                      {
                          "version":  "1.3.2",
                          "releaseName":  "Shing Live v1.3.2 - Top Likers, Viewer Stay Ranking, Pet-Pet Headpat \u0026 Custom Media Triggers",

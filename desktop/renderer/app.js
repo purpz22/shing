@@ -447,64 +447,58 @@ const OverlayDemoManager = {
     const cvs = $('ov-demo-headpat-canvas');
     if (!cvs) return;
     const ctx = cvs.getContext('2d');
+    const FRAMES = 10;
+    const RES = 112;
     if (!this.headpatAvatarImg) {
       this.headpatAvatarImg = new Image();
       this.headpatAvatarImg.src = '../assets/avatar.png';
     }
-    let phase = 0;
-    const renderMiniHeadpat = () => {
+    if (!this.headpatHandFrames) {
+      this.headpatHandFrames = [];
+      for (let i = 0; i < FRAMES; i++) {
+        const img = new Image();
+        img.src = `../assets/petpet/pet${i}.gif`;
+        this.headpatHandFrames.push(img);
+      }
+    }
+    let currentFrame = 0;
+    let lastTime = 0;
+    const renderMiniHeadpat = (timestamp) => {
       if (!this.isRunning) return;
-      ctx.clearRect(0, 0, cvs.width, cvs.height);
-      phase += 0.14;
-      const patSin = Math.sin(phase);
-      const patCos = Math.cos(phase);
-      const baseW = 62;
-      const baseH = 62;
-      const bottomY = 102;
-      const drawW = baseW * (1 + patSin * 0.17);
-      const drawH = baseH * (1 - patSin * 0.19);
-      const drawX = 65 - drawW / 2 + patCos * 2.5;
-      const drawY = bottomY - drawH;
+      if (!lastTime || timestamp - lastTime >= 42) {
+        lastTime = timestamp;
+        currentFrame = (currentFrame + 1) % FRAMES;
+        ctx.clearRect(0, 0, RES, RES);
 
-      ctx.fillStyle = 'rgba(10, 6, 20, 0.45)';
-      ctx.beginPath();
-      ctx.ellipse(65, bottomY + 2, drawW * 0.5, 6, 0, 0, Math.PI * 2);
-      ctx.fill();
+        const i = currentFrame;
+        const j = i < FRAMES / 2 ? i : FRAMES - i;
+        const width = 0.8 + j * 0.02;
+        const height = 0.8 - j * 0.05;
+        const offsetX = (1 - width) * 0.5 + 0.1;
+        const offsetY = (1 - height) - 0.08;
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.ellipse(drawX + drawW / 2, drawY + drawH / 2, drawW / 2, drawH / 2, 0, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      try {
-        ctx.drawImage(this.headpatAvatarImg, drawX, drawY, drawW, drawH);
-      } catch (_) {}
-      ctx.restore();
+        const drawX = RES * offsetX;
+        const drawY = RES * offsetY;
+        const drawW = RES * width;
+        const drawH = RES * height;
 
-      ctx.strokeStyle = '#ff85a2';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.ellipse(drawX + drawW / 2, drawY + drawH / 2, drawW / 2, drawH / 2, 0, 0, Math.PI * 2);
-      ctx.stroke();
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(drawX + drawW / 2, drawY + drawH / 2, drawW / 2, drawH / 2, 0, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        try {
+          ctx.drawImage(this.headpatAvatarImg, drawX, drawY, drawW, drawH);
+        } catch (_) {}
+        ctx.restore();
 
-      // Mini patting hand
-      ctx.save();
-      ctx.translate(65 + patCos * 7, drawY - 3 + patSin * 3.5);
-      ctx.rotate(patCos * 0.08);
-      ctx.fillStyle = '#ffe3d3';
-      ctx.strokeStyle = '#4a2545';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 26, 11, -0.1, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#ff85a2';
-      ctx.beginPath();
-      ctx.roundRect(14, -14, 22, 14, 6);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-
+        const handImg = this.headpatHandFrames[i];
+        if (handImg && handImg.complete) {
+          try {
+            ctx.drawImage(handImg, 0, 0, RES, RES);
+          } catch (_) {}
+        }
+      }
       this.headpatRaf = requestAnimationFrame(renderMiniHeadpat);
     };
     if (this.headpatRaf) cancelAnimationFrame(this.headpatRaf);
@@ -1718,6 +1712,17 @@ function openChangelogModal() {
   container.innerHTML = '';
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
+    {
+      version: '1.3.3',
+      releaseName: 'Shing Live v1.3.3 - Authentic Petpetgif.com Hand Animation for Headpat Overlay',
+      releaseDate: '2026-10-12',
+      summary: 'Updated the Pet-Pet Headpat overlay and dashboard preview to use the authentic 10-frame petpetgif.com patting hand sprite animation.',
+      highlights: [
+        'Authentic Petpetgif.com Hand Sprites: Replaced vector hand drawing with the original 10-frame pet0.gif-pet9.gif hand sprite animation from petpetgif.com',
+        'Exact Pet-Pet Squish Physics: Implemented the exact 10-frame petpetgif.com width/height/offset squish formula on the viewer TikTok profile picture',
+        'Instant Update Detection: Added uncached GitHub Contents API fallback alongside raw.githubusercontent.com so new updates are detected immediately without CDN delay'
+      ]
+    },
     {
       version: '1.3.2',
       releaseName: 'Shing Live v1.3.2 - Top Likers, Viewer Stay Ranking, Pet-Pet Headpat & Custom Media Triggers',

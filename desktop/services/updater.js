@@ -58,12 +58,17 @@ class AppUpdater {
     return 0;
   }
 
-  async fetchRemoteManifest(url) {
+  async fetchRemoteManifest(url, extraHeaders = {}) {
     return new Promise((resolve, reject) => {
       try {
         const parsed = new URL(url);
         const client = parsed.protocol === 'https:' ? https : http;
-        const req = client.get(url, { headers: { 'User-Agent': 'ShingStudio-Updater' } }, res => {
+        const headers = Object.assign({
+          'User-Agent': 'ShingStudio-Updater',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }, extraHeaders);
+        const req = client.get(url, { headers }, res => {
           if (res.statusCode < 200 || res.statusCode >= 300) {
             return reject(new Error(`HTTP status ${res.statusCode}`));
           }
@@ -105,15 +110,27 @@ class AppUpdater {
     const currentVersion = this.getCurrentVersion();
     let manifest = null;
 
+    // 1. Try uncached GitHub Contents API first so updates appear immediately without Fastly 5-minute CDN lag
+    const apiUrl = `https://api.github.com/repos/purpz22/shing/contents/desktop/releases.json?ref=main&_=${Date.now()}`;
+    try {
+      manifest = await this.fetchRemoteManifest(apiUrl, { 'Accept': 'application/vnd.github.v3.raw' });
+    } catch (_) {}
+
+    // 2. Also check raw feed URL (or fallback to it) and pick whichever has the newest version
     const baseUrl = (customFeedUrl && typeof customFeedUrl === 'string' && customFeedUrl.startsWith('http'))
       ? customFeedUrl
       : 'https://raw.githubusercontent.com/purpz22/shing/main/desktop/releases.json';
     const targetUrl = baseUrl.includes('?') ? `${baseUrl}&_=${Date.now()}` : `${baseUrl}?_=${Date.now()}`;
 
     try {
-      manifest = await this.fetchRemoteManifest(targetUrl);
+      const rawManifest = await this.fetchRemoteManifest(targetUrl);
+      if (!manifest || (rawManifest?.latest && this.compareVersions(rawManifest.latest, manifest.latest || '0.0.0') > 0)) {
+        manifest = rawManifest;
+      }
     } catch (e) {
-      console.warn('Remote update feed unreachable, falling back to local registry:', e.message);
+      if (!manifest) {
+        console.warn('Remote update feed unreachable, falling back to local registry:', e.message);
+      }
     }
 
     if (!manifest) {
