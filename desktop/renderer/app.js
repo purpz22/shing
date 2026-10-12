@@ -552,12 +552,46 @@ const OverlayDemoManager = {
     const cvs = $('ov-demo-headpat-canvas');
     if (!cvs) return;
     const ctx = cvs.getContext('2d');
-    const FRAMES = 10;
+    const FRAMES = 5;
     const RES = 112;
+
+    const frameOffsets = [
+      { x: 0, y: 0, w: 0, h: 0 },
+      { x: -4, y: 12, w: 4, h: -12 },
+      { x: -12, y: 18, w: 12, h: -18 },
+      { x: -8, y: 12, w: 4, h: -12 },
+      { x: -4, y: 0, w: 0, h: 0 }
+    ];
+
+    const DEFAULTS = {
+      squish: 1.25,
+      scale: 0.875,
+      spriteX: 14,
+      spriteY: 20,
+      spriteWidth: 112,
+      spriteHeight: 112
+    };
+
+    function getSpriteFrame(f) {
+      const o = frameOffsets[f];
+      return {
+        dx: Math.floor(DEFAULTS.spriteX + o.x * (DEFAULTS.squish * 0.4)),
+        dy: Math.floor(DEFAULTS.spriteY + o.y * (DEFAULTS.squish * 0.9)),
+        dw: Math.floor((DEFAULTS.spriteWidth + o.w * DEFAULTS.squish) * DEFAULTS.scale),
+        dh: Math.floor((DEFAULTS.spriteHeight + o.h * DEFAULTS.squish) * DEFAULTS.scale)
+      };
+    }
+
     if (!this.headpatAvatarImg) {
       this.headpatAvatarImg = new Image();
       this.headpatAvatarImg.src = '../assets/avatar.png';
     }
+
+    if (!this.headpatSprite) {
+      this.headpatSprite = new Image();
+      this.headpatSprite.src = '../assets/petpet/sprite.png';
+    }
+
     if (!this.headpatHandFrames) {
       this.headpatHandFrames = [];
       for (let i = 0; i < FRAMES; i++) {
@@ -566,30 +600,30 @@ const OverlayDemoManager = {
         this.headpatHandFrames.push(img);
       }
     }
+
     let currentFrame = 0;
     let lastTime = 0;
     const renderMiniHeadpat = (timestamp) => {
       if (!this.isRunning) return;
-      if (!lastTime || timestamp - lastTime >= 42) {
+      const speedMult = Math.max(0.4, Math.min(2.5, Number(appSettings.headpat?.speed) || 1.0));
+      const frameInterval = 60 / speedMult;
+      if (!lastTime || timestamp - lastTime >= frameInterval) {
         lastTime = timestamp;
         currentFrame = (currentFrame + 1) % FRAMES;
         ctx.clearRect(0, 0, RES, RES);
 
-        const i = currentFrame;
-        const j = i < FRAMES / 2 ? i : FRAMES - i;
-        const width = 0.8 + j * 0.02;
-        const height = 0.8 - j * 0.05;
-        const offsetX = (1 - width) * 0.5 + 0.1;
-        const offsetY = (1 - height) - 0.08;
+        const cf = getSpriteFrame(currentFrame);
+        const S = RES / 112;
 
-        const drawX = RES * offsetX;
-        const drawY = RES * offsetY;
-        const drawW = RES * width;
-        const drawH = RES * height;
+        const drawX = cf.dx * S;
+        const drawY = cf.dy * S;
+        const drawW = cf.dw * S;
+        const drawH = cf.dh * S;
 
+        // Draw squished avatar with ellipse clipping
         ctx.save();
         ctx.beginPath();
-        ctx.ellipse(drawX + drawW / 2, drawY + drawH / 2, drawW / 2, drawH / 2, 0, 0, Math.PI * 2);
+        ctx.ellipse(drawX + drawW / 2, drawY + drawH / 2, Math.abs(drawW) / 2, Math.abs(drawH) / 2, 0, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
         try {
@@ -597,10 +631,25 @@ const OverlayDemoManager = {
         } catch (_) {}
         ctx.restore();
 
-        const handImg = this.headpatHandFrames[i];
-        if (handImg && handImg.complete) {
+        // Dynamic hand Y offset tracking head squish
+        const handDy = Math.max(0, Math.floor((cf.dy * 0.75 - Math.max(0, DEFAULTS.spriteY) - 0.5) * S));
+
+        // Draw authentic PetPet hand from sprite sheet or frames
+        if (this.headpatSprite.complete && this.headpatSprite.naturalWidth > 0) {
           try {
-            ctx.drawImage(handImg, 0, 0, RES, RES);
+            ctx.drawImage(
+              this.headpatSprite,
+              currentFrame * 112, 0, 112, 112,
+              0, handDy, 112 * S, 112 * S
+            );
+          } catch (_) {}
+        } else if (this.headpatHandFrames[currentFrame] && this.headpatHandFrames[currentFrame].complete) {
+          try {
+            ctx.drawImage(
+              this.headpatHandFrames[currentFrame],
+              0, 0, 112, 112,
+              0, handDy, 112 * S, 112 * S
+            );
           } catch (_) {}
         }
       }
@@ -2076,6 +2125,19 @@ function openChangelogModal() {
   container.innerHTML = '';
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
+    {
+      version: '1.4.2',
+      releaseName: 'Shing Live v1.4.2 - Authentic Pet-Pet Headpat Animation',
+      releaseDate: '2026-10-12',
+      summary: 'Upgraded Pet-Pet Headpat overlay and dashboard preview to the authentic petpetgif.com 5-frame animation with dynamic hand depth tracking and head squish math.',
+      highlights: [
+        'Authentic 5-Frame Loop: Integrated the canonical 5-frame petpet animation cycle running at authentic 60ms intervals matching petpetgif.com',
+        'Dynamic Hand Depth: Hand position dynamically tracks avatar squish depth (handDy) so the hand presses down realistically with each pat',
+        'Canonical Squish Matrix: Implemented authentic squish offsets and dimensions for mathematically exact meme fidelity',
+        'Sprite Sheet Support: Upgraded asset rendering to use the official 560x112 sprite sheet with automatic graceful fallback',
+        'Synchronized Dashboard Preview: Dashboard headpat demo preview now runs the exact same authentic 5-frame engine in real time'
+      ]
+    },
     {
       version: '1.4.1',
       releaseName: 'Shing Live v1.4.1 - Ranking Size Sliders, Plain Color Themes & Stay Timer Fix',

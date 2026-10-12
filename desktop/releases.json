@@ -1,6 +1,24 @@
 {
-    "latest":  "1.4.1",
+    "latest":  "1.4.2",
     "releases":  [
+                     {
+                         "version":  "1.4.2",
+                         "releaseName":  "Shing Live v1.4.2 - Authentic Pet-Pet Headpat Animation",
+                         "releaseDate":  "2026-10-12",
+                         "type":  "feature",
+                         "summary":  "Upgraded Pet-Pet Headpat overlay and dashboard preview to the authentic petpetgif.com 5-frame animation with dynamic hand depth tracking and head squish math.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.4.2.zip",
+                         "highlights":  [
+                                            "Authentic 5-Frame Loop: Integrated the canonical 5-frame petpet animation cycle running at authentic 60ms intervals matching petpetgif.com",
+                                            "Dynamic Hand Depth: Hand position dynamically tracks avatar squish depth (handDy) so the hand presses down realistically with each pat",
+                                            "Canonical Squish Matrix: Implemented authentic squish offsets and dimensions for mathematically exact meme fidelity",
+                                            "Sprite Sheet Support: Upgraded asset rendering to use the official 560x112 sprite sheet with automatic graceful fallback",
+                                            "Synchronized Dashboard Preview: Dashboard headpat demo preview now runs the exact same authentic 5-frame engine in real time"
+                                        ],
+                         "notes":  "Authentic petpetgif.com 5-frame headpat animation with dynamic hand depth and head squish.",
+                         "packageSize":  "4.08 MB",
+                         "checksum":  "349b5a603613573edc04e5552e8fe5302f26b0d1d85ad3b6f84c33f3667bf72a"
+                     },
                      {
                          "version":  "1.4.1",
                          "releaseName":  "Shing Live v1.4.1 - Ranking Size Sliders, Plain Color Themes \u0026 Stay Timer Fix",
