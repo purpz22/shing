@@ -1369,18 +1369,296 @@ function updateUniversalVolumeUI() {
   if (iconOff) iconOff.classList.toggle('hidden', !(muted || vol <= 0));
 }
 
-function renderTriggerMediaUI(kind) {
-  const isFollow = kind === 'follow';
-  const mediaUrl = isFollow ? (appSettings.triggers?.followMedia || '') : (appSettings.triggers?.giftMedia || '');
-  const mediaType = isFollow ? (appSettings.triggers?.followMediaType || '') : (appSettings.triggers?.giftMediaType || '');
-  const statusEl = $(isFollow ? 'trig-follow-media-status' : 'trig-gift-media-status');
-  const previewEl = $(isFollow ? 'trig-follow-media-preview' : 'trig-gift-media-preview');
-  const clearBtn = $(isFollow ? 'clear-follow-media-btn' : 'clear-gift-media-btn');
+// Events Table & Event Editor Modal Controller Logic
+const EVENT_DEFINITIONS = [
+  {
+    key: 'follow',
+    name: 'Follow',
+    iconSvg: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`,
+    title: 'Follow Event',
+    desc: 'Customize alert message, sound, and media when viewers follow.',
+    defaultMsg: 'Thank you {user} for following!',
+    hint: 'Use {user} to display the follower username.',
+    msgKey: 'followMessage',
+    soundKey: 'follow',
+    defaultSound: '/assets/sounds/chime.wav',
+    mediaKey: 'followMedia',
+    mediaTypeKey: 'followMediaType',
+    testType: 'follow',
+    getTestPayload: () => ({ user: 'SparkleFan', nickname: 'SparkleFan', uniqueId: 'sparklefan', avatar: '/assets/avatar.png' })
+  },
+  {
+    key: 'gift',
+    name: 'Gift 1+ Coins',
+    iconSvg: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.65-.5-.65C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76V14h2V8.76L15.38 12 17 10.83 14.92 8H20v6z"/></svg>`,
+    title: 'Standard Gift Event',
+    desc: 'Customize alert message, sound, and media for standard gifts (1 to 999 coins).',
+    defaultMsg: '{user} sent {gift} x{count}!',
+    hint: 'Use {user} for viewer, {gift} for gift name, and {count} for count.',
+    msgKey: 'giftMessage',
+    soundKey: 'gift',
+    defaultSound: '/assets/sounds/coin.wav',
+    mediaKey: 'giftMedia',
+    mediaTypeKey: 'giftMediaType',
+    testType: 'gift',
+    getTestPayload: () => ({ user: 'Supporter', nickname: 'Supporter', giftId: 'rose', giftName: 'Rose', count: 1, coins: 1, avatar: '/assets/avatar.png' })
+  },
+  {
+    key: 'gift_big',
+    name: 'Big Gift (1,000+ Coins)',
+    iconSvg: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`,
+    title: 'Big Gift Event',
+    desc: 'Customize alert message, sound, and media for high-tier gifts (1,000+ coins).',
+    defaultMsg: 'LEGENDARY: {user} sent {gift} x{count}!',
+    hint: 'Use {user} for viewer, {gift} for gift name, and {count} for count.',
+    msgKey: 'giftBigMessage',
+    soundKey: 'gift_big',
+    defaultSound: '/assets/sounds/fanfare.wav',
+    mediaKey: 'giftBigMedia',
+    mediaTypeKey: 'giftBigMediaType',
+    testType: 'gift',
+    getTestPayload: () => ({ user: 'WhaleSupporter', nickname: 'Whale Supporter', giftId: 'galaxy', giftName: 'Galaxy', count: 1, coins: 1000, giftPictureUrl: '/assets/gifts/galaxy.png', avatar: '/assets/avatar.png' })
+  },
+  {
+    key: 'like',
+    name: 'Likes Milestone',
+    iconSvg: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>`,
+    title: 'Likes Milestone Event',
+    desc: 'Customize alert message, threshold, and sound when viewers tap likes.',
+    defaultMsg: '{user} tapped {count} likes!',
+    hint: 'Use {user} for viewer and {count} for total tapped likes.',
+    msgKey: 'likeMessage',
+    soundKey: 'like',
+    defaultSound: '/assets/sounds/pop.wav',
+    mediaKey: null,
+    mediaTypeKey: null,
+    testType: 'like',
+    getTestPayload: () => ({ user: 'Tapper', nickname: 'Tapper', count: appSettings.triggers?.likeThreshold || 50, avatar: '/assets/avatar.png' })
+  },
+  {
+    key: 'share',
+    name: 'Share',
+    iconSvg: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>`,
+    title: 'Share Event',
+    desc: 'Customize alert message, sound, and media when viewers share the stream.',
+    defaultMsg: 'Thank you {user} for sharing the stream!',
+    hint: 'Use {user} to display the sharer username.',
+    msgKey: 'shareMessage',
+    soundKey: 'share',
+    defaultSound: '/assets/sounds/chime.wav',
+    mediaKey: 'shareMedia',
+    mediaTypeKey: 'shareMediaType',
+    testType: 'share',
+    getTestPayload: () => ({ user: 'ShareFriend', nickname: 'Share Friend', avatar: '/assets/avatar.png' })
+  }
+];
+
+let currentEventModalKey = 'follow';
+
+function renderEventsTable() {
+  const tbody = $('events-table-body');
+  if (!tbody) return;
+
+  if (!appSettings.triggers) appSettings.triggers = {};
+  if (!appSettings.triggers.events) {
+    appSettings.triggers.events = {
+      follow: { active: true },
+      gift: { active: true },
+      gift_big: { active: true },
+      like: { active: true },
+      share: { active: true }
+    };
+  }
+
+  tbody.innerHTML = '';
+  let activeCount = 0;
+
+  EVENT_DEFINITIONS.forEach(def => {
+    const isAct = appSettings.triggers.events[def.key]?.active !== false;
+    if (isAct) activeCount++;
+
+    const tr = document.createElement('tr');
+    tr.className = 'event-table-row';
+
+    const msg = appSettings.triggers[def.msgKey] || def.defaultMsg;
+    const soundUrl = appSettings.triggers.sounds?.[def.soundKey] || def.defaultSound;
+    const soundBaseName = soundUrl === 'none'
+      ? 'No Sound'
+      : (soundUrl.split('/').pop().replace(/\.[^/.]+$/, '').replace(/_/g, ' ') || 'Sound');
+    const mediaUrl = def.mediaKey ? (appSettings.triggers[def.mediaKey] || '') : '';
+    const mediaName = mediaUrl ? mediaUrl.split('/').pop() : '';
+
+    const msgPreview = msg.length > 24 ? msg.slice(0, 22) + '...' : msg;
+
+    tr.innerHTML = `
+      <td class="events-actions-cell">
+        <button class="btn-icon-table btn-edit-event" data-key="${def.key}" title="Edit ${def.name}">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        </button>
+        <button class="btn-icon-table btn-test-action btn-test-event" data-key="${def.key}" title="Test ${def.name} Alert">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+      </td>
+      <td class="event-active-cell">
+        <input type="checkbox" class="event-active-chk" data-key="${def.key}" ${isAct ? 'checked' : ''} title="Toggle ${def.name} active">
+      </td>
+      <td>
+        <span class="event-scope-badge">Any</span>
+      </td>
+      <td>
+        <div class="event-trigger-cell">
+          <span class="event-trigger-icon">${def.iconSvg}</span>
+          <span>${def.name}</span>
+        </div>
+      </td>
+      <td>
+        <div class="event-actions-summary">
+          <span class="event-action-badge" title="${escapeNotifHtml(msg)}">${escapeNotifHtml(msgPreview)}</span>
+          <span class="event-action-badge sound-badge">${escapeNotifHtml(soundBaseName)}</span>
+          ${mediaUrl ? `<span class="event-action-badge media-badge" title="${escapeNotifHtml(mediaName)}">Media Attached</span>` : ''}
+        </div>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+
+  const countBadge = $('events-active-count-badge');
+  if (countBadge) countBadge.textContent = `${activeCount} Active Event${activeCount === 1 ? '' : 's'}`;
+
+  // Attach row event listeners
+  tbody.querySelectorAll('.btn-edit-event').forEach(btn => {
+    btn.addEventListener('click', () => openEventEditorModal(btn.dataset.key));
+  });
+  tbody.querySelectorAll('.btn-test-event').forEach(btn => {
+    btn.addEventListener('click', () => testEventAlert(btn.dataset.key));
+  });
+  tbody.querySelectorAll('.event-active-chk').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const k = chk.dataset.key;
+      if (!appSettings.triggers) appSettings.triggers = {};
+      if (!appSettings.triggers.events) appSettings.triggers.events = {};
+      if (!appSettings.triggers.events[k]) appSettings.triggers.events[k] = {};
+      appSettings.triggers.events[k].active = chk.checked;
+      saveCurrentSettings();
+      renderEventsTable();
+      showToast(`${chk.checked ? 'Enabled' : 'Disabled'} ${k} alerts.`, 'info', 'Event Status');
+    });
+  });
+}
+
+function testEventAlert(key) {
+  const def = EVENT_DEFINITIONS.find(d => d.key === key);
+  if (!def) return;
+  const payload = def.getTestPayload();
+  window.api.simulateEvent(def.testType, payload);
+  showToast(`Simulated ${def.name} alert!`, 'info', 'Test Event');
+}
+
+function openEventEditorModal(key) {
+  const def = EVENT_DEFINITIONS.find(d => d.key === key);
+  if (!def) return;
+  currentEventModalKey = key;
+
+  const modal = $('modal-event-editor');
+  if (!modal) return;
+
+  $('event-modal-title').textContent = def.title;
+  $('event-modal-desc').textContent = def.desc;
+  $('event-modal-icon-wrap').innerHTML = def.iconSvg;
+
+  const currentMsg = appSettings.triggers?.[def.msgKey] || def.defaultMsg;
+  $('event-modal-msg').value = currentMsg;
+  $('event-modal-hint').textContent = def.hint;
+
+  // Sound dropdown
+  const currentSound = appSettings.triggers?.sounds?.[def.soundKey] || def.defaultSound;
+  populateEventModalSoundSelect(currentSound);
+
+  // Media box
+  const mediaBox = $('event-modal-media-box');
+  if (def.mediaKey) {
+    if (mediaBox) mediaBox.style.display = 'block';
+    renderEventModalMediaUI(def);
+  } else {
+    if (mediaBox) mediaBox.style.display = 'none';
+  }
+
+  // Extra likes row
+  const likesRow = $('event-modal-likes-row');
+  if (def.key === 'like') {
+    if (likesRow) {
+      likesRow.classList.remove('hidden');
+      $('event-modal-likes-input').value = appSettings.triggers?.likeThreshold || 50;
+    }
+  } else {
+    if (likesRow) likesRow.classList.add('hidden');
+  }
+
+  modal.classList.add('active');
+}
+
+function populateEventModalSoundSelect(selectedUrl) {
+  const sel = $('event-modal-sound');
+  if (!sel) return;
+
+  const defaultPresets = [
+    { filename: 'chime.wav', name: 'Chime (Default)', url: '/assets/sounds/chime.wav' },
+    { filename: 'coin.wav', name: 'Coin (Default)', url: '/assets/sounds/coin.wav' },
+    { filename: 'fanfare.wav', name: 'Fanfare (Default)', url: '/assets/sounds/fanfare.wav' },
+    { filename: 'pop.wav', name: 'Pop (Default)', url: '/assets/sounds/pop.wav' },
+    { filename: 'level_up.wav', name: 'Level Up', url: '/assets/sounds/level_up.wav' },
+    { filename: 'anime_wow.mp3', name: 'Anime Wow', url: '/assets/sounds/anime_wow.mp3' }
+  ];
+
+  const merged = [...defaultPresets];
+  if (Array.isArray(cachedSoundList)) {
+    for (const s of cachedSoundList) {
+      if (!merged.some(m => m.url === s.url || m.filename === s.filename)) {
+        merged.push(s);
+      }
+    }
+  }
+
+  sel.innerHTML = '';
+  merged.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.url;
+    opt.textContent = s.name;
+    sel.appendChild(opt);
+  });
+
+  const muteOpt = document.createElement('option');
+  muteOpt.value = 'none';
+  muteOpt.textContent = 'No Sound (Mute)';
+  sel.appendChild(muteOpt);
+
+  if (Array.from(sel.options).some(o => o.value === selectedUrl)) {
+    sel.value = selectedUrl;
+  } else if (selectedUrl) {
+    const customOpt = document.createElement('option');
+    customOpt.value = selectedUrl;
+    customOpt.textContent = `Custom (${selectedUrl.split('/').pop()})`;
+    sel.insertBefore(customOpt, muteOpt);
+    sel.value = selectedUrl;
+  } else {
+    sel.value = defaultPresets[0].url;
+  }
+}
+
+function renderEventModalMediaUI(def) {
+  if (!def || !def.mediaKey) return;
+  const mediaUrl = appSettings.triggers?.[def.mediaKey] || '';
+  const mediaType = appSettings.triggers?.[def.mediaTypeKey] || '';
+
+  const statusEl = $('event-modal-media-status');
+  const previewEl = $('event-modal-media-preview');
+  const clearBtn = $('event-modal-clear-media-btn');
 
   if (!statusEl || !previewEl) return;
 
   if (!mediaUrl) {
-    statusEl.textContent = isFollow ? 'None (Default Avatar)' : 'None (Default Gift Icon)';
+    statusEl.textContent = 'None (Default Avatar)';
     previewEl.classList.add('hidden');
     previewEl.innerHTML = '';
     if (clearBtn) clearBtn.classList.add('hidden');
@@ -1398,6 +1676,36 @@ function renderTriggerMediaUI(kind) {
   } else {
     previewEl.innerHTML = `<img src="http://localhost:3333${mediaUrl}" alt="Alert Media Preview">`;
   }
+}
+
+function closeEventEditorModal() {
+  const modal = $('modal-event-editor');
+  if (modal) modal.classList.remove('active');
+}
+
+function saveEventEditorModal() {
+  const def = EVENT_DEFINITIONS.find(d => d.key === currentEventModalKey);
+  if (!def) return;
+
+  if (!appSettings.triggers) appSettings.triggers = {};
+  if (!appSettings.triggers.sounds) appSettings.triggers.sounds = {};
+
+  const newMsg = $('event-modal-msg')?.value?.trim() || def.defaultMsg;
+  appSettings.triggers[def.msgKey] = newMsg;
+
+  const newSound = $('event-modal-sound')?.value || def.defaultSound;
+  appSettings.triggers.sounds[def.soundKey] = newSound;
+
+  if (def.key === 'like') {
+    const thresh = +$('event-modal-likes-input')?.value || 50;
+    appSettings.triggers.likeThreshold = thresh;
+    if ($('trig-likes-thresh')) $('trig-likes-thresh').value = thresh;
+  }
+
+  saveCurrentSettings();
+  renderEventsTable();
+  closeEventEditorModal();
+  showToast(`${def.name} settings saved!`, 'success', 'Event Saved');
 }
 
 // Dynamic Demo Ranking Leaderboard State & Renderers
@@ -1531,12 +1839,10 @@ async function initSettings() {
     $('headpat-on-gift').checked = appSettings.headpat?.triggerOnGift !== false;
   }
 
-  // Populate Triggers
+  // Populate Triggers & Events Table
   if (appSettings.triggers) {
-    $('trig-follow-msg').value = appSettings.triggers.followMessage || 'Thank you {user} for following!';
-    $('trig-gift-msg').value = appSettings.triggers.giftMessage || '{user} sent {gift} x{count}!';
-    $('trig-duration').value = appSettings.triggers.alertDuration || 5;
-    $('trig-likes-thresh').value = appSettings.triggers.likeThreshold || 50;
+    if ($('trig-duration')) $('trig-duration').value = appSettings.triggers.alertDuration || 5;
+    if ($('trig-likes-thresh')) $('trig-likes-thresh').value = appSettings.triggers.likeThreshold || 50;
 
     if ($('trig-sound-enabled')) {
       $('trig-sound-enabled').checked = appSettings.triggers.soundEnabled !== false;
@@ -1547,8 +1853,7 @@ async function initSettings() {
       if ($('trig-volume-val')) $('trig-volume-val').textContent = `${Math.round(vol * 100)}%`;
     }
   }
-  renderTriggerMediaUI('follow');
-  renderTriggerMediaUI('gift');
+  renderEventsTable();
 
   // Populate Lower Third
   if (appSettings.lowerThird) {
@@ -2846,74 +3151,73 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  $('clear-follow-media-btn')?.addEventListener('click', () => {
-    if (!appSettings.triggers) appSettings.triggers = {};
-    appSettings.triggers.followMedia = '';
-    appSettings.triggers.followMediaType = '';
-    renderTriggerMediaUI('follow');
-    saveCurrentSettings();
-    showToast('Follow alert custom media removed.', 'info', 'Follow Alert Media');
+  // Event Editor Modal Controls
+  $('event-modal-close')?.addEventListener('click', closeEventEditorModal);
+  $('event-modal-cancel-btn')?.addEventListener('click', closeEventEditorModal);
+  $('event-modal-save-btn')?.addEventListener('click', saveEventEditorModal);
+  $('event-modal-test-btn')?.addEventListener('click', () => {
+    testEventAlert(currentEventModalKey);
   });
 
-  $('upload-gift-media-btn')?.addEventListener('click', async () => {
+  $('event-modal-sound-test')?.addEventListener('click', () => {
+    const val = $('event-modal-sound')?.value;
+    if (val) playSoundPreview(val);
+  });
+
+  $('event-modal-sound-search')?.addEventListener('click', () => {
+    if ($('modal-target-sound-select')) {
+      $('modal-target-sound-select').value = 'event-modal-sound';
+    }
+    $('modal-sound-search').classList.add('active');
+    $('sound-search-input')?.focus();
+  });
+
+  $('event-modal-sound-upload')?.addEventListener('click', () => {
+    handleImportLocalSound('event-modal-sound');
+  });
+
+  $('event-modal-upload-media-btn')?.addEventListener('click', async () => {
+    const def = EVENT_DEFINITIONS.find(d => d.key === currentEventModalKey);
+    if (!def || !def.mediaKey) return;
     try {
       const res = await window.api.selectLocalMedia();
       if (!res || res.canceled) return;
       if (res.success && res.url) {
         if (!appSettings.triggers) appSettings.triggers = {};
-        appSettings.triggers.giftMedia = res.url;
-        appSettings.triggers.giftMediaType = res.mediaType;
-        renderTriggerMediaUI('gift');
+        appSettings.triggers[def.mediaKey] = res.url;
+        appSettings.triggers[def.mediaTypeKey] = res.mediaType;
+        renderEventModalMediaUI(def);
         saveCurrentSettings();
-        showToast(`Gift alert media set to "${res.name}"!`, 'success', 'Gift Alert Media');
+        renderEventsTable();
+        showToast(`${def.name} media updated to "${res.name}"!`, 'success', 'Media Attached');
       }
     } catch (err) {
-      showToast(`Media error: ${err.message}`, 'error', 'Gift Alert Media');
+      showToast(`Media error: ${err.message}`, 'error', 'Media Upload');
     }
   });
 
-  $('clear-gift-media-btn')?.addEventListener('click', () => {
+  $('event-modal-clear-media-btn')?.addEventListener('click', () => {
+    const def = EVENT_DEFINITIONS.find(d => d.key === currentEventModalKey);
+    if (!def || !def.mediaKey) return;
     if (!appSettings.triggers) appSettings.triggers = {};
-    appSettings.triggers.giftMedia = '';
-    appSettings.triggers.giftMediaType = '';
-    renderTriggerMediaUI('gift');
+    appSettings.triggers[def.mediaKey] = '';
+    appSettings.triggers[def.mediaTypeKey] = '';
+    renderEventModalMediaUI(def);
     saveCurrentSettings();
-    showToast('Gift alert custom media removed.', 'info', 'Gift Alert Media');
+    renderEventsTable();
+    showToast(`${def.name} custom media removed.`, 'info', 'Media Removed');
   });
 
-  // Triggers Save & Multi-Tier Tests
-  $('trig-follow-msg')?.addEventListener('input', () => {
+  // General Triggers Settings Save
+  $('save-triggers-btn')?.addEventListener('click', () => {
     if (!appSettings.triggers) appSettings.triggers = {};
-    appSettings.triggers.followMessage = $('trig-follow-msg').value;
-    if (typeof OverlayDemoManager !== 'undefined') OverlayDemoManager.sync();
-  });
-  $('trig-gift-msg')?.addEventListener('input', () => {
-    if (!appSettings.triggers) appSettings.triggers = {};
-    appSettings.triggers.giftMessage = $('trig-gift-msg').value;
-    if (typeof OverlayDemoManager !== 'undefined') OverlayDemoManager.sync();
-  });
-
-  $('save-triggers-btn').addEventListener('click', () => {
-    appSettings.triggers = Object.assign({}, appSettings.triggers || {}, {
-      followMessage: $('trig-follow-msg').value,
-      giftMessage: $('trig-gift-msg').value,
-      alertDuration: +$('trig-duration').value || 5,
-      likeThreshold: +$('trig-likes-thresh').value || 50,
-      soundEnabled: $('trig-sound-enabled') ? $('trig-sound-enabled').checked : true,
-      soundVolume: $('trig-volume') ? +$('trig-volume').value : 0.85,
-      sounds: {
-        follow: $('trig-sound-follow') ? $('trig-sound-follow').value : '/assets/sounds/chime.wav',
-        gift: $('trig-sound-gift') ? $('trig-sound-gift').value : '/assets/sounds/coin.wav',
-        gift_big: $('trig-sound-gift-big') ? $('trig-sound-gift-big').value : '/assets/sounds/fanfare.wav',
-        like: $('trig-sound-like') ? $('trig-sound-like').value : '/assets/sounds/pop.wav'
-      }
-    });
+    appSettings.triggers.alertDuration = +$('trig-duration').value || 5;
+    appSettings.triggers.likeThreshold = +$('trig-likes-thresh').value || 50;
+    appSettings.triggers.soundEnabled = $('trig-sound-enabled') ? $('trig-sound-enabled').checked : true;
+    appSettings.triggers.soundVolume = $('trig-volume') ? +$('trig-volume').value : 0.85;
     saveCurrentSettings();
-    showToast('Triggers, media, and sound settings saved!', 'success', 'Triggers & Sounds');
-  });
-
-  $('test-tier1-btn')?.addEventListener('click', () => {
-    window.api.simulateEvent('follow', { user: 'Test Follower', nickname: 'Test Follower', uniqueId: 'testfollower', avatar: '/assets/avatar.png' });
+    renderEventsTable();
+    showToast('General alert settings saved!', 'success', 'Triggers Saved');
   });
 
   // Sound volume slider live preview
@@ -3406,9 +3710,13 @@ document.addEventListener('DOMContentLoaded', () => {
   $('modal-custom-alert')?.addEventListener('click', e => {
     if (e.target.id === 'modal-custom-alert') closeCustomAlert();
   });
+  $('modal-event-editor')?.addEventListener('click', e => {
+    if (e.target.id === 'modal-event-editor') closeEventEditorModal();
+  });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && $('modal-custom-alert')?.classList.contains('active')) {
-      closeCustomAlert();
+    if (e.key === 'Escape') {
+      if ($('modal-custom-alert')?.classList.contains('active')) closeCustomAlert();
+      if ($('modal-event-editor')?.classList.contains('active')) closeEventEditorModal();
     }
   });
 
@@ -3441,6 +3749,11 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     calculateClampedCoordinates,
     updateJarTransformUI,
-    sendJarTransform
+    sendJarTransform,
+    EVENT_DEFINITIONS,
+    renderEventsTable,
+    openEventEditorModal,
+    closeEventEditorModal,
+    saveEventEditorModal
   };
 }
