@@ -1926,6 +1926,16 @@ async function initSettings() {
     $('comp-hairstyle').value = appSettings.companion.hair || 'twintails';
     $('comp-hair-color').value = appSettings.companion.hc || '#7b3fe4';
     $('comp-outfit-color').value = appSettings.companion.oc || '#9b5cf0';
+    if ($('comp-bubble-font')) {
+      $('comp-bubble-font').value = appSettings.companion.bubbleFont || 'Nunito';
+    }
+    const bSize = appSettings.companion.bubbleFontSize || 18;
+    if ($('comp-bubble-size')) {
+      $('comp-bubble-size').value = bSize;
+    }
+    if ($('comp-bubble-size-val')) {
+      $('comp-bubble-size-val').textContent = `${bSize}px`;
+    }
     syncPresetSelect('comp-hair-preset', $('comp-hair-color').value);
     syncPresetSelect('comp-outfit-preset', $('comp-outfit-color').value);
 
@@ -3696,15 +3706,58 @@ document.addEventListener('DOMContentLoaded', () => {
     cb.addEventListener('change', broadcastCompanionChange);
   });
 
+  $('comp-bubble-font')?.addEventListener('change', () => {
+    broadcastCompanionChange();
+    updateCompanionLivePreview(true);
+  });
+
+  $('comp-bubble-size')?.addEventListener('input', () => {
+    const val = Number($('comp-bubble-size').value) || 18;
+    if ($('comp-bubble-size-val')) {
+      $('comp-bubble-size-val').textContent = `${val}px`;
+    }
+    updateCompanionLivePreview(true);
+  });
+
+  $('comp-bubble-size')?.addEventListener('change', () => {
+    broadcastCompanionChange();
+  });
+
+  function updateCompanionLivePreview(showDemoMsg = false) {
+    const iframe = $('comp-preview-iframe');
+    if (!iframe || !iframe.contentWindow) return;
+    const bubbleFont = $('comp-bubble-font') ? $('comp-bubble-font').value : 'Nunito';
+    const bubbleFontSize = $('comp-bubble-size') ? Number($('comp-bubble-size').value) || 18 : 18;
+    try {
+      iframe.contentWindow.postMessage({
+        type: 'companion:preview',
+        companion: {
+          hair: $('comp-hairstyle')?.value || 'twintails',
+          hc: $('comp-hair-color')?.value || '#7b3fe4',
+          oc: $('comp-outfit-color')?.value || '#9b5cf0',
+          cats: Array.from(document.querySelectorAll('#comp-cats input[type="checkbox"]:checked')).map(c => c.value),
+          bubbleFont,
+          bubbleFontSize
+        },
+        demoMessage: showDemoMsg ? 'Hi GOJO! Welcome to the stream!' : undefined
+      }, '*');
+    } catch (_) {}
+  }
+
   function broadcastCompanionChange() {
     const cats = Array.from(document.querySelectorAll('#comp-cats input[type="checkbox"]:checked')).map(c => c.value);
+    const bubbleFont = $('comp-bubble-font') ? $('comp-bubble-font').value : 'Nunito';
+    const bubbleFontSize = $('comp-bubble-size') ? Number($('comp-bubble-size').value) || 18 : 18;
     appSettings.companion = {
       hair: $('comp-hairstyle').value,
       hc: $('comp-hair-color').value,
       oc: $('comp-outfit-color').value,
-      cats
+      cats,
+      bubbleFont,
+      bubbleFontSize
     };
     saveCurrentSettings();
+    updateCompanionLivePreview(false);
   }
 
   $('save-companion-btn').addEventListener('click', () => {
