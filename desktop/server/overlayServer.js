@@ -23,6 +23,9 @@ class OverlayServer {
     this.settingsSaveTimer = null;
     this.streamTimerTicker = null;
     this.settings = this.loadSettings();
+    if (!this.settings.companion) this.settings.companion = {};
+    if (!this.settings.companion.bubbleFont) this.settings.companion.bubbleFont = 'Nunito';
+    if (this.settings.companion.bubbleFontSize === undefined) this.settings.companion.bubbleFontSize = 18;
     if (!this.settings.jar) this.settings.jar = {};
     if (!this.settings.jar.transform) {
       this.settings.jar.transform = { x: 50.0, y: 82.0, scale: 1.0 };
@@ -239,7 +242,9 @@ class OverlayServer {
         hair: 'twintails',
         hc: '#7b3fe4',
         oc: '#9b5cf0',
-        cats: ['purple', 'black']
+        cats: ['purple', 'black'],
+        bubbleFont: 'Nunito',
+        bubbleFontSize: 18
       },
       jar: {
         gravity: 0.9,
