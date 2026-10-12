@@ -2,30 +2,97 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Stream Timer Overlay</title>
+<title>Shing Live - Stream Timer Overlay</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
     width: 100%; height: 100%;
     background: transparent;
     overflow: hidden;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  }
-  #timer-card {
-    position: absolute;
-    top: 24px;
-    right: 24px;
+    font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+    user-select: none;
     display: flex;
     align-items: center;
-    gap: 12px;
-    background: rgba(255, 255, 255, 0.95);
-    border: 2px solid #7b3fe4;
-    border-radius: 24px;
-    padding: 10px 24px;
-    box-shadow: 0 8px 24px rgba(123, 63, 228, 0.22);
-    backdrop-filter: blur(10px);
-    transition: border-color 0.4s, box-shadow 0.4s;
+    justify-content: center;
+  }
+
+  #timer-card {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    width: fit-content;
+    max-width: max-content;
+    white-space: nowrap;
+    transform: scale(var(--timer-scale, 1.0));
+    transform-origin: center center;
+    background: var(--theme-bg, linear-gradient(160deg, rgba(24, 20, 40, 0.92) 0%, rgba(16, 14, 28, 0.96) 100%));
+    border: 2px solid var(--theme-border, rgba(187, 134, 252, 0.5));
+    border-radius: 32px;
+    padding: 12px 28px;
+    box-shadow: var(--theme-shadow, 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(187, 134, 252, 0.25));
+    backdrop-filter: blur(12px);
+    color: var(--theme-text, #fff);
     position: relative;
+    transition: border-color 0.4s, box-shadow 0.4s, transform 0.2s ease;
+  }
+
+  /* 6 Plain Color Themes */
+  #timer-card,
+  #timer-card[data-theme="Purple"] {
+    --theme-bg: linear-gradient(160deg, rgba(24, 20, 40, 0.94) 0%, rgba(16, 14, 28, 0.98) 100%);
+    --theme-border: rgba(187, 134, 252, 0.55);
+    --theme-accent: #c084fc;
+    --theme-digits: #ffffff;
+    --theme-digits-glow: rgba(192, 132, 252, 0.45);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 20px rgba(187, 134, 252, 0.25);
+    --theme-text: #fff;
+  }
+  #timer-card[data-theme="Pink"] {
+    --theme-bg: linear-gradient(160deg, rgba(38, 20, 36, 0.94) 0%, rgba(26, 13, 25, 0.98) 100%);
+    --theme-border: rgba(255, 126, 185, 0.55);
+    --theme-accent: #ff7eb9;
+    --theme-digits: #ffffff;
+    --theme-digits-glow: rgba(255, 126, 185, 0.45);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 20px rgba(255, 126, 185, 0.25);
+    --theme-text: #fff;
+  }
+  #timer-card[data-theme="Blue"] {
+    --theme-bg: linear-gradient(160deg, rgba(16, 26, 46, 0.94) 0%, rgba(10, 18, 33, 0.98) 100%);
+    --theme-border: rgba(72, 181, 255, 0.55);
+    --theme-accent: #48b5ff;
+    --theme-digits: #ffffff;
+    --theme-digits-glow: rgba(72, 181, 255, 0.45);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 20px rgba(72, 181, 255, 0.25);
+    --theme-text: #fff;
+  }
+  #timer-card[data-theme="Green"] {
+    --theme-bg: linear-gradient(160deg, rgba(16, 36, 26, 0.94) 0%, rgba(10, 24, 18, 0.98) 100%);
+    --theme-border: rgba(52, 211, 153, 0.55);
+    --theme-accent: #34d399;
+    --theme-digits: #ffffff;
+    --theme-digits-glow: rgba(52, 211, 153, 0.45);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 20px rgba(52, 211, 153, 0.25);
+    --theme-text: #fff;
+  }
+  #timer-card[data-theme="Dark"] {
+    --theme-bg: linear-gradient(160deg, rgba(22, 22, 26, 0.95) 0%, rgba(14, 14, 18, 0.98) 100%);
+    --theme-border: rgba(255, 255, 255, 0.22);
+    --theme-accent: #e2e8f0;
+    --theme-digits: #ffffff;
+    --theme-digits-glow: rgba(255, 255, 255, 0.25);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
+    --theme-text: #fff;
+  }
+  #timer-card[data-theme="Light"] {
+    --theme-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.96) 0%, rgba(245, 243, 255, 0.96) 100%);
+    --theme-border: rgba(123, 63, 228, 0.45);
+    --theme-accent: #7b3fe4;
+    --theme-digits: #271442;
+    --theme-digits-glow: rgba(123, 63, 228, 0.15);
+    --theme-shadow: 0 10px 28px rgba(123, 63, 228, 0.25);
+    --theme-text: #271442;
   }
 
   /* Low Time Warning Pulse (< 5 mins) */
@@ -40,30 +107,33 @@
   }
 
   .icon-wrap {
-    color: #7b3fe4;
+    color: var(--theme-accent, #c084fc);
     display: flex;
     align-items: center;
+    justify-content: center;
   }
   #timer-card.low-time .icon-wrap {
     color: #f43f5e;
   }
 
   #time-display {
-    font-size: 30px;
-    font-weight: 800;
-    color: #271442;
+    font-size: 38px;
+    font-weight: 900;
+    color: var(--theme-digits, #fff);
     font-variant-numeric: tabular-nums;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 16px var(--theme-digits-glow, rgba(192, 132, 252, 0.4));
   }
   #timer-card.low-time #time-display {
-    color: #9f1239;
+    color: #f43f5e;
+    text-shadow: 0 0 16px rgba(244, 63, 94, 0.4);
   }
 
   /* Floating Bonus Seconds Tags */
   .bonus-tag {
     position: absolute;
-    top: -12px;
-    right: 24px;
+    top: -14px;
+    right: 20px;
     background: #ec4899;
     color: #fff;
     font-size: 14px;
@@ -84,8 +154,8 @@
   /* Floating Deduct Seconds Tags */
   .deduct-tag {
     position: absolute;
-    top: -12px;
-    right: 24px;
+    top: -14px;
+    right: 20px;
     background: #f43f5e;
     color: #fff;
     font-size: 14px;
@@ -107,7 +177,7 @@
 <body>
 <div id="timer-card">
   <div class="icon-wrap">
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
     </svg>
   </div>
@@ -126,13 +196,27 @@ let timerSettings = {
   durationMin: 30,
   addSecondsPerGift: 15,
   reduceSecondsPerComment: 1,
-  reduceSecondsPerLike: 0.1
+  reduceSecondsPerLike: 0.1,
+  theme: 'Purple',
+  scale: 1.0
 };
 
+function applyTheme(theme) {
+  const allowed = ['Purple', 'Pink', 'Blue', 'Green', 'Dark', 'Light'];
+  const safeTheme = allowed.includes(theme) ? theme : 'Purple';
+  timerCard.setAttribute('data-theme', safeTheme);
+}
+
+function applyScale(scale) {
+  const s = Math.max(0.4, Math.min(2.0, Number(scale) || 1.0));
+  timerCard.style.setProperty('--timer-scale', s);
+}
+
 function formatTime(sec) {
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
+  const safeSec = Math.max(0, Number(sec) || 0);
+  const h = Math.floor(safeSec / 3600);
+  const m = Math.floor((safeSec % 3600) / 60);
+  const s = safeSec % 60;
   if (h > 0) {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
@@ -184,7 +268,7 @@ function pauseTimer() {
 }
 
 function resetTimer(seconds) {
-  remainingSeconds = seconds || (timerSettings.durationMin * 60);
+  remainingSeconds = (seconds !== undefined && seconds !== null) ? seconds : (timerSettings.durationMin * 60);
   updateDisplay();
 }
 
@@ -204,14 +288,20 @@ function connectWS() {
       if (data.type === 'init') {
         if (data.settings?.timer) {
           timerSettings = Object.assign(timerSettings, data.settings.timer);
+          if (timerSettings.theme) applyTheme(timerSettings.theme);
+          if (timerSettings.scale) applyScale(timerSettings.scale);
         }
         if (data.timer) {
           remainingSeconds = data.timer.remainingSeconds;
           isRunning = data.timer.isRunning;
+          if (data.timer.theme) applyTheme(data.timer.theme);
+          if (data.timer.scale) applyScale(data.timer.scale);
           updateDisplay();
         }
       } else if (data.type === 'settings:update' && data.settings?.timer) {
         timerSettings = Object.assign(timerSettings, data.settings.timer);
+        if (timerSettings.theme) applyTheme(timerSettings.theme);
+        if (timerSettings.scale) applyScale(timerSettings.scale);
       } else if (data.type === 'timer:tick') {
         remainingSeconds = data.remainingSeconds;
         updateDisplay();
@@ -219,6 +309,8 @@ function connectWS() {
         if (data.timer) {
           remainingSeconds = data.timer.remainingSeconds;
           isRunning = data.timer.isRunning;
+          if (data.timer.theme) applyTheme(data.timer.theme);
+          if (data.timer.scale) applyScale(data.timer.scale);
           updateDisplay();
         }
       } else if (data.type === 'timer:deduct') {

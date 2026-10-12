@@ -1628,6 +1628,10 @@ async function initSettings() {
     if ($('timer-deduct-comment')) $('timer-deduct-comment').value = appSettings.timer.reduceSecondsPerComment ?? 1;
     if ($('timer-deduct-like')) $('timer-deduct-like').value = appSettings.timer.reduceSecondsPerLike ?? 0.1;
     if ($('timer-bonus')) $('timer-bonus').value = appSettings.timer.addSecondsPerGift ?? 15;
+    if ($('timer-theme')) $('timer-theme').value = appSettings.timer.theme || 'Purple';
+    const scale = typeof appSettings.timer.scale === 'number' ? appSettings.timer.scale : 1.0;
+    if ($('timer-scale-slider')) $('timer-scale-slider').value = scale;
+    if ($('timer-scale-badge')) $('timer-scale-badge').textContent = `${Math.round(scale * 100)}%`;
   }
   if (window.api?.getTimerStatus) {
     window.api.getTimerStatus().then(snap => {
@@ -3251,6 +3255,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof OverlayDemoManager !== 'undefined') OverlayDemoManager.sync();
   });
 
+  $('timer-theme')?.addEventListener('change', () => {
+    if (!appSettings.timer) appSettings.timer = {};
+    appSettings.timer.theme = $('timer-theme').value;
+    saveCurrentSettings();
+  });
+
+  $('timer-scale-slider')?.addEventListener('input', () => {
+    if (!appSettings.timer) appSettings.timer = {};
+    const val = parseFloat($('timer-scale-slider').value) || 1.0;
+    appSettings.timer.scale = val;
+    if ($('timer-scale-badge')) $('timer-scale-badge').textContent = `${Math.round(val * 100)}%`;
+    saveCurrentSettings();
+  });
+
   $('save-timer-btn')?.addEventListener('click', () => {
     const totalSec = getTimerInputSeconds();
     const durationMin = Math.max(1, Math.round(totalSec / 60));
@@ -3259,6 +3277,8 @@ document.addEventListener('DOMContentLoaded', () => {
     appSettings.timer.reduceSecondsPerComment = Math.max(0, parseFloat($('timer-deduct-comment')?.value) || 0);
     appSettings.timer.reduceSecondsPerLike = Math.max(0, parseFloat($('timer-deduct-like')?.value) || 0);
     appSettings.timer.addSecondsPerGift = Math.max(0, parseFloat($('timer-bonus')?.value) || 0);
+    appSettings.timer.theme = $('timer-theme')?.value || 'Purple';
+    appSettings.timer.scale = parseFloat($('timer-scale-slider')?.value) || 1.0;
     saveCurrentSettings();
     window.api.controlTimer('set', totalSec);
     showToast('Stream timer settings saved!', 'success', 'Stream Timer');

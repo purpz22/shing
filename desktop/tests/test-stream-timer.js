@@ -25,12 +25,16 @@ async function runTests() {
   assert.strictEqual(defaults.timer.addSecondsPerGift, 15, 'default addSecondsPerGift should be 15');
   assert.strictEqual(defaults.timer.reduceSecondsPerComment, 1, 'default reduceSecondsPerComment should be 1');
   assert.strictEqual(defaults.timer.reduceSecondsPerLike, 0.1, 'default reduceSecondsPerLike should be 0.1');
+  assert.strictEqual(defaults.timer.theme, 'Purple', 'default theme should be Purple');
+  assert.strictEqual(defaults.timer.scale, 1.0, 'default scale should be 1.0');
 
   // 2. Test Timer Initialization & Snapshot
   const initialSnapshot = server.getTimerSnapshot();
   assert.strictEqual(initialSnapshot.remainingSeconds, 1800, 'initial remainingSeconds should be 1800');
   assert.strictEqual(initialSnapshot.initialSeconds, 1800, 'initial initialSeconds should be 1800');
   assert.strictEqual(initialSnapshot.isRunning, false, 'timer should be initially paused');
+  assert.strictEqual(initialSnapshot.theme, 'Purple', 'initial snapshot theme should be Purple');
+  assert.strictEqual(initialSnapshot.scale, 1.0, 'initial snapshot scale should be 1.0');
 
   // 3. Test Setting Custom Time
   server.handleTimerControl('set', 45 * 60 + 15); // 45m 15s = 2715s
@@ -112,10 +116,15 @@ async function runTests() {
   assert(indexHtml.includes('id="timer-deduct-like"'), 'index.html must have #timer-deduct-like input');
   assert(indexHtml.includes('id="timer-sub1m-btn"'), 'index.html must have #timer-sub1m-btn button');
   assert(indexHtml.includes('id="timer-add5m-btn"'), 'index.html must have #timer-add5m-btn button');
+  assert(indexHtml.includes('id="timer-theme"'), 'index.html must have #timer-theme select');
+  assert(indexHtml.includes('id="timer-scale-slider"'), 'index.html must have #timer-scale-slider input');
 
   const timerOverlayHtml = fs.readFileSync(path.join(__dirname, '..', 'overlays', 'timer.html'), 'utf8');
   assert(timerOverlayHtml.includes('deduct-tag'), 'timer.html must support deduct-tag floating animations');
   assert(timerOverlayHtml.includes('timer:sync'), 'timer.html must handle timer:sync events');
+  assert(timerOverlayHtml.includes('fit-content'), 'timer.html must use fit-content to avoid stretching');
+  assert(timerOverlayHtml.includes('data-theme="Purple"'), 'timer.html must support data-theme="Purple"');
+  assert(timerOverlayHtml.includes('--timer-scale'), 'timer.html must support --timer-scale');
 
   console.log('Stream timer tests passed successfully!');
 }

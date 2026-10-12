@@ -38,6 +38,8 @@ class OverlayServer {
     if (this.settings.timer.addSecondsPerGift === undefined) this.settings.timer.addSecondsPerGift = 15;
     if (this.settings.timer.reduceSecondsPerComment === undefined) this.settings.timer.reduceSecondsPerComment = 1;
     if (this.settings.timer.reduceSecondsPerLike === undefined) this.settings.timer.reduceSecondsPerLike = 0.1;
+    if (!this.settings.timer.theme) this.settings.timer.theme = 'Purple';
+    if (this.settings.timer.scale === undefined) this.settings.timer.scale = 1.0;
 
     const initialSec = Math.max(0, (Number(this.settings.timer.durationMin) || 30) * 60);
     this.timerState = {
@@ -270,7 +272,9 @@ class OverlayServer {
         durationMin: 30,
         addSecondsPerGift: 15,
         reduceSecondsPerComment: 1,
-        reduceSecondsPerLike: 0.1
+        reduceSecondsPerLike: 0.1,
+        theme: 'Purple',
+        scale: 1.0
       },
       updates: {
         autoCheck: true,
@@ -490,7 +494,9 @@ class OverlayServer {
     return {
       remainingSeconds: this.timerState.remainingSeconds,
       initialSeconds: this.timerState.initialSeconds,
-      isRunning: this.timerState.isRunning
+      isRunning: this.timerState.isRunning,
+      theme: this.settings?.timer?.theme || 'Purple',
+      scale: typeof this.settings?.timer?.scale === 'number' ? this.settings.timer.scale : 1.0
     };
   }
 
