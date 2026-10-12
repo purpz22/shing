@@ -1,6 +1,24 @@
 {
-    "latest":  "1.4.2",
+    "latest":  "1.4.3",
     "releases":  [
+                     {
+                         "version":  "1.4.3",
+                         "releaseName":  "Shing Live v1.4.3 - Interactive Stream Timer \u0026 Live Reductions",
+                         "releaseDate":  "2026-10-12",
+                         "type":  "feature",
+                         "summary":  "Full interactive stream countdown timer with synchronized real-time ticking across dashboard and OBS, custom starting duration (Hours/Minutes/Seconds with presets), TikTok live chat and like deductions, and quick live adjustment buttons.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.4.3.zip",
+                         "highlights":  [
+                                            "Synchronized Live Countdown: Clicking Start counts down both the dashboard clock display and stream overlays in 100% lockstep via central server synchronization",
+                                            "Custom Starting Duration: Streamers can easily set custom Hours, Minutes, and Seconds with instant display updates and quick preset pills (15m, 30m, 45m, 1h, 2h)",
+                                            "Chat Comment Deductions: Configurable time reductions per chat comment (default -1s) with animated floating deduction tags on stream",
+                                            "Like Fractional Reductions: Configurable time reductions per like (default -0.1s; 10 likes = -1s) using a precision fractional accumulator to prevent clock drift",
+                                            "Live Adjust Controls: Added quick adjust buttons (-1 Min, +1 Min, +5 Min) and status indicator (Running, Paused, Finished) with zero-negative clamping at 00:00:00"
+                                        ],
+                         "notes":  "Interactive Stream Timer with live countdown, custom duration, chat/like deductions, and quick adjustments.",
+                         "packageSize":  "4.08 MB",
+                         "checksum":  "9fd64c3de40137e03d6dd5023b370acd15a155fedd2c19512a5d222c296cf965"
+                     },
                      {
                          "version":  "1.4.2",
                          "releaseName":  "Shing Live v1.4.2 - Authentic Pet-Pet Headpat Animation",

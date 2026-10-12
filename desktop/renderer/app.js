@@ -71,6 +71,38 @@ function sendJarTransform(x, y, scale) {
   }
 }
 
+function formatTimerDisplay(sec) {
+  const safeSec = Math.max(0, Number(sec) || 0);
+  const h = Math.floor(safeSec / 3600);
+  const m = Math.floor((safeSec % 3600) / 60);
+  const s = safeSec % 60;
+  if (h > 0) {
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function updateTimerUI(snapshot) {
+  if (!snapshot) return;
+  const disp = $('dash-timer-display');
+  const badge = $('dash-timer-status');
+  if (disp && typeof snapshot.remainingSeconds === 'number') {
+    disp.textContent = formatTimerDisplay(snapshot.remainingSeconds);
+  }
+  if (badge) {
+    badge.className = 'timer-status-badge';
+    if (snapshot.isRunning) {
+      badge.classList.add('status-running');
+      badge.textContent = 'Running';
+    } else if (snapshot.remainingSeconds === 0) {
+      badge.classList.add('status-finished');
+      badge.textContent = 'Finished';
+    } else {
+      badge.textContent = 'Paused';
+    }
+  }
+}
+
 function initStudioWS() {
   if (typeof WebSocket === 'undefined') return;
   if (wsClient && (wsClient.readyState === WebSocket.OPEN || wsClient.readyState === WebSocket.CONNECTING)) {
@@ -91,6 +123,14 @@ function initStudioWS() {
             jarTransform = { x: data.x, y: data.y, scale: data.scale };
             updateJarTransformUI(jarTransform.x, jarTransform.y, jarTransform.scale);
           }
+        } else if (data.type === 'init' && data.timer) {
+          updateTimerUI(data.timer);
+        } else if (data.type === 'timer:tick') {
+          updateTimerUI({ remainingSeconds: data.remainingSeconds, isRunning: true });
+        } else if (data.type === 'timer:sync') {
+          if (data.timer) updateTimerUI(data.timer);
+        } else if (data.type === 'timer:deduct' || data.type === 'timer:bonus') {
+          updateTimerUI({ remainingSeconds: data.remainingSeconds, isRunning: true });
         }
       } catch (e) {}
     };
@@ -118,6 +158,14 @@ if (typeof window !== 'undefined' && typeof window.api === 'undefined') {
             jarTransform = { x: data.x, y: data.y, scale: data.scale };
             updateJarTransformUI(jarTransform.x, jarTransform.y, jarTransform.scale);
           }
+        } else if (data.type === 'init' && data.timer) {
+          updateTimerUI(data.timer);
+        } else if (data.type === 'timer:tick') {
+          updateTimerUI({ remainingSeconds: data.remainingSeconds, isRunning: true });
+        } else if (data.type === 'timer:sync') {
+          if (data.timer) updateTimerUI(data.timer);
+        } else if (data.type === 'timer:deduct' || data.type === 'timer:bonus') {
+          updateTimerUI({ remainingSeconds: data.remainingSeconds, isRunning: true });
         } else if (data.type === 'tiktok:status') {
           statusListeners.forEach(cb => cb(data));
         } else {
@@ -138,6 +186,12 @@ if (typeof window !== 'undefined' && typeof window.api === 'undefined') {
         return {};
       }
     },
+    controlTimer: async (action, seconds) => {
+      if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+        wsClient.send(JSON.stringify({ type: 'timer:control', action, seconds }));
+      }
+    },
+    getTimerStatus: async () => ({ remainingSeconds: 1800, initialSeconds: 1800, isRunning: false }),
     saveSettings: async (settings) => {
       try {
         const res = await fetch('/api/settings', {
@@ -1563,6 +1617,24 @@ async function initSettings() {
     if ($('input-update-feed')) $('input-update-feed').value = appSettings.updates.feedUrl || '';
   }
 
+  // Populate Timer settings
+  if (appSettings.timer) {
+    const totalMinutes = Number(appSettings.timer.durationMin) || 30;
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    if ($('timer-hours')) $('timer-hours').value = h;
+    if ($('timer-minutes')) $('timer-minutes').value = m;
+    if ($('timer-seconds')) $('timer-seconds').value = 0;
+    if ($('timer-deduct-comment')) $('timer-deduct-comment').value = appSettings.timer.reduceSecondsPerComment ?? 1;
+    if ($('timer-deduct-like')) $('timer-deduct-like').value = appSettings.timer.reduceSecondsPerLike ?? 0.1;
+    if ($('timer-bonus')) $('timer-bonus').value = appSettings.timer.addSecondsPerGift ?? 15;
+  }
+  if (window.api?.getTimerStatus) {
+    window.api.getTimerStatus().then(snap => {
+      if (snap) updateTimerUI(snap);
+    });
+  }
+
   renderIcons();
   renderFavorites();
   await refreshSoundDropdowns();
@@ -2125,6 +2197,19 @@ function openChangelogModal() {
   container.innerHTML = '';
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
+    {
+      version: '1.4.3',
+      releaseName: 'Shing Live v1.4.3 - Interactive Stream Timer & Live Reductions',
+      releaseDate: '2026-10-12',
+      summary: 'Full interactive stream countdown timer with synchronized real-time ticking across dashboard and OBS, custom starting duration (Hours/Minutes/Seconds with presets), TikTok live chat and like deductions, and quick live adjustment buttons.',
+      highlights: [
+        'Synchronized Live Countdown: Clicking Start counts down both the dashboard clock display and stream overlays in 100% lockstep via central server synchronization',
+        'Custom Starting Duration: Streamers can easily set custom Hours, Minutes, and Seconds with instant display updates and quick preset pills (15m, 30m, 45m, 1h, 2h)',
+        'Chat Comment Deductions: Configurable time reductions per chat comment (default -1s) with animated floating deduction tags on stream',
+        'Like Fractional Reductions: Configurable time reductions per like (default -0.1s; 10 likes = -1s) using a precision fractional accumulator to prevent clock drift',
+        'Live Adjust Controls: Added quick adjust buttons (-1 Min, +1 Min, +5 Min) and status indicator (Running, Paused, Finished) with zero-negative clamping at 00:00:00'
+      ]
+    },
     {
       version: '1.4.2',
       releaseName: 'Shing Live v1.4.2 - Authentic Pet-Pet Headpat Animation',
@@ -3122,40 +3207,86 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Timer Controls
-  $('timer-duration')?.addEventListener('input', () => {
-    if (!appSettings.timer) appSettings.timer = {};
-    appSettings.timer.durationMin = +$('timer-duration').value || 30;
-    if (typeof OverlayDemoManager !== 'undefined') {
-      OverlayDemoManager.simSeconds = appSettings.timer.durationMin * 60;
-      OverlayDemoManager.sync();
-    }
+  // Timer Controls & Custom Duration
+  function getTimerInputSeconds() {
+    const h = Math.max(0, parseInt($('timer-hours')?.value, 10) || 0);
+    const m = Math.max(0, Math.min(59, parseInt($('timer-minutes')?.value, 10) || 0));
+    const s = Math.max(0, Math.min(59, parseInt($('timer-seconds')?.value, 10) || 0));
+    return h * 3600 + m * 60 + s;
+  }
+
+  ['timer-hours', 'timer-minutes', 'timer-seconds'].forEach(id => {
+    $(id)?.addEventListener('input', () => {
+      const totalSec = getTimerInputSeconds();
+      updateTimerUI({ remainingSeconds: totalSec, isRunning: false });
+      window.api.controlTimer('set', totalSec);
+      if (typeof OverlayDemoManager !== 'undefined') {
+        OverlayDemoManager.simSeconds = totalSec;
+        OverlayDemoManager.sync();
+      }
+    });
   });
+
+  document.querySelectorAll('.timer-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sec = parseInt(btn.dataset.time, 10) || 1800;
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
+      if ($('timer-hours')) $('timer-hours').value = h;
+      if ($('timer-minutes')) $('timer-minutes').value = m;
+      if ($('timer-seconds')) $('timer-seconds').value = s;
+      updateTimerUI({ remainingSeconds: sec, isRunning: false });
+      window.api.controlTimer('set', sec);
+      if (typeof OverlayDemoManager !== 'undefined') {
+        OverlayDemoManager.simSeconds = sec;
+        OverlayDemoManager.sync();
+      }
+    });
+  });
+
   $('timer-bonus')?.addEventListener('input', () => {
     if (!appSettings.timer) appSettings.timer = {};
-    appSettings.timer.addSecondsPerGift = +$('timer-bonus').value || 15;
+    appSettings.timer.addSecondsPerGift = parseFloat($('timer-bonus').value) || 15;
     if (typeof OverlayDemoManager !== 'undefined') OverlayDemoManager.sync();
   });
 
-  $('save-timer-btn').addEventListener('click', () => {
-    appSettings.timer = {
-      durationMin: +$('timer-duration').value || 30,
-      addSecondsPerGift: +$('timer-bonus').value || 15
-    };
+  $('save-timer-btn')?.addEventListener('click', () => {
+    const totalSec = getTimerInputSeconds();
+    const durationMin = Math.max(1, Math.round(totalSec / 60));
+    if (!appSettings.timer) appSettings.timer = {};
+    appSettings.timer.durationMin = durationMin;
+    appSettings.timer.reduceSecondsPerComment = Math.max(0, parseFloat($('timer-deduct-comment')?.value) || 0);
+    appSettings.timer.reduceSecondsPerLike = Math.max(0, parseFloat($('timer-deduct-like')?.value) || 0);
+    appSettings.timer.addSecondsPerGift = Math.max(0, parseFloat($('timer-bonus')?.value) || 0);
     saveCurrentSettings();
-    showToast('Subathon timer settings saved!', 'success', 'Countdown Timer');
+    window.api.controlTimer('set', totalSec);
+    showToast('Stream timer settings saved!', 'success', 'Stream Timer');
   });
-  $('timer-start-btn').addEventListener('click', () => {
+
+  $('timer-start-btn')?.addEventListener('click', () => {
     window.api.controlTimer('start');
   });
-  $('timer-pause-btn').addEventListener('click', () => {
+
+  $('timer-pause-btn')?.addEventListener('click', () => {
     window.api.controlTimer('pause');
   });
-  $('timer-reset-btn').addEventListener('click', () => {
-    window.api.controlTimer('reset', (+$('timer-duration').value || 30) * 60);
+
+  $('timer-reset-btn')?.addEventListener('click', () => {
+    const totalSec = getTimerInputSeconds();
+    window.api.controlTimer('reset', totalSec || 1800);
   });
-  $('timer-add1m-btn').addEventListener('click', () => {
-    window.api.controlTimer('add', 60);
+
+  $('timer-sub1m-btn')?.addEventListener('click', () => {
+    window.api.controlTimer('adjust', -60);
+  });
+
+  $('timer-add1m-btn')?.addEventListener('click', () => {
+    window.api.controlTimer('adjust', 60);
+  });
+
+  $('timer-add5m-btn')?.addEventListener('click', () => {
+    window.api.controlTimer('adjust', 300);
   });
 
   // Companion Controls

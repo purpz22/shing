@@ -80,6 +80,28 @@
     80% { transform: translateY(-34px) scale(1); opacity: 1; }
     100% { transform: translateY(-44px) scale(0.9); opacity: 0; }
   }
+
+  /* Floating Deduct Seconds Tags */
+  .deduct-tag {
+    position: absolute;
+    top: -12px;
+    right: 24px;
+    background: #f43f5e;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(244, 63, 94, 0.4);
+    pointer-events: none;
+    animation: deductFloat 1.2s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  }
+  @keyframes deductFloat {
+    0% { transform: translateY(0) scale(0.8); opacity: 0; }
+    30% { transform: translateY(-16px) scale(1.15); opacity: 1; }
+    80% { transform: translateY(-34px) scale(1); opacity: 1; }
+    100% { transform: translateY(-44px) scale(0.9); opacity: 0; }
+  }
 </style>
 </head>
 <body>
@@ -102,7 +124,9 @@ let isRunning = false;
 let timerInterval = null;
 let timerSettings = {
   durationMin: 30,
-  addSecondsPerGift: 15
+  addSecondsPerGift: 15,
+  reduceSecondsPerComment: 1,
+  reduceSecondsPerLike: 0.1
 };
 
 function formatTime(sec) {
@@ -128,6 +152,14 @@ function spawnBonusTag(seconds) {
   const tag = document.createElement('div');
   tag.className = 'bonus-tag';
   tag.textContent = `+${seconds}s`;
+  timerCard.appendChild(tag);
+  setTimeout(() => tag.remove(), 1250);
+}
+
+function spawnDeductTag(seconds) {
+  const tag = document.createElement('div');
+  tag.className = 'deduct-tag';
+  tag.textContent = `-${seconds}s`;
   timerCard.appendChild(tag);
   setTimeout(() => tag.remove(), 1250);
 }
@@ -169,18 +201,39 @@ function connectWS() {
   ws.onmessage = evt => {
     try {
       const data = JSON.parse(evt.data);
-      if (data.type === 'init' && data.settings?.timer) {
-        timerSettings = Object.assign(timerSettings, data.settings.timer);
+      if (data.type === 'init') {
+        if (data.settings?.timer) {
+          timerSettings = Object.assign(timerSettings, data.settings.timer);
+        }
+        if (data.timer) {
+          remainingSeconds = data.timer.remainingSeconds;
+          isRunning = data.timer.isRunning;
+          updateDisplay();
+        }
       } else if (data.type === 'settings:update' && data.settings?.timer) {
         timerSettings = Object.assign(timerSettings, data.settings.timer);
+      } else if (data.type === 'timer:tick') {
+        remainingSeconds = data.remainingSeconds;
+        updateDisplay();
+      } else if (data.type === 'timer:sync') {
+        if (data.timer) {
+          remainingSeconds = data.timer.remainingSeconds;
+          isRunning = data.timer.isRunning;
+          updateDisplay();
+        }
+      } else if (data.type === 'timer:deduct') {
+        remainingSeconds = data.remainingSeconds;
+        updateDisplay();
+        spawnDeductTag(data.seconds);
+      } else if (data.type === 'timer:bonus') {
+        remainingSeconds = data.remainingSeconds;
+        updateDisplay();
+        spawnBonusTag(data.seconds);
       } else if (data.type === 'timer:control') {
         if (data.action === 'start') startTimer();
         else if (data.action === 'pause') pauseTimer();
         else if (data.action === 'reset') resetTimer(data.seconds);
         else if (data.action === 'add') addTime(data.seconds || 60);
-      } else if (data.type === 'gift') {
-        const bonus = (timerSettings.addSecondsPerGift || 0) * (data.count || 1);
-        if (bonus > 0) addTime(bonus);
       }
     } catch (e) {
       console.warn('Timer WS error', e);

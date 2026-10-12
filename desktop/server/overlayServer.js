@@ -21,6 +21,7 @@ class OverlayServer {
     this.cachedGiftCatalog = null;
     this.rankingTimer = null;
     this.settingsSaveTimer = null;
+    this.streamTimerTicker = null;
     this.settings = this.loadSettings();
     if (!this.settings.jar) this.settings.jar = {};
     if (!this.settings.jar.transform) {
@@ -31,6 +32,20 @@ class OverlayServer {
     if (this.settings.rankings.topLikersScale === undefined) this.settings.rankings.topLikersScale = 1.0;
     if (!this.settings.rankings.viewerRankingTheme) this.settings.rankings.viewerRankingTheme = 'Purple';
     if (this.settings.rankings.viewerRankingScale === undefined) this.settings.rankings.viewerRankingScale = 1.0;
+
+    if (!this.settings.timer) this.settings.timer = {};
+    if (this.settings.timer.durationMin === undefined) this.settings.timer.durationMin = 30;
+    if (this.settings.timer.addSecondsPerGift === undefined) this.settings.timer.addSecondsPerGift = 15;
+    if (this.settings.timer.reduceSecondsPerComment === undefined) this.settings.timer.reduceSecondsPerComment = 1;
+    if (this.settings.timer.reduceSecondsPerLike === undefined) this.settings.timer.reduceSecondsPerLike = 0.1;
+
+    const initialSec = Math.max(0, (Number(this.settings.timer.durationMin) || 30) * 60);
+    this.timerState = {
+      remainingSeconds: initialSec,
+      initialSeconds: initialSec,
+      isRunning: false,
+      likeFractionAccumulator: 0
+    };
   }
 
   resolveUserDataDir() {
@@ -253,7 +268,9 @@ class OverlayServer {
       },
       timer: {
         durationMin: 30,
-        addSecondsPerGift: 15
+        addSecondsPerGift: 15,
+        reduceSecondsPerComment: 1,
+        reduceSecondsPerLike: 0.1
       },
       updates: {
         autoCheck: true,
@@ -469,6 +486,180 @@ class OverlayServer {
     }
   }
 
+  getTimerSnapshot() {
+    return {
+      remainingSeconds: this.timerState.remainingSeconds,
+      initialSeconds: this.timerState.initialSeconds,
+      isRunning: this.timerState.isRunning
+    };
+  }
+
+  handleTimerControl(action, seconds) {
+    if (action === 'start') {
+      if (this.timerState.isRunning) return this.getTimerSnapshot();
+      if (this.timerState.remainingSeconds <= 0) {
+        this.timerState.remainingSeconds = this.timerState.initialSeconds || 1800;
+      }
+      this.timerState.isRunning = true;
+      if (this.streamTimerTicker) clearInterval(this.streamTimerTicker);
+      this.streamTimerTicker = setInterval(() => this.tickStreamTimer(), 1000);
+      this.broadcast({
+        type: 'timer:sync',
+        timer: this.getTimerSnapshot(),
+        action: 'start'
+      });
+      return this.getTimerSnapshot();
+    }
+
+    if (action === 'pause') {
+      this.timerState.isRunning = false;
+      if (this.streamTimerTicker) {
+        clearInterval(this.streamTimerTicker);
+        this.streamTimerTicker = null;
+      }
+      this.broadcast({
+        type: 'timer:sync',
+        timer: this.getTimerSnapshot(),
+        action: 'pause'
+      });
+      return this.getTimerSnapshot();
+    }
+
+    if (action === 'reset') {
+      this.timerState.isRunning = false;
+      if (this.streamTimerTicker) {
+        clearInterval(this.streamTimerTicker);
+        this.streamTimerTicker = null;
+      }
+      const resetSec = (seconds !== undefined && seconds !== null)
+        ? Math.max(0, Number(seconds) || 0)
+        : this.timerState.initialSeconds;
+      this.timerState.remainingSeconds = resetSec;
+      this.timerState.initialSeconds = resetSec;
+      this.timerState.likeFractionAccumulator = 0;
+      this.broadcast({
+        type: 'timer:sync',
+        timer: this.getTimerSnapshot(),
+        action: 'reset'
+      });
+      return this.getTimerSnapshot();
+    }
+
+    if (action === 'set') {
+      const setSec = Math.max(0, Number(seconds) || 0);
+      this.timerState.remainingSeconds = setSec;
+      this.timerState.initialSeconds = setSec;
+      this.timerState.likeFractionAccumulator = 0;
+      this.broadcast({
+        type: 'timer:sync',
+        timer: this.getTimerSnapshot(),
+        action: 'set'
+      });
+      return this.getTimerSnapshot();
+    }
+
+    if (action === 'adjust' || action === 'add') {
+      const delta = Number(seconds) || 0;
+      if (delta > 0) {
+        this.addTimer(delta, 'adjust');
+      } else if (delta < 0) {
+        this.deductTimer(Math.abs(delta), 'adjust');
+      }
+      return this.getTimerSnapshot();
+    }
+
+    return this.getTimerSnapshot();
+  }
+
+  tickStreamTimer() {
+    if (!this.timerState.isRunning) return;
+    if (this.timerState.remainingSeconds > 0) {
+      this.timerState.remainingSeconds--;
+      this.broadcast({
+        type: 'timer:tick',
+        remainingSeconds: this.timerState.remainingSeconds
+      });
+      if (this.timerState.remainingSeconds === 0) {
+        this.timerState.isRunning = false;
+        if (this.streamTimerTicker) {
+          clearInterval(this.streamTimerTicker);
+          this.streamTimerTicker = null;
+        }
+        this.broadcast({
+          type: 'timer:sync',
+          timer: this.getTimerSnapshot(),
+          action: 'finish'
+        });
+      }
+    } else {
+      this.timerState.isRunning = false;
+      if (this.streamTimerTicker) {
+        clearInterval(this.streamTimerTicker);
+        this.streamTimerTicker = null;
+      }
+    }
+  }
+
+  onCommentDeduct() {
+    if (!this.timerState.isRunning) return;
+    const perComment = Number(this.settings.timer?.reduceSecondsPerComment);
+    if (!perComment || perComment <= 0) return;
+    this.deductTimer(Math.round(perComment), 'comment');
+  }
+
+  onLikeDeduct(count = 1) {
+    if (!this.timerState.isRunning) return;
+    const perLike = Number(this.settings.timer?.reduceSecondsPerLike);
+    if (!perLike || perLike <= 0) return;
+    this.timerState.likeFractionAccumulator += count * perLike;
+    if (this.timerState.likeFractionAccumulator >= 1) {
+      const wholeSec = Math.floor(this.timerState.likeFractionAccumulator);
+      this.timerState.likeFractionAccumulator -= wholeSec;
+      this.deductTimer(wholeSec, 'like');
+    }
+  }
+
+  onGiftBonus(count = 1) {
+    const perGift = Number(this.settings.timer?.addSecondsPerGift);
+    if (!perGift || perGift <= 0) return;
+    const bonus = perGift * count;
+    this.addTimer(bonus, 'gift');
+  }
+
+  deductTimer(seconds, reason = 'manual') {
+    if (this.timerState.remainingSeconds <= 0) return;
+    const actualDeduct = Math.min(this.timerState.remainingSeconds, seconds);
+    this.timerState.remainingSeconds = Math.max(0, this.timerState.remainingSeconds - actualDeduct);
+    this.broadcast({
+      type: 'timer:deduct',
+      seconds: actualDeduct,
+      reason,
+      remainingSeconds: this.timerState.remainingSeconds
+    });
+    if (this.timerState.remainingSeconds === 0 && this.timerState.isRunning) {
+      this.timerState.isRunning = false;
+      if (this.streamTimerTicker) {
+        clearInterval(this.streamTimerTicker);
+        this.streamTimerTicker = null;
+      }
+      this.broadcast({
+        type: 'timer:sync',
+        timer: this.getTimerSnapshot(),
+        action: 'finish'
+      });
+    }
+  }
+
+  addTimer(seconds, reason = 'gift') {
+    this.timerState.remainingSeconds += seconds;
+    this.broadcast({
+      type: 'timer:bonus',
+      seconds,
+      reason,
+      remainingSeconds: this.timerState.remainingSeconds
+    });
+  }
+
   start() {
     return new Promise((resolve, reject) => {
       this.server = http.createServer((req, res) => this.handleRequest(req, res));
@@ -482,7 +673,8 @@ class OverlayServer {
         ws.send(JSON.stringify({
           type: 'init',
           settings: this.settings,
-          rankings: this.getRankingsSnapshot()
+          rankings: this.getRankingsSnapshot(),
+          timer: this.getTimerSnapshot()
         }));
         if (this.tiktokStatus) {
           ws.send(JSON.stringify(Object.assign({ type: 'tiktok:status' }, this.tiktokStatus)));
@@ -511,7 +703,6 @@ class OverlayServer {
         if (err.code === 'EADDRINUSE' && retries < 8) {
           retries++;
           setTimeout(tryListen, 250);
-          return;
         }
         reject(err);
       });
@@ -534,6 +725,11 @@ class OverlayServer {
       return;
     }
 
+    if (data.type === 'timer:control') {
+      this.handleTimerControl(data.action, data.seconds);
+      return;
+    }
+
     if (data.type === 'settings:save') {
       this.saveSettings(data.settings);
     } else if (data.type === 'test:event') {
@@ -548,6 +744,10 @@ class OverlayServer {
   }
 
   stop() {
+    if (this.streamTimerTicker) {
+      clearInterval(this.streamTimerTicker);
+      this.streamTimerTicker = null;
+    }
     if (this.rankingTimer) {
       clearInterval(this.rankingTimer);
       this.rankingTimer = null;
@@ -582,6 +782,15 @@ class OverlayServer {
     this.broadcastRaw(msg);
     if (obj) {
       this.processRankingEvent(obj);
+      if (obj.type === 'chat') {
+        this.onCommentDeduct();
+      } else if (obj.type === 'like') {
+        this.onLikeDeduct(obj.count || 1);
+      } else if (obj.type === 'gift') {
+        this.onGiftBonus(obj.count || 1);
+      } else if (obj.type === 'timer:control') {
+        this.handleTimerControl(obj.action, obj.seconds);
+      }
       if (obj.type === 'settings:update') {
         this.broadcastRaw({ type: 'rankings:update', rankings: this.getRankingsSnapshot() });
       }

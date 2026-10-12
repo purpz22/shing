@@ -1,7 +1,7 @@
 {
     "name":  "shing-live",
     "productName":  "Shing Live",
-    "version":  "1.4.2",
+    "version":  "1.4.3",
     "description":  "Cute pastel streaming companion and OBS overlays for TikTok Live streamers",
     "main":  "main.js",
     "scripts":  {

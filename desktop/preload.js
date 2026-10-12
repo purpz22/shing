@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('api', {
   simulateEvent: (type, payload) => ipcRenderer.invoke('tiktok:simulate', type, payload),
 
   controlTimer: (action, seconds) => ipcRenderer.invoke('timer:control', action, seconds),
+  getTimerStatus: () => ipcRenderer.invoke('timer:status:get'),
   clearJar: () => ipcRenderer.invoke('jar:clear'),
   openOverlayInBrowser: (name) => ipcRenderer.invoke('overlay:open', name),
 

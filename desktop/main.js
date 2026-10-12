@@ -1244,9 +1244,18 @@ ipcMain.handle('rankings:leave', (evt, username) => {
 
 // Timer control
 ipcMain.handle('timer:control', (evt, action, seconds) => {
-  const payload = { type: 'timer:control', action, seconds };
-  overlayServer.broadcast(payload);
-  return { success: true };
+  if (overlayServer) {
+    const timer = overlayServer.handleTimerControl(action, seconds);
+    return { success: true, timer };
+  }
+  return { success: false };
+});
+
+ipcMain.handle('timer:status:get', () => {
+  if (overlayServer) {
+    return overlayServer.getTimerSnapshot();
+  }
+  return { remainingSeconds: 1800, initialSeconds: 1800, isRunning: false };
 });
 
 // Clear jar

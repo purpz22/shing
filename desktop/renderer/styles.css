@@ -1169,13 +1169,128 @@ input[type="range"] {
   background-size: 18px 18px;
 }
 .big-timer-display {
-  font-size: 42px;
+  font-size: 44px;
   font-weight: 800;
-  color: var(--primary);
+  color: #c084fc;
   letter-spacing: 2px;
   text-align: center;
-  padding: 20px 0;
+  padding: 10px 0 4px;
   font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 20px rgba(192, 132, 252, 0.35);
+}
+
+.timer-time-inputs-group {
+  margin-bottom: 14px;
+}
+.timer-time-inputs-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.timer-input-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+.timer-input-col input {
+  width: 100%;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.timer-input-unit {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.timer-input-sep {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--primary);
+  padding-bottom: 18px;
+}
+.timer-preset-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.timer-preset-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-right: 2px;
+}
+.timer-preset-btn {
+  padding: 3px 9px;
+  font-size: 11px;
+  border-radius: 12px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-light);
+  transition: all 0.2s ease;
+}
+.timer-preset-btn:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.timer-display-wrap {
+  text-align: center;
+  padding: 6px 0 12px;
+}
+.timer-status-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 12px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  background: rgba(147, 51, 234, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(192, 132, 252, 0.3);
+  margin-top: 4px;
+}
+.timer-status-badge.status-running {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.4);
+}
+.timer-status-badge.status-finished {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+  border-color: rgba(251, 113, 133, 0.4);
+}
+.timer-main-actions {
+  display: flex;
+  gap: 8px;
+}
+.timer-main-actions .btn {
+  flex: 1;
+}
+.timer-quick-adjust-row {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.timer-adjust-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-right: 2px;
 }
 
 /* Lower Third Live Preview */
