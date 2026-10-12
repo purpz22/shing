@@ -421,6 +421,21 @@ async function startDirectWebcastPolling(conn, roomId, targetUser, attemptId, We
   let emptyStreak = 0;
   conn._connectState = 'CONNECTED';
 
+  // Replay up to the 3 most recent chat messages from initial room snapshot so chat overlay populates immediately
+  const initialChatMessages = (initialFetch.messages || [])
+    .filter(m => m?.method === 'WebcastChatMessage')
+    .slice(-3);
+  if (initialChatMessages.length > 0) {
+    setTimeout(() => {
+      if (attemptId === connectAttemptId && tiktokConnection === conn && currentTargetUser === targetUser) {
+        conn.processProtoMessageFetchResult({
+          ...initialFetch,
+          messages: initialChatMessages
+        }).catch(() => {});
+      }
+    }, 250);
+  }
+
   const scheduleNextPoll = (delayMs = 1500) => {
     if (attemptId !== connectAttemptId || tiktokConnection !== conn || currentTargetUser !== targetUser) {
       return;
@@ -486,16 +501,33 @@ async function startDirectWebcastPolling(conn, roomId, targetUser, attemptId, We
 
 function attachTikTokListeners(conn, targetUser, WebcastEvent) {
   conn.on(WebcastEvent.CHAT, data => {
+    const commentText = String(data.content || data.comment || '').trim();
+    if (!commentText) return;
+
     const viewerName = data.user?.nickname || data.nickname || data.user?.displayId || data.uniqueId || 'Viewer';
     const username = (data.user?.displayId || data.uniqueId || '').toLowerCase();
+    const identity = data.userIdentity || {};
     let role = 'viewer';
-    if (username === targetUser.toLowerCase() || viewerName.toLowerCase() === targetUser.toLowerCase()) role = 'streamer';
-    else if (data.user?.userAttr?.isAdmin || data.isModerator) role = 'moderator';
-    else if (data.user?.isSubscribe || data.isSubscriber) role = 'subscriber';
-    else if (data.isTopGifter || data.topGifter) role = 'top_gifter';
+    if (
+      identity.isAnchor ||
+      username === targetUser.toLowerCase() ||
+      viewerName.toLowerCase() === targetUser.toLowerCase()
+    ) {
+      role = 'streamer';
+    } else if (identity.isModeratorOfAnchor || data.user?.userAttr?.isAdmin || data.isModerator) {
+      role = 'moderator';
+    } else if (
+      identity.isSubscriberOfAnchor ||
+      data.user?.subscribeInfo?.isSubscribed ||
+      data.user?.isSubscribe ||
+      data.isSubscriber
+    ) {
+      role = 'subscriber';
+    } else if (identity.isGiftGiverOfAnchor || data.isTopGifter || data.topGifter) {
+      role = 'top_gifter';
+    }
 
-    const avatar = data.user?.avatarThumb?.urlList?.[0] || data.profilePictureUrl || '../assets/avatar.png';
-    const commentText = data.content || data.comment || '';
+    const avatar = data.user?.avatarThumb?.urlList?.[0] || data.profilePictureUrl || '/assets/avatar.png';
 
     const payload = {
       type: 'chat',

@@ -14,9 +14,12 @@
   #chat-container {
     position: absolute;
     bottom: 18px;
-    left: 18px;
-    width: 420px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-width: 420px;
     max-height: 88vh;
+    padding: 6px 4px;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -384,6 +387,7 @@
   .chat-msg {
     display: flex;
     align-items: flex-start;
+    flex-shrink: 0;
     gap: 12px;
     background: var(--bubble-bg, rgba(255, 255, 255, 0.95));
     border: 1.5px solid var(--bubble-border, #dcd0f8);
@@ -571,6 +575,9 @@
     align-items: center;
     gap: 3px;
   }
+  body.hide-badges .badge {
+    display: none !important;
+  }
   .badge-streamer { background: var(--badge-streamer-bg, #ede9fe); color: var(--badge-streamer-color, #6d28d9); border: 1px solid var(--badge-streamer-border, #ddd6fe); }
   .badge-moderator { background: var(--badge-mod-bg, #e0f2fe); color: var(--badge-mod-color, #0284c7); border: 1px solid var(--badge-mod-border, #bae6fd); }
   .badge-gifter { background: var(--badge-gifter-bg, #fef3c7); color: var(--badge-gifter-color, #d97706); border: 1px solid var(--badge-gifter-border, #fde68a); }
@@ -609,6 +616,7 @@
 'use strict';
 
 const container = document.getElementById('chat-container');
+let configuredStreamer = 'shimmy_ming';
 let chatSettings = {
   theme: 'pastel-purple',
   fontSize: 14,
@@ -625,12 +633,23 @@ let lastMsgUser = null;
 let lastMsgEl = null;
 let lastMsgTime = 0;
 
+function resolveAvatar(url) {
+  if (!url || typeof url !== 'string' || url === '../assets/avatar.png' || url === '/assets/avatar.png') {
+    return '/assets/avatar.png';
+  }
+  if (/^https?:\/\//i.test(url) && !url.includes('localhost') && !url.includes('127.0.0.1')) {
+    return `/api/avatar-proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
 // Apply styles & shapes to body
 function updateChatVisualStyles() {
   const theme = chatSettings.theme || 'pastel-purple';
   const shape = chatSettings.avatarShape || 'circle';
   const anim = chatSettings.avatarAnim || 'elastic';
-  document.body.className = `theme-${theme} shape-${shape} anim-${anim}`;
+  const badgeCls = chatSettings.showBadges === false ? ' hide-badges' : '';
+  document.body.className = `theme-${theme} shape-${shape} anim-${anim}${badgeCls}`;
   document.documentElement.style.setProperty('--chat-font-size', `${chatSettings.fontSize || 14}px`);
   document.documentElement.style.setProperty('--bubble-radius', `${chatSettings.bubbleRadius || 16}px`);
 }
@@ -645,27 +664,79 @@ const ICONS = {
 
 function resolveRole(user, badgeText, roleProp) {
   if (roleProp) return roleProp;
-  const lowerUser = (user || '').toLowerCase();
+  const lowerUser = (user || '').toLowerCase().replace(/^@/, '');
   const lowerBadge = (badgeText || '').toLowerCase();
-  if (lowerBadge.includes('streamer') || lowerUser === 'shimmy_ming' || lowerUser === 'shimmy ming' || lowerUser === 'shing') return 'streamer';
+  const cleanStreamer = (configuredStreamer || 'shimmy_ming').toLowerCase().replace(/^@/, '');
+  if (
+    lowerBadge.includes('streamer') ||
+    lowerUser === cleanStreamer ||
+    lowerUser === 'shimmy_ming' ||
+    lowerUser === 'shimmy ming' ||
+    lowerUser === 'shing'
+  ) {
+    return 'streamer';
+  }
   if (lowerBadge.includes('mod')) return 'moderator';
   if (lowerBadge.includes('top gifter') || lowerBadge.includes('gifter')) return 'top_gifter';
   if (lowerBadge.includes('sub')) return 'subscriber';
   return 'viewer';
 }
 
-function addMessage(user, text, avatarUrl, badgeText, role) {
+function clearElementTimers(el) {
+  if (!el) return;
+  if (el._fadeTimeout) {
+    clearTimeout(el._fadeTimeout);
+    el._fadeTimeout = null;
+  }
+  if (el._removeTimeout) {
+    clearTimeout(el._removeTimeout);
+    el._removeTimeout = null;
+  }
+}
+
+function addMessage(user, text, avatarUrl, badgeText, role, options = {}) {
+  const cleanText = String(text || '').trim();
+  if (!cleanText) return;
+
+  // Remove temporary welcome message as soon as real stream/test chat arrives
+  if (!options.isWelcome) {
+    Array.from(container.children).forEach(child => {
+      if (child._isWelcome) {
+        clearElementTimers(child);
+        child.remove();
+        if (lastMsgEl === child) {
+          lastMsgEl = null;
+          lastMsgUser = null;
+        }
+      }
+    });
+  }
+
   const resolvedRole = resolveRole(user, badgeText, role);
   const now = Date.now();
 
-  // Consecutive Message Grouping within 8 seconds
-  if (chatSettings.messageGrouping && lastMsgUser === user && lastMsgEl && (now - lastMsgTime < 8000)) {
+  // Consecutive Message Grouping within 8 seconds (only if element is still active and not fading out)
+  if (
+    !options.isWelcome &&
+    chatSettings.messageGrouping !== false &&
+    lastMsgUser === user &&
+    lastMsgEl &&
+    lastMsgEl.parentNode === container &&
+    !lastMsgEl.classList.contains('fade-out') &&
+    !lastMsgEl._isWelcome &&
+    (now - lastMsgTime < 8000)
+  ) {
     const commentGroup = lastMsgEl.querySelector('.comment-group');
     if (commentGroup) {
       const line = document.createElement('div');
       line.className = 'comment-line';
-      line.textContent = text;
+      line.textContent = cleanText;
       commentGroup.appendChild(line);
+
+      // Keep max 4 grouped lines per bubble so a single bubble never overflows vertically
+      while (commentGroup.children.length > 4) {
+        commentGroup.removeChild(commentGroup.firstChild);
+      }
 
       // Trigger speaking pulse on existing avatar
       const wrap = lastMsgEl.querySelector('.avatar-wrap');
@@ -685,6 +756,7 @@ function addMessage(user, text, avatarUrl, badgeText, role) {
   // Build new Chat Message Card
   const msgEl = document.createElement('div');
   msgEl.className = `chat-msg role-${resolvedRole}`;
+  if (options.isWelcome) msgEl._isWelcome = true;
 
   // Avatar Wrapper
   const avWrap = document.createElement('div');
@@ -696,9 +768,13 @@ function addMessage(user, text, avatarUrl, badgeText, role) {
 
   const img = document.createElement('img');
   img.className = 'avatar-img';
-  img.src = avatarUrl || '/assets/avatar.png';
+  img.src = resolveAvatar(avatarUrl);
   img.alt = user;
-  img.onerror = () => { img.src = '/assets/avatar.png'; };
+  img.onerror = () => {
+    if (img.src !== location.origin + '/assets/avatar.png') {
+      img.src = '/assets/avatar.png';
+    }
+  };
   avWrap.appendChild(img);
 
   // Role tag mini badge on bottom right of avatar
@@ -736,20 +812,18 @@ function addMessage(user, text, avatarUrl, badgeText, role) {
   u.textContent = user;
   header.appendChild(u);
 
-  if (chatSettings.showBadges) {
-    let displayBadge = badgeText;
-    let badgeClass = 'badge-viewer';
-    if (resolvedRole === 'streamer') { displayBadge = displayBadge || 'Streamer'; badgeClass = 'badge-streamer'; }
-    else if (resolvedRole === 'moderator') { displayBadge = displayBadge || 'Mod'; badgeClass = 'badge-moderator'; }
-    else if (resolvedRole === 'top_gifter') { displayBadge = displayBadge || 'Top Gifter'; badgeClass = 'badge-gifter'; }
-    else if (resolvedRole === 'subscriber') { displayBadge = displayBadge || 'Sub'; badgeClass = 'badge-subscriber'; }
+  let displayBadge = badgeText;
+  let badgeClass = 'badge-viewer';
+  if (resolvedRole === 'streamer') { displayBadge = displayBadge || 'Streamer'; badgeClass = 'badge-streamer'; }
+  else if (resolvedRole === 'moderator') { displayBadge = displayBadge || 'Mod'; badgeClass = 'badge-moderator'; }
+  else if (resolvedRole === 'top_gifter') { displayBadge = displayBadge || 'Top Gifter'; badgeClass = 'badge-gifter'; }
+  else if (resolvedRole === 'subscriber') { displayBadge = displayBadge || 'Sub'; badgeClass = 'badge-subscriber'; }
 
-    if (displayBadge) {
-      const b = document.createElement('span');
-      b.className = `badge ${badgeClass}`;
-      b.textContent = displayBadge;
-      header.appendChild(b);
-    }
+  if (displayBadge) {
+    const b = document.createElement('span');
+    b.className = `badge ${badgeClass}`;
+    b.textContent = displayBadge;
+    header.appendChild(b);
   }
 
   const commentGroup = document.createElement('div');
@@ -757,7 +831,7 @@ function addMessage(user, text, avatarUrl, badgeText, role) {
 
   const line = document.createElement('div');
   line.className = 'comment-line';
-  line.textContent = text;
+  line.textContent = cleanText;
   commentGroup.appendChild(line);
 
   content.appendChild(header);
@@ -768,9 +842,11 @@ function addMessage(user, text, avatarUrl, badgeText, role) {
 
   container.appendChild(msgEl);
 
-  lastMsgUser = user;
-  lastMsgEl = msgEl;
-  lastMsgTime = now;
+  if (!options.isWelcome) {
+    lastMsgUser = user;
+    lastMsgEl = msgEl;
+    lastMsgTime = now;
+  }
 
   container.scrollTop = container.scrollHeight;
 
@@ -778,30 +854,50 @@ function addMessage(user, text, avatarUrl, badgeText, role) {
   enforceMaxMessages();
 
   // Handle Auto Fade
-  resetAutoFade(msgEl);
+  resetAutoFade(msgEl, options.customFadeSec);
 }
 
 function enforceMaxMessages() {
-  const maxLimit = Math.max(1, Math.min(50, chatSettings.maxMessages || 8));
+  const maxLimit = Math.max(1, Math.min(50, Number(chatSettings.maxMessages) || 8));
   while (container.children.length > maxLimit) {
     const oldest = container.firstChild;
-    if (oldest._fadeTimeout) clearTimeout(oldest._fadeTimeout);
+    clearElementTimers(oldest);
     oldest.remove();
     if (lastMsgEl === oldest) { lastMsgEl = null; lastMsgUser = null; }
   }
 }
 
-function resetAutoFade(el) {
-  if (el._fadeTimeout) clearTimeout(el._fadeTimeout);
-  if (chatSettings.autoFadeSec > 0) {
+function resetAutoFade(el, customFadeSec) {
+  if (!el) return;
+  clearElementTimers(el);
+  el.classList.remove('fade-out');
+
+  const fadeSec = typeof customFadeSec === 'number'
+    ? customFadeSec
+    : (Number(chatSettings.autoFadeSec) || 0);
+
+  if (fadeSec > 0) {
     el._fadeTimeout = setTimeout(() => {
+      if (lastMsgEl === el) {
+        lastMsgEl = null;
+        lastMsgUser = null;
+      }
       el.classList.add('fade-out');
-      setTimeout(() => {
+      el._removeTimeout = setTimeout(() => {
         if (el.parentNode) el.remove();
-        if (lastMsgEl === el) { lastMsgEl = null; lastMsgUser = null; }
       }, 450);
-    }, chatSettings.autoFadeSec * 1000);
+    }, fadeSec * 1000);
   }
+}
+
+function refreshAllAutoFades() {
+  Array.from(container.children).forEach(el => {
+    if (el._isWelcome) {
+      resetAutoFade(el, 8);
+    } else {
+      resetAutoFade(el);
+    }
+  });
 }
 
 // WebSocket Connection
@@ -812,14 +908,22 @@ function connectWS() {
   ws.onmessage = evt => {
     try {
       const data = JSON.parse(evt.data);
-      if (data.type === 'init' && data.settings?.chat) {
-        chatSettings = Object.assign(chatSettings, data.settings.chat);
-        updateChatVisualStyles();
-        enforceMaxMessages();
-      } else if (data.type === 'settings:update' && data.settings?.chat) {
-        chatSettings = Object.assign(chatSettings, data.settings.chat);
-        updateChatVisualStyles();
-        enforceMaxMessages();
+      if (data.type === 'init') {
+        if (data.settings?.username) configuredStreamer = data.settings.username;
+        if (data.settings?.chat) {
+          chatSettings = Object.assign(chatSettings, data.settings.chat);
+          updateChatVisualStyles();
+          enforceMaxMessages();
+          refreshAllAutoFades();
+        }
+      } else if (data.type === 'settings:update') {
+        if (data.settings?.username) configuredStreamer = data.settings.username;
+        if (data.settings?.chat) {
+          chatSettings = Object.assign(chatSettings, data.settings.chat);
+          updateChatVisualStyles();
+          enforceMaxMessages();
+          refreshAllAutoFades();
+        }
       } else if (data.type === 'chat') {
         const viewerName = data.nickname || data.user || data.uniqueId || 'Viewer';
         addMessage(
@@ -842,9 +946,18 @@ function connectWS() {
 updateChatVisualStyles();
 connectWS();
 
-// Welcome greeting message
+// Welcome greeting message (auto-fades after 8s even if autoFadeSec === 0, or disappears immediately when first real chat arrives)
 setTimeout(() => {
-  addMessage('Shimmy Ming', 'Welcome to the stream chat! Cozy vibes only~', '/assets/avatar.png', 'Streamer', 'streamer');
+  if (container.children.length === 0) {
+    addMessage(
+      'Shimmy Ming',
+      'Welcome to the stream chat! Cozy vibes only~',
+      '/assets/avatar.png',
+      'Streamer',
+      'streamer',
+      { isWelcome: true, customFadeSec: 8 }
+    );
+  }
 }, 400);
 </script>
 </body>

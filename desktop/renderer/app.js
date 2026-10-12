@@ -510,9 +510,17 @@ const OverlayDemoManager = {
     const chatBox = $('ov-demo-chat-box');
     const theme = appSettings.chat?.theme || 'pastel-purple';
     const radius = appSettings.chat?.bubbleRadius || 16;
+    const shape = appSettings.chat?.avatarShape || 'circle';
+    const showBadges = appSettings.chat?.showBadges !== false;
     if (chatBox) {
       chatBox.className = `card-preview chat-preview-box chat-dash-preview theme-${theme}`;
       chatBox.style.setProperty('--bubble-radius', `${radius}px`);
+      chatBox.querySelectorAll('.demo-chat-pfp').forEach(img => {
+        img.className = `demo-chat-pfp shape-${shape}`;
+      });
+      chatBox.querySelectorAll('.demo-chat-tag').forEach(tag => {
+        tag.style.display = showBadges ? '' : 'none';
+      });
     }
 
     // Sync Lower Third Handle
@@ -533,10 +541,12 @@ const OverlayDemoManager = {
     this.chatIdx++;
 
     const shape = appSettings.chat?.avatarShape || 'circle';
+    const showBadges = appSettings.chat?.showBadges !== false;
     const item = document.createElement('div');
     item.className = 'demo-chat-bubble-item';
 
-    const tagHtml = data.tag ? `<span class="demo-chat-tag ${data.tagClass}">${escapeNotifHtml(data.tag)}</span>` : '';
+    const tagStyle = showBadges ? '' : ' style="display:none"';
+    const tagHtml = data.tag ? `<span class="demo-chat-tag ${data.tagClass}"${tagStyle}>${escapeNotifHtml(data.tag)}</span>` : '';
 
     item.innerHTML = `
       <img src="../assets/avatar.png" class="demo-chat-pfp shape-${shape}" alt="PFP">
@@ -796,6 +806,7 @@ if (typeof window.api !== 'undefined' && window.api.onTikTokEvent) {
     if (data.type === 'chat') {
       sessionStats.chat++;
       updateHUD();
+      appendDashboardChatPreview(data);
     } else if (data.type === 'gift') {
       sessionStats.coins += (data.coins || data.diamonds || 1) * (data.count || 1);
       updateHUD();
@@ -1007,13 +1018,96 @@ if (typeof window.api !== 'undefined' && window.api.onTikTokStatus) {
   });
 }
 
-// Live Preview helper for chat avatar shape
-function updateChatPreviewBox() {
-  const wrap = document.querySelector('.preview-pfp-wrap');
-  if (wrap && $('chat-avatar-shape')) {
-    const shape = $('chat-avatar-shape').value;
-    wrap.className = `preview-pfp-wrap shape-${shape}`;
+// Live Preview & Real-Time Chat Preview Helpers
+function resolveDashboardAvatar(url) {
+  if (!url || typeof url !== 'string' || url === '../assets/avatar.png' || url === '/assets/avatar.png') {
+    return '../assets/avatar.png';
   }
+  if (/^https?:\/\//i.test(url) && !url.includes('localhost') && !url.includes('127.0.0.1')) {
+    return `http://localhost:3333/api/avatar-proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
+function updateChatPreviewBox() {
+  const previewContainer = $('dashboard-chat-preview');
+  const theme = $('chat-theme') ? $('chat-theme').value : (appSettings.chat?.theme || 'pastel-purple');
+  const shape = $('chat-avatar-shape') ? $('chat-avatar-shape').value : (appSettings.chat?.avatarShape || 'circle');
+  const anim = $('chat-avatar-anim') ? $('chat-avatar-anim').value : (appSettings.chat?.avatarAnim || 'elastic');
+  const radius = $('chat-radius') ? +$('chat-radius').value : (appSettings.chat?.bubbleRadius || 16);
+  const fontSize = $('chat-font-size') ? +$('chat-font-size').value : (appSettings.chat?.fontSize || 14);
+  const showBadges = $('chat-badges') ? $('chat-badges').checked : (appSettings.chat?.showBadges !== false);
+
+  if (!appSettings.chat) appSettings.chat = {};
+  appSettings.chat.theme = theme;
+  appSettings.chat.avatarShape = shape;
+  appSettings.chat.avatarAnim = anim;
+  appSettings.chat.bubbleRadius = radius;
+  appSettings.chat.fontSize = fontSize;
+  appSettings.chat.showBadges = showBadges;
+
+  if (previewContainer) {
+    previewContainer.className = `chat-dash-preview theme-${theme}`;
+    previewContainer.style.setProperty('--bubble-radius', `${radius}px`);
+    previewContainer.style.setProperty('--chat-font-size', `${fontSize}px`);
+
+    previewContainer.querySelectorAll('.preview-pfp-wrap').forEach(wrap => {
+      wrap.className = `preview-pfp-wrap shape-${shape}`;
+    });
+    previewContainer.querySelectorAll('.badge').forEach(badge => {
+      badge.style.display = showBadges ? '' : 'none';
+    });
+  }
+
+  if (typeof OverlayDemoManager !== 'undefined') {
+    OverlayDemoManager.sync();
+  }
+}
+
+function appendDashboardChatPreview(data = {}) {
+  const previewContainer = $('dashboard-chat-preview');
+  if (!previewContainer) return;
+
+  const user = data.nickname || data.user || data.uniqueId || 'Viewer';
+  const role = data.role || 'viewer';
+  const comment = data.comment || '';
+  if (!String(comment).trim()) return;
+
+  const shape = $('chat-avatar-shape') ? $('chat-avatar-shape').value : (appSettings.chat?.avatarShape || 'circle');
+  const showBadges = $('chat-badges') ? $('chat-badges').checked : (appSettings.chat?.showBadges !== false);
+  const roleBadgeText = data.badge || (
+    role === 'streamer' ? 'Streamer' :
+    role === 'moderator' ? 'Mod' :
+    role === 'top_gifter' ? 'Top Gifter' :
+    role === 'subscriber' ? 'Sub' : ''
+  );
+  const badgeClass = role === 'top_gifter' ? 'gifter' : role;
+  const badgeStyle = showBadges ? '' : ' style="display:none"';
+  const badgeHtml = roleBadgeText
+    ? `<span class="badge badge-${escapeNotifHtml(badgeClass)}"${badgeStyle}>${escapeNotifHtml(roleBadgeText)}</span>`
+    : '';
+  const avatarSrc = resolveDashboardAvatar(data.avatar);
+
+  const msgEl = document.createElement('div');
+  msgEl.className = `preview-chat-msg role-${escapeNotifHtml(role)}`;
+  msgEl.innerHTML = `
+    <div class="preview-pfp-wrap shape-${escapeNotifHtml(shape)}">
+      <img src="${escapeNotifHtml(avatarSrc)}" class="preview-pfp-img" alt="PFP" onerror="this.src='../assets/avatar.png'">
+    </div>
+    <div class="preview-chat-body">
+      <div class="preview-chat-hdr">
+        <span class="preview-uname">${escapeNotifHtml(user)}</span>
+        ${badgeHtml}
+      </div>
+      <div class="preview-comment">${escapeNotifHtml(comment)}</div>
+    </div>
+  `;
+
+  previewContainer.appendChild(msgEl);
+  while (previewContainer.children.length > 3) {
+    previewContainer.removeChild(previewContainer.firstChild);
+  }
+  updateChatPreviewBox();
 }
 
 // Universal Volume & Trigger Media UI Helpers
@@ -1137,9 +1231,9 @@ async function initSettings() {
     $('chat-font-val').textContent = `${$('chat-font-size').value}px`;
     $('chat-radius').value = appSettings.chat.bubbleRadius || 16;
     $('chat-radius-val').textContent = `${$('chat-radius').value}px`;
-    $('chat-autofade').value = appSettings.chat.autoFadeSec || 15;
+    $('chat-autofade').value = appSettings.chat.autoFadeSec ?? 15;
     if ($('chat-max-messages')) $('chat-max-messages').value = appSettings.chat.maxMessages || 8;
-    $('chat-badges').checked = Boolean(appSettings.chat.showBadges);
+    $('chat-badges').checked = appSettings.chat.showBadges !== false;
     if ($('chat-avatar-shape')) $('chat-avatar-shape').value = appSettings.chat.avatarShape || 'circle';
     if ($('chat-avatar-anim')) $('chat-avatar-anim').value = appSettings.chat.avatarAnim || 'elastic';
     if ($('chat-grouping')) $('chat-grouping').checked = appSettings.chat.messageGrouping !== false;
@@ -1718,6 +1812,18 @@ function openChangelogModal() {
   container.innerHTML = '';
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
+    {
+      version: '1.3.4',
+      releaseName: 'Shing Live v1.3.4 - Cute Chat Overlay & Direct TikTok Webcast Engine Fixes',
+      releaseDate: '2026-10-12',
+      summary: 'Fixed Cute Chat theme contrast (white-on-white text in Dark Purple software theme), TikTok CDN avatar proxy loading, auto-fade message grouping race conditions, and added Direct TikTok Webcast fallback when EulerStream is rate-limited.',
+      highlights: [
+        'Cute Chat Theme & Contrast Fix: Resolved duplicate preview handler and CSS variable mismatch that caused white text on white speech bubbles in the Dark Purple software theme',
+        'TikTok Avatar Proxy in Chat Overlay: Routed chatter profile pictures through /api/avatar-proxy so TikTok CDN avatars always load in OBS and TikTok LIVE Studio',
+        'Auto-Fade & Consecutive Grouping Fix: Prevented consecutive messages from disappearing during fade-out transitions and ensured the initial welcome greeting auto-dismisses cleanly',
+        'Direct TikTok Webcast Engine: Built-in direct TikTok Webcast fallback (aid 1233 + ttwid cookie) with zero-quota offline checks so Connect works even when EulerStream is rate-limited'
+      ]
+    },
     {
       version: '1.3.3',
       releaseName: 'Shing Live v1.3.3 - Authentic Petpetgif.com Hand Animation for Headpat Overlay',
@@ -2372,54 +2478,33 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Chat Settings & Live Preview
-  function updateChatPreviewBox() {
-    const previewContainer = $('dashboard-chat-preview');
-    const theme = $('chat-theme') ? $('chat-theme').value : 'pastel-purple';
-    const shape = $('chat-avatar-shape') ? $('chat-avatar-shape').value : 'circle';
-    const radius = $('chat-radius') ? $('chat-radius').value : 16;
-
-    if (!appSettings.chat) appSettings.chat = {};
-    appSettings.chat.theme = theme;
-    appSettings.chat.avatarShape = shape;
-    appSettings.chat.bubbleRadius = +radius;
-
-    if (previewContainer) {
-      previewContainer.className = `chat-dash-preview theme-${theme}`;
-      previewContainer.style.setProperty('--bubble-radius', `${radius}px`);
-    }
-
-    const wrap = document.querySelector('.preview-pfp-wrap');
-    if (wrap) {
-      wrap.className = `preview-pfp-wrap shape-${shape}`;
-    }
-
-    if (typeof OverlayDemoManager !== 'undefined') {
-      OverlayDemoManager.sync();
-    }
-  }
-
   $('chat-theme')?.addEventListener('change', updateChatPreviewBox);
   $('chat-avatar-shape')?.addEventListener('change', updateChatPreviewBox);
+  $('chat-avatar-anim')?.addEventListener('change', updateChatPreviewBox);
+  $('chat-badges')?.addEventListener('change', updateChatPreviewBox);
 
   $('chat-font-size').addEventListener('input', () => {
     $('chat-font-val').textContent = `${$('chat-font-size').value}px`;
+    updateChatPreviewBox();
   });
   $('chat-radius').addEventListener('input', () => {
     $('chat-radius-val').textContent = `${$('chat-radius').value}px`;
     updateChatPreviewBox();
   });
   $('save-chat-btn').addEventListener('click', () => {
+    const rawAutoFade = parseInt($('chat-autofade').value, 10);
     appSettings.chat = {
       theme: $('chat-theme') ? $('chat-theme').value : 'pastel-purple',
-      fontSize: +$('chat-font-size').value,
-      bubbleRadius: +$('chat-radius').value,
-      autoFadeSec: +$('chat-autofade').value,
+      fontSize: +$('chat-font-size').value || 14,
+      bubbleRadius: +$('chat-radius').value || 16,
+      autoFadeSec: Number.isNaN(rawAutoFade) ? 15 : Math.max(0, rawAutoFade),
       maxMessages: +$('chat-max-messages').value || 8,
       showBadges: $('chat-badges').checked,
       avatarShape: $('chat-avatar-shape').value,
       avatarAnim: $('chat-avatar-anim').value,
       messageGrouping: $('chat-grouping').checked
     };
+    updateChatPreviewBox();
     saveCurrentSettings();
     showToast('Chat overlay settings saved!', 'success', 'Chat Box');
   });
@@ -2429,32 +2514,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const role = $('test-chat-role').value || 'viewer';
     const comment = $('test-chat-comment').value || 'Hello!';
     window.api.simulateEvent('chat', { user, nickname: user, role, comment });
-
-    const previewContainer = $('dashboard-chat-preview');
-    if (previewContainer) {
-      const theme = $('chat-theme') ? $('chat-theme').value : 'pastel-purple';
-      const shape = $('chat-avatar-shape') ? $('chat-avatar-shape').value : 'circle';
-      const radius = $('chat-radius') ? $('chat-radius').value : 16;
-      previewContainer.className = `chat-dash-preview theme-${theme}`;
-      previewContainer.style.setProperty('--bubble-radius', `${radius}px`);
-
-      const roleBadgeText = role === 'streamer' ? 'Streamer' : (role === 'moderator' ? 'Mod' : (role === 'top_gifter' ? 'Top Gifter' : (role === 'subscriber' ? 'Sub' : '')));
-      const badgeHtml = roleBadgeText ? `<span class="badge badge-${role === 'top_gifter' ? 'gifter' : role}">${roleBadgeText}</span>` : '';
-      previewContainer.innerHTML = `
-        <div class="preview-chat-msg role-${role}">
-          <div class="preview-pfp-wrap shape-${shape}">
-            <img src="../assets/avatar.png" class="preview-pfp-img" alt="PFP">
-          </div>
-          <div class="preview-chat-body">
-            <div class="preview-chat-hdr">
-              <span class="preview-uname">${user}</span>
-              ${badgeHtml}
-            </div>
-            <div class="preview-comment">${comment}</div>
-          </div>
-        </div>
-      `;
-    }
+    appendDashboardChatPreview({ user, nickname: user, role, comment, avatar: '../assets/avatar.png' });
   });
 
   // Jar Settings & Physics
