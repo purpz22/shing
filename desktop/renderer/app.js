@@ -2559,6 +2559,19 @@ function openChangelogModal() {
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
     {
+      version: '1.4.9',
+      releaseName: 'Shing Live v1.4.9 - /pet @username Live Chat Command',
+      releaseDate: '2026-10-12',
+      summary: 'Interactive /pet @username and /pet live chat command triggering the Pet-Pet Headpat animation on the mentioned user avatar or streamer with anti-spam cooldown and dashboard controls.',
+      highlights: [
+        'Interactive Chat Command: Viewers can type /pet @username in TikTok Live chat to headpat any viewer or moderator on stream with their actual profile picture',
+        'Streamer Petting Fallback: Typing /pet by itself without mentioning a user automatically headpats the streamer',
+        'Custom Patted-By Caption: Shows who initiated the pat with a clear "Patted by @sender! *pat pat*" caption above the animation',
+        'Anti-Spam Cooldown: Integrated a 3-second cooldown buffer preventing chat flooding during high-activity live streams',
+        'Dashboard Toggle & Simulation: Streamers can enable/disable /pet command triggering in the Pet-Pet card and test it with one click'
+      ]
+    },
+    {
       version: '1.4.8',
       releaseName: 'Shing Live v1.4.8 - Companion Speech Bubble Font & Size Customization',
       releaseDate: '2026-10-12',

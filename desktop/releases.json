@@ -1,6 +1,24 @@
 {
-    "latest":  "1.4.8",
+    "latest":  "1.4.9",
     "releases":  [
+                     {
+                         "version":  "1.4.9",
+                         "releaseName":  "Shing Live v1.4.9 - /pet @username Live Chat Command",
+                         "releaseDate":  "2026-10-12",
+                         "type":  "feature",
+                         "summary":  "Interactive /pet @username and /pet live chat command triggering the Pet-Pet Headpat animation on the mentioned user avatar or streamer with anti-spam cooldown and dashboard controls.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.4.9.zip",
+                         "highlights":  [
+                                            "Interactive Chat Command: Viewers can type /pet @username in TikTok Live chat to headpat any viewer or moderator on stream with their actual profile picture",
+                                            "Streamer Petting Fallback: Typing /pet by itself without mentioning a user automatically headpats the streamer",
+                                            "Custom Patted-By Caption: Shows who initiated the pat with a clear Patted by @sender! *pat pat* caption above the animation",
+                                            "Anti-Spam Cooldown: Integrated a 3-second cooldown buffer preventing chat flooding during high-activity live streams",
+                                            "Dashboard Toggle \u0026 Simulation: Streamers can enable/disable /pet command triggering in the Pet-Pet card and test it with one click"
+                                        ],
+                         "notes":  "Interactive /pet @username and /pet chat command for Pet-Pet Headpat overlay.",
+                         "packageSize":  "4.09 MB",
+                         "checksum":  "46ea62786a46099559b5fb7804c4ad366c70de6118c1f15cb231d55702d08c4e"
+                     },
                      {
                          "version":  "1.4.8",
                          "releaseName":  "Shing Live v1.4.8 - Companion Speech Bubble Font \u0026 Size Customization",
