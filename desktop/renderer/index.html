@@ -18,17 +18,14 @@
   </div>
 
   <div class="header-center">
-    <div class="simulator-toolbar" title="Quick Live Event Simulator">
-      <span class="sim-label">Test Events:</span>
-      <button class="sim-btn" data-sim="rose">Rose (1c)</button>
-      <button class="sim-btn" data-sim="heart_me">Heart Me (1c)</button>
-      <button class="sim-btn" data-sim="money_gun">Money Gun (500c)</button>
-      <button class="sim-btn" data-sim="galaxy">Galaxy (1,000c)</button>
-      <button class="sim-btn" data-sim="lion">Lion (29,999c)</button>
-      <button class="sim-btn" data-sim="follow">Follow</button>
-      <button class="sim-btn" data-sim="like">Like</button>
-      <button class="sim-btn" data-sim="chat">Chat</button>
-      <button class="sim-btn" data-sim="join">Join</button>
+    <div class="universal-volume-bar" title="Universal Master Volume across all Overlays & Alerts">
+      <button id="universal-mute-btn" class="vol-mute-btn" title="Mute / Unmute All Audio">
+        <svg id="universal-vol-icon-on" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+        <svg id="universal-vol-icon-off" class="hidden" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+      </button>
+      <span class="vol-label">Volume</span>
+      <input type="range" id="universal-volume-slider" min="0" max="1" step="0.01" value="0.85">
+      <span class="vol-val" id="universal-volume-val">85%</span>
     </div>
   </div>
 
@@ -264,6 +261,114 @@
             </div>
           </div>
         </div>
+
+        <!-- Top Likers Ranking Card -->
+        <div class="overlay-card">
+          <div class="card-preview ranking-preview-box">
+            <div class="demo-ranking-card">
+              <div class="demo-ranking-header">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="#ff5d8f"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                <span>TOP LIKERS</span>
+              </div>
+              <div class="demo-ranking-rows" id="ov-demo-toplikers-rows">
+                <div class="demo-rank-row"><span class="r-num gold">#1</span><img src="../assets/avatar.png" alt=""><span class="r-name">SakuraChan</span><span class="r-val">4.2K</span></div>
+                <div class="demo-rank-row"><span class="r-num silver">#2</span><img src="../assets/avatar.png" alt=""><span class="r-name">MochiVibes</span><span class="r-val">2.8K</span></div>
+                <div class="demo-rank-row"><span class="r-num bronze">#3</span><img src="../assets/avatar.png" alt=""><span class="r-name">KawaiiFox</span><span class="r-val">1.5K</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-info">
+            <h3>Top Likers Ranking</h3>
+            <p>Shows who sent the most likes on stream with live TikTok profile pictures.</p>
+            <div class="card-inline-settings">
+              <label class="inline-select-label">Show Top:
+                <select id="ranking-toplikers-count">
+                  <option value="1">Top 1</option>
+                  <option value="2">Top 2</option>
+                  <option value="3" selected>Top 3 (Default)</option>
+                  <option value="4">Top 4</option>
+                  <option value="5">Top 5</option>
+                  <option value="6">Top 6</option>
+                  <option value="7">Top 7</option>
+                  <option value="8">Top 8</option>
+                  <option value="9">Top 9</option>
+                  <option value="10">Top 10</option>
+                </select>
+              </label>
+              <button class="btn btn-secondary btn-xs" id="test-toplikers-btn" title="Simulate Likes">Test Like</button>
+              <button class="btn btn-secondary btn-xs" id="reset-toplikers-btn" title="Reset Top Likers">Reset</button>
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-primary copy-url-btn" data-url="http://localhost:3333/overlays/toplikers.html">Copy URL</button>
+              <button class="btn btn-secondary open-ext-btn" data-overlay="toplikers">Open Preview</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Viewer Stay Ranking Card -->
+        <div class="overlay-card">
+          <div class="card-preview ranking-preview-box">
+            <div class="demo-ranking-card stay-theme">
+              <div class="demo-ranking-header">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="#c084fc"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                <span>STAY RANKING</span>
+              </div>
+              <div class="demo-ranking-rows" id="ov-demo-viewerranking-rows">
+                <div class="demo-rank-row"><span class="r-num gold">#1</span><img src="../assets/avatar.png" alt=""><span class="r-name">LunarNeko</span><span class="r-val mono">42:18</span></div>
+                <div class="demo-rank-row"><span class="r-num silver">#2</span><img src="../assets/avatar.png" alt=""><span class="r-name">StarryCloud</span><span class="r-val mono">31:05</span></div>
+                <div class="demo-rank-row"><span class="r-num bronze">#3</span><img src="../assets/avatar.png" alt=""><span class="r-name">PuddingPop</span><span class="r-val mono">19:44</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-info">
+            <h3>Viewer Stay Ranking</h3>
+            <p>Tracks longest stay time. Stops when viewer leaves, resets current timer to 0 on return while keeping Best Time.</p>
+            <div class="card-inline-settings">
+              <label class="inline-select-label">Show Top:
+                <select id="ranking-viewers-count">
+                  <option value="1">Top 1</option>
+                  <option value="2">Top 2</option>
+                  <option value="3" selected>Top 3 (Default)</option>
+                  <option value="4">Top 4</option>
+                  <option value="5">Top 5</option>
+                  <option value="6">Top 6</option>
+                  <option value="7">Top 7</option>
+                  <option value="8">Top 8</option>
+                  <option value="9">Top 9</option>
+                  <option value="10">Top 10</option>
+                </select>
+              </label>
+              <button class="btn btn-secondary btn-xs" id="test-viewer-join-btn" title="Simulate Viewer Stay">Test Stay</button>
+              <button class="btn btn-secondary btn-xs" id="test-viewer-leave-btn" title="Simulate Viewer Leaving">Test Leave</button>
+              <button class="btn btn-secondary btn-xs" id="reset-viewers-btn" title="Reset Stay Ranking">Reset</button>
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-primary copy-url-btn" data-url="http://localhost:3333/overlays/viewerranking.html">Copy URL</button>
+              <button class="btn btn-secondary open-ext-btn" data-overlay="viewerranking">Open Preview</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pet-Pet Headpat Card -->
+        <div class="overlay-card">
+          <div class="card-preview headpat-preview-box">
+            <canvas id="ov-demo-headpat-canvas" width="130" height="110"></canvas>
+            <div class="demo-comp-badge">Pet-Pet PFP</div>
+          </div>
+          <div class="card-info">
+            <h3>Pet-Pet Headpat</h3>
+            <p>Animated hand headpatting the viewer's TikTok profile picture on Follow or Gift.</p>
+            <div class="card-inline-settings">
+              <label class="checkbox-label inline-chk"><input type="checkbox" id="headpat-on-follow" checked> On Follow</label>
+              <label class="checkbox-label inline-chk"><input type="checkbox" id="headpat-on-gift" checked> On Gift</label>
+              <button class="btn btn-secondary btn-xs" id="test-headpat-btn">Test Headpat</button>
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-primary copy-url-btn" data-url="http://localhost:3333/overlays/headpat.html">Copy URL</button>
+              <button class="btn btn-secondary open-ext-btn" data-overlay="headpat">Open Preview</button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -271,7 +376,7 @@
     <section id="tab-triggers" class="tab-pane">
       <div class="section-header">
         <h2>Triggers & Alerts</h2>
-        <p>Set custom messages and behavior when viewers follow, send gifts, or like.</p>
+        <p>Set custom messages, sounds, and videos/photos/GIFs when viewers follow, send gifts, or like.</p>
       </div>
 
       <div class="form-grid">
@@ -304,6 +409,18 @@
               </button>
             </div>
           </label>
+
+          <div class="trigger-media-box" style="margin-top: 12px;">
+            <div class="trigger-media-header">
+              <span class="trigger-media-label">Follow Video / Photo / GIF</span>
+              <span class="trigger-media-status" id="trig-follow-media-status">None (Default Avatar)</span>
+            </div>
+            <div class="trigger-media-preview hidden" id="trig-follow-media-preview"></div>
+            <div class="btn-row" style="margin-top: 8px; gap: 8px;">
+              <button class="btn btn-secondary btn-sm" id="upload-follow-media-btn">Choose Video / Photo / GIF</button>
+              <button class="btn btn-secondary btn-sm hidden" id="clear-follow-media-btn">Remove Media</button>
+            </div>
+          </div>
 
           <div class="btn-row" style="margin-top: 14px;">
             <button class="btn btn-secondary" id="test-follow-btn">Test Follow Alert</button>
@@ -360,6 +477,18 @@
               </button>
             </div>
           </label>
+
+          <div class="trigger-media-box" style="margin-top: 12px;">
+            <div class="trigger-media-header">
+              <span class="trigger-media-label">Gift Video / Photo / GIF</span>
+              <span class="trigger-media-status" id="trig-gift-media-status">None (Default Gift Icon)</span>
+            </div>
+            <div class="trigger-media-preview hidden" id="trig-gift-media-preview"></div>
+            <div class="btn-row" style="margin-top: 8px; gap: 8px;">
+              <button class="btn btn-secondary btn-sm" id="upload-gift-media-btn">Choose Video / Photo / GIF</button>
+              <button class="btn btn-secondary btn-sm hidden" id="clear-gift-media-btn">Remove Media</button>
+            </div>
+          </div>
 
           <div class="btn-row" style="flex-wrap: wrap; gap: 8px; margin-top: 14px;">
             <button class="btn btn-secondary" id="test-tier1-btn">Tier 1: Follow</button>

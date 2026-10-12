@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Shing Live - Top Likers Overlay</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Nunito', sans-serif;
+    user-select: none;
+  }
+
+  #toplikers-root {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    width: 310px;
+    background: linear-gradient(160deg, rgba(30, 22, 43, 0.88) 0%, rgba(21, 15, 32, 0.92) 100%);
+    border: 2px solid rgba(255, 133, 162, 0.45);
+    border-radius: 20px;
+    padding: 12px 14px 14px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(255, 133, 162, 0.2);
+    backdrop-filter: blur(12px);
+    color: #fff;
+  }
+
+  .board-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .board-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #ffb3c6;
+    text-shadow: 0 2px 8px rgba(255, 133, 162, 0.4);
+  }
+
+  .board-title svg {
+    width: 16px;
+    height: 16px;
+    fill: #ff5d8f;
+    filter: drop-shadow(0 0 6px rgba(255, 93, 143, 0.6));
+    animation: heartPulse 1.6s infinite ease-in-out;
+  }
+
+  @keyframes heartPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.18); }
+  }
+
+  .board-badge {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255, 133, 162, 0.18);
+    color: #ffc2d1;
+    border: 1px solid rgba(255, 133, 162, 0.35);
+  }
+
+  .board-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .liker-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease, border-color 0.25s ease;
+  }
+
+  .liker-row.rank-1 {
+    background: linear-gradient(90deg, rgba(255, 214, 102, 0.16) 0%, rgba(255, 133, 162, 0.12) 100%);
+    border-color: rgba(255, 214, 102, 0.45);
+  }
+
+  .liker-row.rank-2 {
+    background: linear-gradient(90deg, rgba(203, 213, 225, 0.14) 0%, rgba(187, 134, 252, 0.08) 100%);
+    border-color: rgba(203, 213, 225, 0.35);
+  }
+
+  .liker-row.rank-3 {
+    background: linear-gradient(90deg, rgba(255, 179, 128, 0.14) 0%, rgba(255, 133, 162, 0.08) 100%);
+    border-color: rgba(255, 179, 128, 0.35);
+  }
+
+  .liker-row.bump {
+    transform: scale(1.04);
+    border-color: #ff85a2;
+    background: rgba(255, 133, 162, 0.22);
+  }
+
+  .rank-pill {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 900;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.12);
+    color: #e2e8f0;
+  }
+
+  .rank-1 .rank-pill {
+    background: linear-gradient(135deg, #ffe066, #ff9f1c);
+    color: #2b1900;
+    box-shadow: 0 0 10px rgba(255, 209, 102, 0.5);
+  }
+
+  .rank-2 .rank-pill {
+    background: linear-gradient(135deg, #f1f5f9, #94a3b8);
+    color: #0f172a;
+  }
+
+  .rank-3 .rank-pill {
+    background: linear-gradient(135deg, #ffc2a1, #e07a5f);
+    color: #2b1108;
+  }
+
+  .avatar-wrap {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+
+  .avatar-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 133, 162, 0.6);
+    background: #231934;
+  }
+
+  .rank-1 .avatar-img {
+    border-color: #ffd166;
+    box-shadow: 0 0 8px rgba(255, 209, 102, 0.45);
+  }
+
+  .liker-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .liker-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .likes-pill {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: rgba(255, 93, 143, 0.2);
+    border: 1px solid rgba(255, 93, 143, 0.4);
+    font-size: 12px;
+    font-weight: 900;
+    color: #ffccd5;
+    flex-shrink: 0;
+  }
+
+  .likes-pill svg {
+    width: 12px;
+    height: 12px;
+    fill: #ff5d8f;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 14px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.5);
+  }
+</style>
+</head>
+<body>
+
+<div id="toplikers-root">
+  <div class="board-header">
+    <div class="board-title">
+      <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+      <span>Top Likers</span>
+    </div>
+    <div class="board-badge" id="top-count-badge">TOP 3</div>
+  </div>
+  <div class="board-list" id="likers-list">
+    <div class="empty-state">Waiting for stream likes...</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  let maxCount = 3;
+  let likersData = [];
+  const previousLikes = new Map();
+
+  const listEl = document.getElementById('likers-list');
+  const badgeEl = document.getElementById('top-count-badge');
+
+  function formatLikes(n) {
+    const num = Number(n) || 0;
+    if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (num >= 10000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    return num.toLocaleString();
+  }
+
+  function resolveAvatar(url) {
+    if (!url || url.includes('assets/avatar.png')) return '/assets/avatar.png';
+    if (url.startsWith('/')) return url;
+    return '/api/avatar-proxy?url=' + encodeURIComponent(url);
+  }
+
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function render() {
+    badgeEl.textContent = 'TOP ' + maxCount;
+    const slice = (likersData || []).slice(0, maxCount);
+
+    if (!slice.length) {
+      listEl.innerHTML = '<div class="empty-state">Waiting for stream likes...</div>';
+      return;
+    }
+
+    listEl.innerHTML = slice.map((item, idx) => {
+      const rank = idx + 1;
+      const rankClass = rank <= 3 ? 'rank-' + rank : '';
+      const prev = previousLikes.get(item.key) || 0;
+      const bumped = item.likes > prev && prev > 0 ? 'bump' : '';
+      previousLikes.set(item.key, item.likes);
+
+      return `
+        <div class="liker-row ${rankClass} ${bumped}" data-key="${escapeHtml(item.key)}">
+          <div class="rank-pill">#${rank}</div>
+          <div class="avatar-wrap">
+            <img class="avatar-img" src="${escapeHtml(resolveAvatar(item.avatar))}" alt="" onerror="this.onerror=null;this.src='/assets/avatar.png';">
+          </div>
+          <div class="liker-info">
+            <div class="liker-name">${escapeHtml(item.nickname || item.username || 'Viewer')}</div>
+          </div>
+          <div class="likes-pill">
+            <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            <span>${formatLikes(item.likes)}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    setTimeout(() => {
+      document.querySelectorAll('.liker-row.bump').forEach(el => el.classList.remove('bump'));
+    }, 350);
+  }
+
+  function applySettings(s) {
+    if (s && s.rankings && s.rankings.topLikersCount) {
+      maxCount = Math.max(1, Math.min(10, parseInt(s.rankings.topLikersCount, 10) || 3));
+      render();
+    }
+  }
+
+  function connectWS() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(proto + '//' + location.host);
+
+    ws.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === 'init') {
+          if (msg.settings) applySettings(msg.settings);
+          if (msg.rankings && Array.isArray(msg.rankings.topLikers)) {
+            likersData = msg.rankings.topLikers;
+            render();
+          }
+        } else if (msg.type === 'settings:update') {
+          applySettings(msg.settings);
+        } else if (msg.type === 'rankings:update') {
+          const list = msg.topLikers || (msg.rankings && msg.rankings.topLikers);
+          if (Array.isArray(list)) {
+            likersData = list;
+            render();
+          }
+        }
+      } catch (_) {}
+    };
+
+    ws.onclose = () => setTimeout(connectWS, 2500);
+  }
+
+  connectWS();
+})();
+</script>
+</body>
+</html>

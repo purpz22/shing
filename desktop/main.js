@@ -362,13 +362,15 @@ function attachTikTokListeners(conn, targetUser, WebcastEvent) {
 
   conn.on(WebcastEvent.LIKE, data => {
     const viewerName = data.user?.nickname || data.nickname || data.user?.displayId || data.uniqueId || 'Viewer';
+    const avatar = data.user?.avatarThumb?.urlList?.[0] || data.profilePictureUrl || '../assets/avatar.png';
     const payload = {
       type: 'like',
       user: viewerName,
       nickname: viewerName,
       username: data.user?.displayId || data.uniqueId || '',
       count: data.count || data.likeCount || 1,
-      totalLikes: data.total || data.totalLikeCount || 0
+      totalLikes: data.total || data.totalLikeCount || 0,
+      avatar: avatar
     };
     overlayServer.broadcast(payload);
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('tiktok:event', payload);
@@ -404,11 +406,13 @@ function attachTikTokListeners(conn, targetUser, WebcastEvent) {
 
   conn.on(WebcastEvent.SHARE, data => {
     const viewerName = data.user?.nickname || data.nickname || data.user?.displayId || data.uniqueId || 'Viewer';
+    const avatar = data.user?.avatarThumb?.urlList?.[0] || data.profilePictureUrl || '../assets/avatar.png';
     const payload = {
       type: 'share',
       user: viewerName,
       nickname: viewerName,
-      username: data.user?.displayId || data.uniqueId || ''
+      username: data.user?.displayId || data.uniqueId || '',
+      avatar: avatar
     };
     overlayServer.broadcast(payload);
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('tiktok:event', payload);
@@ -662,18 +666,28 @@ ipcMain.handle('tiktok:simulate', (evt, type, payload) => {
 
 // Sound Management IPC Handlers
 ipcMain.handle('sounds:list', () => {
-  const soundsDir = path.join(__dirname, 'assets', 'sounds');
-  if (!fs.existsSync(soundsDir)) fs.mkdirSync(soundsDir, { recursive: true });
-  try {
-    const files = fs.readdirSync(soundsDir).filter(f => /\.(mp3|wav|ogg|m4a)$/i.test(f));
-    return files.map(f => ({
-      filename: f,
-      name: path.basename(f, path.extname(f)).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-      url: `/assets/sounds/${f}`
-    }));
-  } catch (e) {
-    return [];
+  const dirs = [
+    path.join(__dirname, 'assets', 'sounds'),
+    path.join(overlayServer ? overlayServer.userDataDir : app.getPath('userData'), 'sounds')
+  ];
+  const seen = new Set();
+  const list = [];
+  for (const d of dirs) {
+    try {
+      if (!fs.existsSync(d)) continue;
+      const files = fs.readdirSync(d).filter(f => /\.(mp3|wav|ogg|m4a)$/i.test(f));
+      for (const f of files) {
+        if (seen.has(f)) continue;
+        seen.add(f);
+        list.push({
+          filename: f,
+          name: path.basename(f, path.extname(f)).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          url: `/assets/sounds/${f}`
+        });
+      }
+    } catch (_) {}
   }
+  return list;
 });
 
 ipcMain.handle('sounds:search', async (evt, query) => {
@@ -710,7 +724,7 @@ ipcMain.handle('sounds:download', async (evt, soundUrl, title) => {
   const cleanTitle = (title || 'sound').replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
   const ext = path.extname(new URL(soundUrl).pathname) || '.mp3';
   const filename = `${cleanTitle}${ext}`;
-  const soundsDir = path.join(__dirname, 'assets', 'sounds');
+  const soundsDir = path.join(overlayServer ? overlayServer.userDataDir : app.getPath('userData'), 'sounds');
   if (!fs.existsSync(soundsDir)) fs.mkdirSync(soundsDir, { recursive: true });
   const destPath = path.join(soundsDir, filename);
 
@@ -746,7 +760,7 @@ ipcMain.handle('sounds:select-local', async () => {
   const cleanBase = path.basename(origName, path.extname(origName)).replace(/[^a-zA-Z0-9_-]/g, '_');
   const ext = path.extname(origName).toLowerCase();
   const filename = `custom_${cleanBase}${ext}`;
-  const soundsDir = path.join(__dirname, 'assets', 'sounds');
+  const soundsDir = path.join(overlayServer ? overlayServer.userDataDir : app.getPath('userData'), 'sounds');
   if (!fs.existsSync(soundsDir)) fs.mkdirSync(soundsDir, { recursive: true });
   const destPath = path.join(soundsDir, filename);
 
@@ -757,6 +771,58 @@ ipcMain.handle('sounds:select-local', async () => {
     filename,
     url: `/assets/sounds/${filename}`
   };
+});
+
+// Media (Video / Photo / GIF) Selection for Trigger Alerts
+ipcMain.handle('media:select-local', async () => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select Alert Video, Photo, or GIF',
+    filters: [
+      { name: 'Videos & Images (MP4, WebM, GIF, PNG, JPG, WebP)', extensions: ['mp4', 'webm', 'mov', 'gif', 'png', 'jpg', 'jpeg', 'webp'] },
+      { name: 'Videos (MP4, WebM, MOV)', extensions: ['mp4', 'webm', 'mov'] },
+      { name: 'Photos & GIFs (GIF, PNG, JPG, WebP)', extensions: ['gif', 'png', 'jpg', 'jpeg', 'webp'] }
+    ],
+    properties: ['openFile']
+  });
+  if (res.canceled || !res.filePaths.length) return { canceled: true };
+
+  const srcPath = res.filePaths[0];
+  const origName = path.basename(srcPath);
+  const ext = path.extname(origName).toLowerCase();
+  const cleanBase = path.basename(origName, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const filename = `media_${Date.now()}_${cleanBase}${ext}`;
+  const mediaDir = path.join(overlayServer ? overlayServer.userDataDir : app.getPath('userData'), 'media');
+  if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
+  const destPath = path.join(mediaDir, filename);
+
+  fs.copyFileSync(srcPath, destPath);
+  const mediaType = /\.(mp4|webm|mov)$/i.test(ext) ? 'video' : 'image';
+  return {
+    success: true,
+    name: origName,
+    filename,
+    url: `/media/${filename}`,
+    mediaType
+  };
+});
+
+// Rankings IPC Handlers (Top Likers & Viewer Stay Ranking)
+ipcMain.handle('rankings:get', () => {
+  return overlayServer ? overlayServer.getRankingsSnapshot() : { topLikers: [], viewerRanking: [] };
+});
+
+ipcMain.handle('rankings:reset', (evt, target) => {
+  if (!overlayServer) return { success: false };
+  if (target === 'likers' || target === 'all') overlayServer.topLikers.clear();
+  if (target === 'viewers' || target === 'all') overlayServer.viewerStay.clear();
+  overlayServer.broadcastRankings();
+  return { success: true, rankings: overlayServer.getRankingsSnapshot() };
+});
+
+ipcMain.handle('rankings:leave', (evt, username) => {
+  if (!overlayServer) return { success: false };
+  overlayServer.processRankingEvent({ type: 'leave', username, user: username });
+  return { success: true, rankings: overlayServer.getRankingsSnapshot() };
 });
 
 // Timer control

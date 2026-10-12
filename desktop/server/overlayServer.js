@@ -235,6 +235,11 @@ class OverlayServer {
     const totalLikes = allLikers.reduce((acc, item) => acc + (item.likes || 0), 0);
 
     const allViewers = Array.from(this.viewerStay.values())
+      .map(v => {
+        v.currentSec = v.currentTimeSec;
+        v.bestSec = v.bestTimeSec;
+        return v;
+      })
       .sort((a, b) => (b.bestTimeSec - a.bestTimeSec) || (b.currentTimeSec - a.currentTimeSec) || (b.lastSeenAt - a.lastSeenAt));
 
     return {
@@ -249,6 +254,16 @@ class OverlayServer {
     };
   }
 
+  broadcastRankings() {
+    const snap = this.getRankingsSnapshot();
+    this.broadcastRaw({
+      type: 'rankings:update',
+      rankings: snap,
+      topLikers: snap.topLikers,
+      viewerRanking: snap.viewerRanking
+    });
+  }
+
   processRankingEvent(data) {
     if (!data || typeof data !== 'object' || !data.type) return;
 
@@ -257,10 +272,10 @@ class OverlayServer {
       if (target === 'likers' || target === 'all') {
         this.topLikers.clear();
       }
-      if (target === 'stay' || target === 'all') {
+      if (target === 'stay' || target === 'viewers' || target === 'all') {
         this.viewerStay.clear();
       }
-      this.broadcastRaw({ type: 'rankings:update', rankings: this.getRankingsSnapshot() });
+      this.broadcastRankings();
       return;
     }
 
@@ -278,7 +293,7 @@ class OverlayServer {
           v.bestTimeSec = v.currentTimeSec;
         }
         v.isPresent = false;
-        this.broadcastRaw({ type: 'rankings:update', rankings: this.getRankingsSnapshot() });
+        this.broadcastRankings();
       }
       return;
     }
@@ -365,10 +380,10 @@ class OverlayServer {
       }
     }
 
-    this.broadcastRaw({ type: 'rankings:update', rankings: this.getRankingsSnapshot() });
+    this.broadcastRankings();
   }
 
-  tickViewerRankings() {
+  tickViewerRankings(stepSeconds) {
     if (this.viewerStay.size === 0) return;
     const now = Date.now();
     const timeoutMin = Math.max(1, Number(this.settings?.rankings?.leaveTimeoutMin) || 5);
@@ -385,7 +400,9 @@ class OverlayServer {
         v.isPresent = false;
         changed = true;
       } else {
-        const elapsed = Math.max(0, Math.floor((now - v.sessionStartAt) / 1000));
+        const elapsed = typeof stepSeconds === 'number'
+          ? (v.currentTimeSec + stepSeconds)
+          : Math.max(v.currentTimeSec, Math.floor((now - v.sessionStartAt) / 1000));
         if (elapsed !== v.currentTimeSec) {
           v.currentTimeSec = elapsed;
           if (v.currentTimeSec > v.bestTimeSec) {
@@ -397,7 +414,7 @@ class OverlayServer {
     }
 
     if (changed) {
-      this.broadcastRaw({ type: 'rankings:update', rankings: this.getRankingsSnapshot() });
+      this.broadcastRankings();
     }
   }
 

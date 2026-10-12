@@ -33,13 +33,52 @@
     z-index: 10;
   }
 
-  /* Base Alert Box */
+  /* Base Alert Box Wrapper */
   #alert-box {
     position: absolute;
-    top: 36px;
+    top: 32px;
     left: 50%;
-    transform: translateX(-50%) translateY(-120px) scale(0.85);
+    transform: translateX(-50%) translateY(-140px) scale(0.85);
     opacity: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.35s ease;
+    z-index: 50;
+    will-change: transform, opacity;
+  }
+  #alert-box.show {
+    transform: translateX(-50%) translateY(0) scale(1);
+    opacity: 1;
+  }
+
+  #alert-custom-media-wrap {
+    display: none;
+    max-width: 320px;
+    max-height: 200px;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 3px solid #ff6fae;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38), 0 0 18px rgba(255, 111, 174, 0.35);
+    background: rgba(20, 14, 34, 0.85);
+  }
+  #alert-custom-media-wrap.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #alert-custom-video,
+  #alert-custom-img {
+    display: none;
+    max-width: 320px;
+    max-height: 194px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+
+  #alert-pill {
     display: flex;
     align-items: center;
     gap: 16px;
@@ -49,13 +88,6 @@
     padding: 10px 28px 10px 14px;
     box-shadow: 0 12px 36px rgba(123, 63, 228, 0.28);
     backdrop-filter: blur(12px);
-    transition: transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.35s ease;
-    z-index: 50;
-    will-change: transform, opacity;
-  }
-  #alert-box.show {
-    transform: translateX(-50%) translateY(0) scale(1);
-    opacity: 1;
   }
 
   /* Avatars & Showcase Elements */
@@ -167,8 +199,8 @@
   /* ---------- TIER STYLES ---------- */
 
   /* Tier 1: Follow & Join */
-  .tier-follow #alert-box,
-  .tier-join #alert-box {
+  .tier-follow #alert-pill,
+  .tier-join #alert-pill {
     border-color: #8b5cf6;
     background: rgba(255, 255, 255, 0.97);
   }
@@ -183,13 +215,13 @@
   }
 
   /* Tier 2: Small Gift (1 - 99c) */
-  .tier-gift-small #alert-box {
+  .tier-gift-small #alert-pill {
     border-color: #ff6fae;
     box-shadow: 0 12px 36px rgba(255, 111, 174, 0.3);
   }
 
   /* Tier 3: Medium / Rare Gift (100 - 999c) */
-  .tier-gift-medium #alert-box {
+  .tier-gift-medium #alert-pill {
     border: 2.5px solid transparent;
     background: linear-gradient(#fff, #fff) padding-box,
                 linear-gradient(135deg, #7b3fe4, #ff6fae, #ffd13b) border-box;
@@ -205,7 +237,7 @@
   }
 
   /* Tier 4: Legendary Mega Gift (1,000+ coins: Galaxy, Lion, Universe) */
-  .tier-gift-legendary #alert-box {
+  .tier-gift-legendary #alert-pill {
     border: 3px solid #ffd13b;
     background: linear-gradient(135deg, rgba(38, 16, 75, 0.96), rgba(76, 29, 149, 0.96));
     box-shadow: 0 18px 60px rgba(255, 209, 59, 0.5), inset 0 0 20px rgba(255, 209, 59, 0.25);
@@ -244,31 +276,38 @@
   <canvas id="fx-canvas"></canvas>
 
   <div id="alert-box">
-    <div class="media-showcase">
-      <div class="avatar-bubble">
-        <img id="alert-avatar" src="/assets/avatar.png" alt="Sender PFP">
-      </div>
-      <div id="alert-bridge" class="media-bridge">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-      </div>
-      <div id="alert-gift-bubble" class="gift-bubble">
-        <img id="alert-gift-img" src="/assets/gifts/rose.png" alt="Gift Graphic">
-      </div>
+    <div id="alert-custom-media-wrap">
+      <video id="alert-custom-video" playsinline loop></video>
+      <img id="alert-custom-img" src="" alt="">
     </div>
 
-    <div class="text-content">
-      <div class="title-row">
-        <div id="alert-title" class="title">New Gift!</div>
-        <div id="alert-coins" class="coin-pill" style="display:none;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <circle cx="12" cy="12" r="9.5" stroke-width="2"/>
-            <circle cx="12" cy="12" r="6" stroke-width="1.2"/>
-            <path d="M12 7.5v9M9.5 10h5M10 14h4" stroke-width="1.2" stroke-linecap="round"/>
-          </svg>
-          <span id="coin-count-text">1,000 Coins</span>
+    <div id="alert-pill">
+      <div class="media-showcase">
+        <div class="avatar-bubble">
+          <img id="alert-avatar" src="/assets/avatar.png" alt="Sender PFP">
+        </div>
+        <div id="alert-bridge" class="media-bridge">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </div>
+        <div id="alert-gift-bubble" class="gift-bubble">
+          <img id="alert-gift-img" src="/assets/gifts/rose.png" alt="Gift Graphic">
         </div>
       </div>
-      <div id="alert-msg" class="message">User sent Rose x1</div>
+
+      <div class="text-content">
+        <div class="title-row">
+          <div id="alert-title" class="title">New Gift!</div>
+          <div id="alert-coins" class="coin-pill" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="9.5" stroke-width="2"/>
+              <circle cx="12" cy="12" r="6" stroke-width="1.2"/>
+              <path d="M12 7.5v9M9.5 10h5M10 14h4" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+            <span id="coin-count-text">1,000 Coins</span>
+          </div>
+        </div>
+        <div id="alert-msg" class="message">User sent Rose x1</div>
+      </div>
     </div>
   </div>
 </div>
@@ -278,6 +317,9 @@
 
 const container = document.getElementById('overlay-container');
 const alertBox = document.getElementById('alert-box');
+const alertCustomMediaWrap = document.getElementById('alert-custom-media-wrap');
+const alertCustomVideo = document.getElementById('alert-custom-video');
+const alertCustomImg = document.getElementById('alert-custom-img');
 const alertAvatar = document.getElementById('alert-avatar');
 const alertBridge = document.getElementById('alert-bridge');
 const alertGiftBubble = document.getElementById('alert-gift-bubble');
@@ -286,6 +328,12 @@ const alertTitle = document.getElementById('alert-title');
 const alertMsg = document.getElementById('alert-msg');
 const alertCoins = document.getElementById('alert-coins');
 const coinCountText = document.getElementById('coin-count-text');
+
+function resolveAvatar(url) {
+  if (!url || url.includes('assets/avatar.png')) return '/assets/avatar.png';
+  if (url.startsWith('/')) return url;
+  return '/api/avatar-proxy?url=' + encodeURIComponent(url);
+}
 
 // Cache for all 676+ TikTok gifts
 const catalogMap = {};
@@ -349,7 +397,7 @@ function renderParticles() {
     const p = particles[i];
     p.x += p.vx;
     p.y += p.vy;
-    p.vy += 0.12; // gravity
+    p.vy += 0.12;
     p.rotation += p.vRot;
     p.alpha -= p.decay;
 
@@ -364,7 +412,6 @@ function renderParticles() {
     ctx.globalAlpha = p.alpha;
     ctx.fillStyle = p.color;
 
-    // Draw 4-point geometric star crystal (zero emojis)
     const s = p.size;
     ctx.beginPath();
     ctx.moveTo(0, -s);
@@ -383,6 +430,9 @@ function renderParticles() {
   }
 }
 
+let universalVolume = 0.85;
+let universalMuted = false;
+
 let triggerSettings = {
   followMessage: 'Thank you {user} for following!',
   giftMessage: '{user} sent {gift} x{count}!',
@@ -390,6 +440,10 @@ let triggerSettings = {
   likeThreshold: 50,
   soundEnabled: true,
   soundVolume: 0.85,
+  followMedia: '',
+  followMediaType: '',
+  giftMedia: '',
+  giftMediaType: '',
   sounds: {
     follow: '/assets/sounds/chime.wav',
     gift: '/assets/sounds/coin.wav',
@@ -398,8 +452,16 @@ let triggerSettings = {
   }
 };
 
+function getEffectiveVolume() {
+  if (universalMuted || triggerSettings.soundEnabled === false) return 0;
+  const baseVol = typeof triggerSettings.soundVolume === 'number' ? triggerSettings.soundVolume : 0.85;
+  const masterVol = typeof universalVolume === 'number' ? universalVolume : 0.85;
+  return Math.max(0, Math.min(1, baseVol * masterVol));
+}
+
 function playAlertSound(type, coins = 1) {
-  if (triggerSettings.soundEnabled === false) return;
+  const vol = getEffectiveVolume();
+  if (vol <= 0) return;
   const sounds = triggerSettings.sounds || {};
   let soundPath = null;
   if (type === 'follow') {
@@ -419,13 +481,50 @@ function playAlertSound(type, coins = 1) {
   if (soundPath && soundPath !== 'none') {
     try {
       const audio = new Audio(soundPath);
-      audio.volume = typeof triggerSettings.soundVolume === 'number' ? triggerSettings.soundVolume : 0.85;
+      audio.volume = vol;
       audio.play().catch(e => {
         console.warn('Audio play notice (auto-play policy):', e.message);
       });
     } catch (err) {
       console.warn('Audio error:', err.message);
     }
+  }
+}
+
+function applyCustomMedia(item) {
+  alertCustomVideo.pause();
+  alertCustomVideo.removeAttribute('src');
+  alertCustomVideo.style.display = 'none';
+  alertCustomImg.removeAttribute('src');
+  alertCustomImg.style.display = 'none';
+  alertCustomMediaWrap.classList.remove('active');
+
+  let mediaUrl = '';
+  let mediaType = '';
+  if (item.type === 'follow' && triggerSettings.followMedia) {
+    mediaUrl = triggerSettings.followMedia;
+    mediaType = triggerSettings.followMediaType || (/\.(mp4|webm|mov)$/i.test(mediaUrl) ? 'video' : 'image');
+  } else if (item.type === 'gift' && triggerSettings.giftMedia) {
+    mediaUrl = triggerSettings.giftMedia;
+    mediaType = triggerSettings.giftMediaType || (/\.(mp4|webm|mov)$/i.test(mediaUrl) ? 'video' : 'image');
+  }
+
+  if (!mediaUrl) return;
+
+  alertCustomMediaWrap.classList.add('active');
+  if (mediaType === 'video') {
+    alertCustomVideo.src = mediaUrl;
+    alertCustomVideo.volume = getEffectiveVolume();
+    alertCustomVideo.muted = universalMuted || getEffectiveVolume() <= 0;
+    alertCustomVideo.style.display = 'block';
+    alertCustomVideo.currentTime = 0;
+    alertCustomVideo.play().catch(() => {
+      alertCustomVideo.muted = true;
+      alertCustomVideo.play().catch(() => {});
+    });
+  } else {
+    alertCustomImg.src = mediaUrl;
+    alertCustomImg.style.display = 'block';
   }
 }
 
@@ -449,12 +548,15 @@ function processQueue() {
   // Play configured sound effect
   playAlertSound(item.type, item.coins || 1);
 
+  // Render optional custom video or photo/GIF
+  applyCustomMedia(item);
+
   // Reset classes
   container.className = item.tierClass || 'tier-gift-small';
 
   alertTitle.textContent = item.title;
   alertMsg.textContent = item.message;
-  alertAvatar.src = item.avatarUrl || '/assets/avatar.png';
+  alertAvatar.src = resolveAvatar(item.avatarUrl);
   alertAvatar.onerror = () => { alertAvatar.src = '/assets/avatar.png'; };
 
   if (item.giftIconUrl) {
@@ -487,6 +589,7 @@ function processQueue() {
   const dur = (item.duration || triggerSettings.alertDuration || 5) * 1000;
   setTimeout(() => {
     alertBox.classList.remove('show');
+    alertCustomVideo.pause();
     setTimeout(processQueue, 450);
   }, dur);
 }
@@ -498,10 +601,12 @@ function connectWS() {
   ws.onmessage = evt => {
     try {
       const data = JSON.parse(evt.data);
-      if (data.type === 'init' && data.settings?.triggers) {
-        triggerSettings = Object.assign(triggerSettings, data.settings.triggers);
-      } else if (data.type === 'settings:update' && data.settings?.triggers) {
-        triggerSettings = Object.assign(triggerSettings, data.settings.triggers);
+      if (data.type === 'init' || data.type === 'settings:update') {
+        if (typeof data.settings?.universalVolume === 'number') universalVolume = data.settings.universalVolume;
+        if (typeof data.settings?.universalMuted === 'boolean') universalMuted = data.settings.universalMuted;
+        if (data.settings?.triggers) {
+          triggerSettings = Object.assign(triggerSettings, data.settings.triggers);
+        }
       } else if (data.type === 'gift') {
         const giftName = data.giftName || 'Gift';
         const count = data.count || 1;

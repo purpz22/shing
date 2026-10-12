@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Shing Live - Pet-Pet Headpat Overlay</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Nunito', sans-serif;
+    user-select: none;
+  }
+
+  #headpat-stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  #headpat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 0;
+    transform: scale(0.75) translateY(20px);
+    transition: opacity 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  #headpat-card.active {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+
+  .canvas-bubble {
+    position: relative;
+    width: 240px;
+    height: 240px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45));
+  }
+
+  #petpet-canvas {
+    width: 240px;
+    height: 240px;
+  }
+
+  .headpat-caption {
+    margin-top: 6px;
+    padding: 8px 18px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(30, 22, 43, 0.92), rgba(45, 26, 64, 0.92));
+    border: 2px solid rgba(255, 133, 162, 0.65);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 133, 162, 0.3);
+    text-align: center;
+    color: #fff;
+  }
+
+  .headpat-user {
+    font-size: 16px;
+    font-weight: 900;
+    color: #ffb3c6;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  }
+
+  .headpat-reason {
+    font-size: 12px;
+    font-weight: 800;
+    color: #f1f5f9;
+    letter-spacing: 0.4px;
+  }
+</style>
+</head>
+<body>
+
+<div id="headpat-stage">
+  <div id="headpat-card">
+    <div class="canvas-bubble">
+      <canvas id="petpet-canvas" width="240" height="240"></canvas>
+    </div>
+    <div class="headpat-caption">
+      <div class="headpat-user" id="headpat-user">@Viewer</div>
+      <div class="headpat-reason" id="headpat-reason">Good Viewer Headpat!</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('petpet-canvas');
+  const ctx = canvas.getContext('2d');
+  const cardEl = document.getElementById('headpat-card');
+  const userEl = document.getElementById('headpat-user');
+  const reasonEl = document.getElementById('headpat-reason');
+
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = 240 * dpr;
+  canvas.height = 240 * dpr;
+  ctx.scale(dpr, dpr);
+
+  let headpatSettings = {
+    triggerOnFollow: true,
+    triggerOnGift: true,
+    durationSec: 5,
+    speed: 1.0
+  };
+  let universalVolume = 0.85;
+  let universalMuted = false;
+
+  const queue = [];
+  let isPlaying = false;
+  let activeAvatarImg = null;
+  let animFrameId = null;
+  let phase = 0;
+  let hearts = [];
+
+  const fallbackImg = new Image();
+  fallbackImg.crossOrigin = 'anonymous';
+  fallbackImg.src = '/assets/avatar.png';
+
+  function resolveAvatar(url) {
+    if (!url || url.includes('assets/avatar.png')) return '/assets/avatar.png';
+    if (url.startsWith('/')) return url;
+    return '/api/avatar-proxy?url=' + encodeURIComponent(url);
+  }
+
+  function loadAvatarImage(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      const timer = setTimeout(() => resolve(fallbackImg), 3500);
+      img.onload = () => {
+        clearTimeout(timer);
+        resolve(img);
+      };
+      img.onerror = () => {
+        clearTimeout(timer);
+        resolve(fallbackImg);
+      };
+      img.src = resolveAvatar(url);
+    });
+  }
+
+  function spawnHeart(x, y) {
+    hearts.push({
+      x: x + (Math.random() - 0.5) * 70,
+      y: y + (Math.random() - 0.5) * 16,
+      vx: (Math.random() - 0.5) * 0.9,
+      vy: -1.1 - Math.random() * 1.1,
+      size: 8 + Math.random() * 7,
+      alpha: 1,
+      color: Math.random() > 0.4 ? '#ff85a2' : '#ffd166'
+    });
+  }
+
+  function drawHeart(cx, cy, size, color, alpha) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, alpha);
+    ctx.fillStyle = color;
+    ctx.translate(cx, cy);
+    ctx.beginPath();
+    const topCurveHeight = size * 0.3;
+    ctx.moveTo(0, topCurveHeight);
+    ctx.bezierCurveTo(0, 0, -size / 2, 0, -size / 2, topCurveHeight);
+    ctx.bezierCurveTo(-size / 2, (size + topCurveHeight) / 2, 0, (size + topCurveHeight) / 1.4, 0, size);
+    ctx.bezierCurveTo(0, (size + topCurveHeight) / 1.4, size / 2, (size + topCurveHeight) / 2, size / 2, topCurveHeight);
+    ctx.bezierCurveTo(size / 2, 0, 0, 0, 0, topCurveHeight);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Draws the classic Pet-Pet patting hand at the given pat cycle angle
+  function drawPetPetHand(patSin, patCos, headTopY) {
+    ctx.save();
+    // Circular patting trajectory matching the classic Pet-Pet generator
+    const handX = 120 + patCos * 12;
+    const handY = headTopY - 6 + patSin * 6;
+    const palmSqueeze = 1 - Math.max(0, patSin) * 0.10;
+
+    ctx.translate(handX, handY);
+    ctx.rotate(patCos * 0.08);
+    ctx.scale(1.06, palmSqueeze);
+
+    // Soft drop shadow under hand
+    ctx.fillStyle = 'rgba(25, 12, 38, 0.24)';
+    ctx.beginPath();
+    ctx.ellipse(0, 18, 56, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Pastel sleeve cuff on upper-right wrist
+    ctx.fillStyle = '#ff85a2';
+    ctx.strokeStyle = '#4a2545';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.roundRect(34, -38, 52, 34, 14);
+    ctx.fill();
+    ctx.stroke();
+
+    // White frill trim on cuff
+    ctx.fillStyle = '#fff5f8';
+    ctx.beginPath();
+    ctx.roundRect(28, -36, 14, 32, 7);
+    ctx.fill();
+    ctx.stroke();
+
+    // Main patting hand & fingers (warm cream skin tone with bold outline)
+    ctx.fillStyle = '#ffe3d3';
+    ctx.strokeStyle = '#4a2545';
+    ctx.lineWidth = 3.5;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    ctx.beginPath();
+    // Start at top-right wrist
+    ctx.moveTo(32, -28);
+    // Curve over top of palm to left fingertips
+    ctx.bezierCurveTo(6, -38, -38, -32, -56, -12);
+    // Finger 1 tip (front-left)
+    ctx.bezierCurveTo(-66, -2, -58, 10, -44, 8);
+    // Finger 2
+    ctx.bezierCurveTo(-50, 17, -36, 22, -24, 14);
+    // Finger 3
+    ctx.bezierCurveTo(-28, 22, -12, 24, -2, 15);
+    // Thumb tucked under right side
+    ctx.bezierCurveTo(8, 25, 28, 22, 32, 10);
+    // Back to lower wrist
+    ctx.lineTo(42, -2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Cute rosy blush on back of hand
+    ctx.fillStyle = 'rgba(255, 133, 162, 0.42)';
+    ctx.beginPath();
+    ctx.ellipse(-8, -8, 14, 6, -0.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function renderFrame() {
+    if (!isPlaying) return;
+    ctx.clearRect(0, 0, 240, 240);
+
+    const speedMult = Math.max(0.4, Math.min(2.5, Number(headpatSettings.speed) || 1.0));
+    phase += 0.16 * speedMult;
+
+    // Classic Pet-Pet squash & stretch curve:
+    // When patSin > 0 (hand pressing down), avatar squishes down & widens horizontally
+    const patSin = Math.sin(phase);
+    const patCos = Math.cos(phase);
+
+    const squish = patSin; // -1 .. +1
+    const baseW = 126;
+    const baseH = 126;
+    const bottomY = 212;
+
+    const scaleX = 1 + squish * 0.19;
+    const scaleY = 1 - squish * 0.21;
+    const drawW = baseW * scaleX;
+    const drawH = baseH * scaleY;
+    const drawX = 120 - drawW / 2 + patCos * 4;
+    const drawY = bottomY - drawH;
+
+    // Ground cushion shadow
+    ctx.fillStyle = 'rgba(15, 10, 28, 0.42)';
+    ctx.beginPath();
+    ctx.ellipse(120, bottomY + 4, (drawW * 0.52), 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw squished circular/rounded avatar
+    const img = activeAvatarImg || fallbackImg;
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(drawX + drawW / 2, drawY + drawH / 2, drawW / 2, drawH / 2, 0, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    try {
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
+    } catch (_) {}
+    ctx.restore();
+
+    // Cute glowing border around the squished avatar
+    ctx.save();
+    ctx.strokeStyle = '#ff85a2';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(drawX + drawW / 2, drawY + drawH / 2, drawW / 2, drawH / 2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Spawn a heart near peak squish
+    if (patSin > 0.88 && Math.random() < 0.35) {
+      spawnHeart(120, drawY);
+    }
+
+    // Draw Pet-Pet Hand on top of the avatar's head
+    drawPetPetHand(patSin, patCos, drawY);
+
+    // Update & render floating hearts
+    for (let i = hearts.length - 1; i >= 0; i--) {
+      const h = hearts[i];
+      h.x += h.vx;
+      h.y += h.vy;
+      h.alpha -= 0.022;
+      if (h.alpha <= 0) {
+        hearts.splice(i, 1);
+      } else {
+        drawHeart(h.x, h.y, h.size, h.color, h.alpha);
+      }
+    }
+
+    animFrameId = requestAnimationFrame(renderFrame);
+  }
+
+  function playSoftPatChime() {
+    if (universalMuted || universalVolume <= 0) return;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const actx = new AudioCtx();
+      const osc = actx.createOscillator();
+      const gain = actx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, actx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(780, actx.currentTime + 0.14);
+      gain.gain.setValueAtTime(0.18 * universalVolume, actx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.18);
+      osc.connect(gain);
+      gain.connect(actx.destination);
+      osc.start();
+      osc.stop(actx.currentTime + 0.19);
+    } catch (_) {}
+  }
+
+  async function processQueue() {
+    if (isPlaying || queue.length === 0) return;
+    isPlaying = true;
+    const item = queue.shift();
+
+    activeAvatarImg = await loadAvatarImage(item.avatar);
+    userEl.textContent = '@' + (item.nickname || item.user || 'Viewer');
+    reasonEl.textContent = item.reasonText || 'Headpat Time!';
+    phase = 0;
+    hearts = [];
+
+    cardEl.classList.add('active');
+    playSoftPatChime();
+    if (animFrameId) cancelAnimationFrame(animFrameId);
+    animFrameId = requestAnimationFrame(renderFrame);
+
+    const durMs = Math.max(2, Math.min(15, Number(headpatSettings.durationSec) || 5)) * 1000;
+    setTimeout(() => {
+      cardEl.classList.remove('active');
+      setTimeout(() => {
+        isPlaying = false;
+        if (animFrameId) cancelAnimationFrame(animFrameId);
+        animFrameId = null;
+        processQueue();
+      }, 360);
+    }, durMs);
+  }
+
+  function enqueueHeadpat(data, reasonText) {
+    queue.push({
+      user: data.user || data.nickname || 'Viewer',
+      nickname: data.nickname || data.user || 'Viewer',
+      avatar: data.avatar || '/assets/avatar.png',
+      reasonText
+    });
+    processQueue();
+  }
+
+  function applySettings(s) {
+    if (!s) return;
+    if (typeof s.universalVolume === 'number') universalVolume = s.universalVolume;
+    if (typeof s.universalMuted === 'boolean') universalMuted = s.universalMuted;
+    if (s.headpat) {
+      headpatSettings = Object.assign({}, headpatSettings, s.headpat);
+    }
+  }
+
+  function connectWS() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(proto + '//' + location.host);
+
+    ws.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === 'init' || msg.type === 'settings:update') {
+          applySettings(msg.settings);
+        } else if (msg.type === 'follow') {
+          if (headpatSettings.triggerOnFollow !== false) {
+            enqueueHeadpat(msg, 'Thanks for following! *pat pat*');
+          }
+        } else if (msg.type === 'gift') {
+          if (headpatSettings.triggerOnGift !== false) {
+            const gName = msg.giftName || 'a Gift';
+            enqueueHeadpat(msg, 'Sent ' + gName + '! *pat pat*');
+          }
+        } else if (msg.type === 'headpat:trigger') {
+          enqueueHeadpat(msg, msg.reasonText || 'Headpat Time! *pat pat*');
+        }
+      } catch (_) {}
+    };
+
+    ws.onclose = () => setTimeout(connectWS, 2500);
+  }
+
+  connectWS();
+})();
+</script>
+</body>
+</html>

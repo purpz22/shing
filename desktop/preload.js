@@ -23,11 +23,17 @@ contextBridge.exposeInMainWorld('api', {
   clearJar: () => ipcRenderer.invoke('jar:clear'),
   openOverlayInBrowser: (name) => ipcRenderer.invoke('overlay:open', name),
 
-  // Sound Management APIs
+  // Sound & Media Management APIs
   listSounds: () => ipcRenderer.invoke('sounds:list'),
   searchSounds: (query) => ipcRenderer.invoke('sounds:search', query),
   downloadSound: (soundUrl, title) => ipcRenderer.invoke('sounds:download', soundUrl, title),
   selectLocalSound: () => ipcRenderer.invoke('sounds:select-local'),
+  selectLocalMedia: () => ipcRenderer.invoke('media:select-local'),
+
+  // Rankings APIs
+  getRankings: () => ipcRenderer.invoke('rankings:get'),
+  resetRankings: (target) => ipcRenderer.invoke('rankings:reset', target),
+  simulateViewerLeave: (username) => ipcRenderer.invoke('rankings:leave', username),
 
   onTikTokStatus: (cb) => {
     const sub = (evt, data) => cb(data);

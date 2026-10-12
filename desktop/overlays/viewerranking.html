@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Shing Live - Viewer Stay Ranking Overlay</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=JetBrains+Mono:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Nunito', sans-serif;
+    user-select: none;
+  }
+
+  #viewer-ranking-root {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    width: 335px;
+    background: linear-gradient(160deg, rgba(24, 20, 40, 0.90) 0%, rgba(16, 14, 28, 0.94) 100%);
+    border: 2px solid rgba(187, 134, 252, 0.45);
+    border-radius: 20px;
+    padding: 12px 14px 14px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(187, 134, 252, 0.2);
+    backdrop-filter: blur(12px);
+    color: #fff;
+  }
+
+  .board-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .board-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    color: #d8b4fe;
+    text-shadow: 0 2px 8px rgba(187, 134, 252, 0.4);
+  }
+
+  .board-title svg {
+    width: 16px;
+    height: 16px;
+    fill: #c084fc;
+    filter: drop-shadow(0 0 6px rgba(192, 132, 252, 0.55));
+  }
+
+  .board-badge {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(187, 134, 252, 0.18);
+    color: #e9d5ff;
+    border: 1px solid rgba(187, 134, 252, 0.35);
+  }
+
+  .board-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .viewer-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.25s ease;
+  }
+
+  .viewer-row.rank-1 {
+    background: linear-gradient(90deg, rgba(255, 214, 102, 0.15) 0%, rgba(187, 134, 252, 0.12) 100%);
+    border-color: rgba(255, 214, 102, 0.45);
+  }
+
+  .viewer-row.rank-2 {
+    background: linear-gradient(90deg, rgba(203, 213, 225, 0.14) 0%, rgba(187, 134, 252, 0.08) 100%);
+    border-color: rgba(203, 213, 225, 0.35);
+  }
+
+  .viewer-row.rank-3 {
+    background: linear-gradient(90deg, rgba(255, 179, 128, 0.14) 0%, rgba(187, 134, 252, 0.08) 100%);
+    border-color: rgba(255, 179, 128, 0.35);
+  }
+
+  .rank-pill {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 900;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.12);
+    color: #e2e8f0;
+  }
+
+  .rank-1 .rank-pill {
+    background: linear-gradient(135deg, #ffe066, #ff9f1c);
+    color: #2b1900;
+    box-shadow: 0 0 10px rgba(255, 209, 102, 0.5);
+  }
+
+  .rank-2 .rank-pill {
+    background: linear-gradient(135deg, #f1f5f9, #94a3b8);
+    color: #0f172a;
+  }
+
+  .rank-3 .rank-pill {
+    background: linear-gradient(135deg, #ffc2a1, #e07a5f);
+    color: #2b1108;
+  }
+
+  .avatar-wrap {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+
+  .avatar-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(187, 134, 252, 0.6);
+    background: #231934;
+  }
+
+  .rank-1 .avatar-img {
+    border-color: #ffd166;
+  }
+
+  .presence-dot {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    border: 2px solid #181428;
+  }
+
+  .presence-dot.online {
+    background: #34d399;
+    box-shadow: 0 0 6px #34d399;
+  }
+
+  .presence-dot.offline {
+    background: #94a3b8;
+  }
+
+  .viewer-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .viewer-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .viewer-sub {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.62);
+    margin-top: 1px;
+  }
+
+  .viewer-sub .live-session {
+    color: #6ee7b7;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .viewer-sub .stopped-session {
+    color: #cbd5e1;
+  }
+
+  .best-time-box {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 3px 9px;
+    border-radius: 10px;
+    background: rgba(187, 134, 252, 0.16);
+    border: 1px solid rgba(187, 134, 252, 0.35);
+    flex-shrink: 0;
+  }
+
+  .best-label {
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: #d8b4fe;
+  }
+
+  .best-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 14px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.5);
+  }
+</style>
+</head>
+<body>
+
+<div id="viewer-ranking-root">
+  <div class="board-header">
+    <div class="board-title">
+      <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+      <span>Stay Ranking</span>
+    </div>
+    <div class="board-badge" id="top-count-badge">TOP 3</div>
+  </div>
+  <div class="board-list" id="viewers-list">
+    <div class="empty-state">Tracking longest viewer stay time...</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  let maxCount = 3;
+  let viewersData = [];
+
+  const listEl = document.getElementById('viewers-list');
+  const badgeEl = document.getElementById('top-count-badge');
+
+  function formatDuration(sec) {
+    const s = Math.max(0, Math.floor(Number(sec) || 0));
+    const hrs = Math.floor(s / 3600);
+    const mins = Math.floor((s % 3600) / 60);
+    const rem = s % 60;
+    const mm = String(mins).padStart(2, '0');
+    const ss = String(rem).padStart(2, '0');
+    if (hrs > 0) {
+      return String(hrs).padStart(2, '0') + ':' + mm + ':' + ss;
+    }
+    return mm + ':' + ss;
+  }
+
+  function resolveAvatar(url) {
+    if (!url || url.includes('assets/avatar.png')) return '/assets/avatar.png';
+    if (url.startsWith('/')) return url;
+    return '/api/avatar-proxy?url=' + encodeURIComponent(url);
+  }
+
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function render() {
+    badgeEl.textContent = 'TOP ' + maxCount;
+    const slice = (viewersData || []).slice(0, maxCount);
+
+    if (!slice.length) {
+      listEl.innerHTML = '<div class="empty-state">Tracking longest viewer stay time...</div>';
+      return;
+    }
+
+    listEl.innerHTML = slice.map((item, idx) => {
+      const rank = idx + 1;
+      const rankClass = rank <= 3 ? 'rank-' + rank : '';
+      const isOnline = !!item.isPresent;
+      const dotClass = isOnline ? 'online' : 'offline';
+      const curSec = item.currentTimeSec ?? item.currentSec ?? 0;
+      const bestSec = item.bestTimeSec ?? item.bestSec ?? 0;
+      const subHtml = isOnline
+        ? `<span>Now:</span> <span class="live-session">${formatDuration(curSec)}</span>`
+        : `<span class="stopped-session">Paused (Resets to 00:00 on return)</span>`;
+
+      return `
+        <div class="viewer-row ${rankClass}" data-key="${escapeHtml(item.key)}">
+          <div class="rank-pill">#${rank}</div>
+          <div class="avatar-wrap">
+            <img class="avatar-img" src="${escapeHtml(resolveAvatar(item.avatar))}" alt="" onerror="this.onerror=null;this.src='/assets/avatar.png';">
+            <span class="presence-dot ${dotClass}"></span>
+          </div>
+          <div class="viewer-info">
+            <div class="viewer-name">${escapeHtml(item.nickname || item.username || 'Viewer')}</div>
+            <div class="viewer-sub">${subHtml}</div>
+          </div>
+          <div class="best-time-box">
+            <span class="best-label">Best Time</span>
+            <span class="best-val">${formatDuration(bestSec)}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function applySettings(s) {
+    if (s && s.rankings && s.rankings.viewerRankingCount) {
+      maxCount = Math.max(1, Math.min(10, parseInt(s.rankings.viewerRankingCount, 10) || 3));
+      render();
+    }
+  }
+
+  function connectWS() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(proto + '//' + location.host);
+
+    ws.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === 'init') {
+          if (msg.settings) applySettings(msg.settings);
+          if (msg.rankings && Array.isArray(msg.rankings.viewerRanking)) {
+            viewersData = msg.rankings.viewerRanking;
+            render();
+          }
+        } else if (msg.type === 'settings:update') {
+          applySettings(msg.settings);
+        } else if (msg.type === 'rankings:update') {
+          const list = msg.viewerRanking || (msg.rankings && msg.rankings.viewerRanking);
+          if (Array.isArray(list)) {
+            viewersData = list;
+            render();
+          }
+        }
+      } catch (_) {}
+    };
+
+    ws.onclose = () => setTimeout(connectWS, 2500);
+  }
+
+  connectWS();
+})();
+</script>
+</body>
+</html>

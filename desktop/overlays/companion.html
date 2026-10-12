@@ -985,9 +985,11 @@ const MEOW_AUDIO_DATA = "data:audio/mp3;base64,SUQzBAAAAAAAVFRFTkMAAAAnAAADV2F2Z
 
 let meowAudioObj = null;
 let lastMeowSoundTime = 0;
+let universalVolume = 0.85;
+let universalMuted = false;
 
 function playMeowSound() {
-  if (isCompanionMuted) return;
+  if (isCompanionMuted || universalMuted || universalVolume <= 0) return;
   const now = Date.now();
   if (now - lastMeowSoundTime < 1800) return;
   lastMeowSoundTime = now;
@@ -996,7 +998,7 @@ function playMeowSound() {
       meowAudioObj = new Audio(MEOW_AUDIO_DATA);
     }
     meowAudioObj.currentTime = 0;
-    meowAudioObj.volume = 0.85;
+    meowAudioObj.volume = Math.max(0, Math.min(1, universalVolume));
     const playPromise = meowAudioObj.play();
     if (playPromise && playPromise.catch) {
       playPromise.catch(() => {});
@@ -1622,10 +1624,10 @@ function connectWS() {
   ws.onmessage = evt => {
     try {
       const data = JSON.parse(evt.data);
-      if (data.type === 'init' && data.settings?.companion) {
-        applyCompanionSettings(data.settings.companion);
-      } else if (data.type === 'settings:update' && data.settings?.companion) {
-        applyCompanionSettings(data.settings.companion);
+      if (data.type === 'init' || data.type === 'settings:update') {
+        if (typeof data.settings?.universalVolume === 'number') universalVolume = data.settings.universalVolume;
+        if (typeof data.settings?.universalMuted === 'boolean') universalMuted = data.settings.universalMuted;
+        if (data.settings?.companion) applyCompanionSettings(data.settings.companion);
       } else if (data.type === 'gift') {
         makeHappy();
         const user = data.nickname || data.user || data.uniqueId || 'Viewer';

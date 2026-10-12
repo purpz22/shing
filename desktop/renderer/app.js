@@ -422,6 +422,9 @@ const OverlayDemoManager = {
         this.triggerTimerBonus();
       }
     }, 1000);
+
+    // 6. Pet-Pet Headpat Mini Canvas Demo
+    this.startHeadpatDemo();
   },
 
   stop() {
@@ -431,11 +434,81 @@ const OverlayDemoManager = {
     clearInterval(this.ltInterval);
     clearInterval(this.alertInterval);
     clearInterval(this.timerInterval);
+    if (this.headpatRaf) cancelAnimationFrame(this.headpatRaf);
     this.chatInterval = null;
     this.jarInterval = null;
     this.ltInterval = null;
     this.alertInterval = null;
     this.timerInterval = null;
+    this.headpatRaf = null;
+  },
+
+  startHeadpatDemo() {
+    const cvs = $('ov-demo-headpat-canvas');
+    if (!cvs) return;
+    const ctx = cvs.getContext('2d');
+    if (!this.headpatAvatarImg) {
+      this.headpatAvatarImg = new Image();
+      this.headpatAvatarImg.src = '../assets/avatar.png';
+    }
+    let phase = 0;
+    const renderMiniHeadpat = () => {
+      if (!this.isRunning) return;
+      ctx.clearRect(0, 0, cvs.width, cvs.height);
+      phase += 0.14;
+      const patSin = Math.sin(phase);
+      const patCos = Math.cos(phase);
+      const baseW = 62;
+      const baseH = 62;
+      const bottomY = 102;
+      const drawW = baseW * (1 + patSin * 0.17);
+      const drawH = baseH * (1 - patSin * 0.19);
+      const drawX = 65 - drawW / 2 + patCos * 2.5;
+      const drawY = bottomY - drawH;
+
+      ctx.fillStyle = 'rgba(10, 6, 20, 0.45)';
+      ctx.beginPath();
+      ctx.ellipse(65, bottomY + 2, drawW * 0.5, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(drawX + drawW / 2, drawY + drawH / 2, drawW / 2, drawH / 2, 0, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      try {
+        ctx.drawImage(this.headpatAvatarImg, drawX, drawY, drawW, drawH);
+      } catch (_) {}
+      ctx.restore();
+
+      ctx.strokeStyle = '#ff85a2';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(drawX + drawW / 2, drawY + drawH / 2, drawW / 2, drawH / 2, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Mini patting hand
+      ctx.save();
+      ctx.translate(65 + patCos * 7, drawY - 3 + patSin * 3.5);
+      ctx.rotate(patCos * 0.08);
+      ctx.fillStyle = '#ffe3d3';
+      ctx.strokeStyle = '#4a2545';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 26, 11, -0.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ff85a2';
+      ctx.beginPath();
+      ctx.roundRect(14, -14, 22, 14, 6);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      this.headpatRaf = requestAnimationFrame(renderMiniHeadpat);
+    };
+    if (this.headpatRaf) cancelAnimationFrame(this.headpatRaf);
+    this.headpatRaf = requestAnimationFrame(renderMiniHeadpat);
   },
 
   sync() {
@@ -943,6 +1016,54 @@ function updateChatPreviewBox() {
   }
 }
 
+// Universal Volume & Trigger Media UI Helpers
+function updateUniversalVolumeUI() {
+  const vol = typeof appSettings.universalVolume === 'number' ? appSettings.universalVolume : 0.85;
+  const muted = Boolean(appSettings.universalMuted);
+  const slider = $('universal-volume-slider');
+  const valEl = $('universal-volume-val');
+  const muteBtn = $('universal-mute-btn');
+  const iconOn = $('universal-vol-icon-on');
+  const iconOff = $('universal-vol-icon-off');
+
+  if (slider) slider.value = vol;
+  if (valEl) valEl.textContent = muted ? 'Muted' : `${Math.round(vol * 100)}%`;
+  if (muteBtn) muteBtn.classList.toggle('muted', muted || vol <= 0);
+  if (iconOn) iconOn.classList.toggle('hidden', muted || vol <= 0);
+  if (iconOff) iconOff.classList.toggle('hidden', !(muted || vol <= 0));
+}
+
+function renderTriggerMediaUI(kind) {
+  const isFollow = kind === 'follow';
+  const mediaUrl = isFollow ? (appSettings.triggers?.followMedia || '') : (appSettings.triggers?.giftMedia || '');
+  const mediaType = isFollow ? (appSettings.triggers?.followMediaType || '') : (appSettings.triggers?.giftMediaType || '');
+  const statusEl = $(isFollow ? 'trig-follow-media-status' : 'trig-gift-media-status');
+  const previewEl = $(isFollow ? 'trig-follow-media-preview' : 'trig-gift-media-preview');
+  const clearBtn = $(isFollow ? 'clear-follow-media-btn' : 'clear-gift-media-btn');
+
+  if (!statusEl || !previewEl) return;
+
+  if (!mediaUrl) {
+    statusEl.textContent = isFollow ? 'None (Default Avatar)' : 'None (Default Gift Icon)';
+    previewEl.classList.add('hidden');
+    previewEl.innerHTML = '';
+    if (clearBtn) clearBtn.classList.add('hidden');
+    return;
+  }
+
+  const fileName = mediaUrl.split('/').pop() || 'Custom Media';
+  const resolvedType = mediaType || (/\.(mp4|webm|mov)$/i.test(mediaUrl) ? 'video' : 'image');
+  statusEl.textContent = `${resolvedType === 'video' ? 'Video' : 'Image/GIF'}: ${fileName}`;
+  previewEl.classList.remove('hidden');
+  if (clearBtn) clearBtn.classList.remove('hidden');
+
+  if (resolvedType === 'video') {
+    previewEl.innerHTML = `<video src="http://localhost:3333${mediaUrl}" autoplay muted loop playsinline></video>`;
+  } else {
+    previewEl.innerHTML = `<img src="http://localhost:3333${mediaUrl}" alt="Alert Media Preview">`;
+  }
+}
+
 // Load & populate settings
 async function initSettings() {
   appSettings = await window.api.getSettings();
@@ -954,6 +1075,7 @@ async function initSettings() {
     }
   } catch (e) {}
   applyTheme(appSettings.theme);
+  updateUniversalVolumeUI();
 
   // Initial Modal status
   if (!appSettings.confirmed) {
@@ -963,6 +1085,20 @@ async function initSettings() {
     $('modal-account').classList.remove('active');
     $('header-username').textContent = `@${appSettings.username}`;
     window.api.connectTikTok(appSettings.username, { manual: false });
+  }
+
+  // Populate Rankings & Headpat
+  if ($('ranking-toplikers-count')) {
+    $('ranking-toplikers-count').value = String(appSettings.rankings?.topLikersCount || 3);
+  }
+  if ($('ranking-viewers-count')) {
+    $('ranking-viewers-count').value = String(appSettings.rankings?.viewerRankingCount || 3);
+  }
+  if ($('headpat-on-follow')) {
+    $('headpat-on-follow').checked = appSettings.headpat?.triggerOnFollow !== false;
+  }
+  if ($('headpat-on-gift')) {
+    $('headpat-on-gift').checked = appSettings.headpat?.triggerOnGift !== false;
   }
 
   // Populate Triggers
@@ -981,6 +1117,8 @@ async function initSettings() {
       if ($('trig-volume-val')) $('trig-volume-val').textContent = `${Math.round(vol * 100)}%`;
     }
   }
+  renderTriggerMediaUI('follow');
+  renderTriggerMediaUI('gift');
 
   // Populate Lower Third
   if (appSettings.lowerThird) {
@@ -1061,6 +1199,7 @@ let fullGiftCatalog = [];
 
 function playSoundPreview(url) {
   if (!url || url === 'none') return;
+  if (appSettings.universalMuted) return;
   if (currentPreviewAudio) {
     try {
       currentPreviewAudio.pause();
@@ -1071,7 +1210,9 @@ function playSoundPreview(url) {
   try {
     const audio = new Audio(url);
     const vol = $('trig-volume') ? +$('trig-volume').value : 0.85;
-    audio.volume = isNaN(vol) ? 0.85 : Math.max(0, Math.min(1, vol));
+    const masterVol = typeof appSettings.universalVolume === 'number' ? appSettings.universalVolume : 0.85;
+    const baseVol = isNaN(vol) ? 0.85 : Math.max(0, Math.min(1, vol));
+    audio.volume = Math.max(0, Math.min(1, baseVol * masterVol));
     currentPreviewAudio = audio;
     audio.play().catch(e => {
       console.warn('Preview play notice:', e.message);
@@ -1578,6 +1719,19 @@ function openChangelogModal() {
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
     {
+      version: '1.3.2',
+      releaseName: 'Shing Live v1.3.2 - Top Likers, Viewer Stay Ranking, Pet-Pet Headpat & Custom Media Triggers',
+      releaseDate: '2026-10-12',
+      summary: 'Added standalone Top Likers, Viewer Stay-Time Ranking, and Pet-Pet Headpat overlays, custom Video/Photo/GIF alert media on Follow and Gift triggers, and a Universal Master Volume bar in the top header.',
+      highlights: [
+        'Top Likers Ranking Overlay (toplikers.html): Standalone leaderboard showing who sent the most likes on stream (default Top 3, configurable 1-10)',
+        'Viewer Stay Ranking Overlay (viewerranking.html): Tracks longest viewer stay time; stops timer on leave and resets current session timer to 00:00 on return while keeping Best Time',
+        'Pet-Pet Headpat Overlay (headpat.html): Animated Pet-Pet hand patting the viewer TikTok profile picture on Follow or Gift events',
+        'Custom Video / Photo / GIF Alerts: Upload custom MP4/WebM/MOV videos or GIF/PNG/JPG/WebP images for Follow and Gift alerts in the Triggers tab',
+        'Universal Master Volume & Clean Header: Removed the top Test Events bar and added a Universal Master Volume slider + mute toggle across all overlays'
+      ]
+    },
+    {
       version: '1.3.1',
       releaseName: 'Shing Live v1.3.1 - Manual TikTok Live Connect & Disconnect Controls',
       releaseDate: '2026-10-12',
@@ -1804,7 +1958,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Overlay shortcut clicks (clicking card directs to setup)
   document.querySelectorAll('.overlay-card').forEach(card => {
     card.addEventListener('click', e => {
-      if (e.target.closest('button')) return;
+      if (e.target.closest('button, select, input, label, .card-inline-settings')) return;
       const targetTab = card.dataset.goto;
       if (targetTab) switchTab(targetTab);
     });
@@ -1895,6 +2049,157 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Universal Master Volume Bar Controls
+  $('universal-volume-slider')?.addEventListener('input', e => {
+    appSettings.universalVolume = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0));
+    if (appSettings.universalVolume > 0 && appSettings.universalMuted) {
+      appSettings.universalMuted = false;
+    }
+    updateUniversalVolumeUI();
+    saveCurrentSettings();
+  });
+
+  $('universal-mute-btn')?.addEventListener('click', () => {
+    appSettings.universalMuted = !appSettings.universalMuted;
+    updateUniversalVolumeUI();
+    saveCurrentSettings();
+  });
+
+  // Rankings & Pet-Pet Headpat Card Controls
+  $('ranking-toplikers-count')?.addEventListener('change', e => {
+    if (!appSettings.rankings) appSettings.rankings = {};
+    appSettings.rankings.topLikersCount = Math.max(1, Math.min(10, parseInt(e.target.value, 10) || 3));
+    saveCurrentSettings();
+    showToast(`Top Likers overlay set to Top ${appSettings.rankings.topLikersCount}!`, 'info', 'Top Likers');
+  });
+
+  $('ranking-viewers-count')?.addEventListener('change', e => {
+    if (!appSettings.rankings) appSettings.rankings = {};
+    appSettings.rankings.viewerRankingCount = Math.max(1, Math.min(10, parseInt(e.target.value, 10) || 3));
+    saveCurrentSettings();
+    showToast(`Viewer Stay Ranking set to Top ${appSettings.rankings.viewerRankingCount}!`, 'info', 'Stay Ranking');
+  });
+
+  $('test-toplikers-btn')?.addEventListener('click', e => {
+    e.stopPropagation();
+    const samples = [
+      { user: 'SakuraChan', nickname: 'SakuraChan', username: 'sakurachan' },
+      { user: 'MochiVibes', nickname: 'MochiVibes', username: 'mochivibes' },
+      { user: 'KawaiiFox', nickname: 'KawaiiFox', username: 'kawaiifox' },
+      { user: 'StarryNeko', nickname: 'StarryNeko', username: 'starryneko' }
+    ];
+    const pick = samples[Math.floor(Math.random() * samples.length)];
+    const count = 15 + Math.floor(Math.random() * 60);
+    window.api.simulateEvent('like', { ...pick, count, avatar: '/assets/avatar.png' });
+    showToast(`Simulated +${count} likes from ${pick.nickname}!`, 'info', 'Top Likers');
+  });
+
+  $('reset-toplikers-btn')?.addEventListener('click', async e => {
+    e.stopPropagation();
+    await window.api.resetRankings('likers');
+    showToast('Top Likers leaderboard reset!', 'success', 'Top Likers');
+  });
+
+  $('test-viewer-join-btn')?.addEventListener('click', e => {
+    e.stopPropagation();
+    window.api.simulateEvent('join', {
+      user: 'LunarNeko',
+      nickname: 'LunarNeko',
+      username: 'lunarneko',
+      avatar: '/assets/avatar.png'
+    });
+    showToast('LunarNeko is active in stream (timer ticking)!', 'info', 'Stay Ranking');
+  });
+
+  $('test-viewer-leave-btn')?.addEventListener('click', async e => {
+    e.stopPropagation();
+    await window.api.simulateViewerLeave('lunarneko');
+    showToast('LunarNeko left stream: timer stopped! Returning will reset current timer to 00:00 while keeping Best Time.', 'warning', 'Stay Ranking', 4200);
+  });
+
+  $('reset-viewers-btn')?.addEventListener('click', async e => {
+    e.stopPropagation();
+    await window.api.resetRankings('viewers');
+    showToast('Viewer Stay Ranking leaderboard reset!', 'success', 'Stay Ranking');
+  });
+
+  $('headpat-on-follow')?.addEventListener('change', e => {
+    if (!appSettings.headpat) appSettings.headpat = {};
+    appSettings.headpat.triggerOnFollow = e.target.checked;
+    saveCurrentSettings();
+  });
+
+  $('headpat-on-gift')?.addEventListener('change', e => {
+    if (!appSettings.headpat) appSettings.headpat = {};
+    appSettings.headpat.triggerOnGift = e.target.checked;
+    saveCurrentSettings();
+  });
+
+  $('test-headpat-btn')?.addEventListener('click', e => {
+    e.stopPropagation();
+    window.api.simulateEvent('headpat:trigger', {
+      user: 'SakuraChan',
+      nickname: 'SakuraChan',
+      username: 'sakurachan',
+      avatar: '/assets/avatar.png',
+      reasonText: 'Good Viewer Headpat! *pat pat*'
+    });
+    showToast('Triggered Pet-Pet Headpat on overlay!', 'success', 'Pet-Pet Headpat');
+  });
+
+  // Trigger Custom Video / Photo / GIF Media Controls
+  $('upload-follow-media-btn')?.addEventListener('click', async () => {
+    try {
+      const res = await window.api.selectLocalMedia();
+      if (!res || res.canceled) return;
+      if (res.success && res.url) {
+        if (!appSettings.triggers) appSettings.triggers = {};
+        appSettings.triggers.followMedia = res.url;
+        appSettings.triggers.followMediaType = res.mediaType;
+        renderTriggerMediaUI('follow');
+        saveCurrentSettings();
+        showToast(`Follow alert media set to "${res.name}"!`, 'success', 'Follow Alert Media');
+      }
+    } catch (err) {
+      showToast(`Media error: ${err.message}`, 'error', 'Follow Alert Media');
+    }
+  });
+
+  $('clear-follow-media-btn')?.addEventListener('click', () => {
+    if (!appSettings.triggers) appSettings.triggers = {};
+    appSettings.triggers.followMedia = '';
+    appSettings.triggers.followMediaType = '';
+    renderTriggerMediaUI('follow');
+    saveCurrentSettings();
+    showToast('Follow alert custom media removed.', 'info', 'Follow Alert Media');
+  });
+
+  $('upload-gift-media-btn')?.addEventListener('click', async () => {
+    try {
+      const res = await window.api.selectLocalMedia();
+      if (!res || res.canceled) return;
+      if (res.success && res.url) {
+        if (!appSettings.triggers) appSettings.triggers = {};
+        appSettings.triggers.giftMedia = res.url;
+        appSettings.triggers.giftMediaType = res.mediaType;
+        renderTriggerMediaUI('gift');
+        saveCurrentSettings();
+        showToast(`Gift alert media set to "${res.name}"!`, 'success', 'Gift Alert Media');
+      }
+    } catch (err) {
+      showToast(`Media error: ${err.message}`, 'error', 'Gift Alert Media');
+    }
+  });
+
+  $('clear-gift-media-btn')?.addEventListener('click', () => {
+    if (!appSettings.triggers) appSettings.triggers = {};
+    appSettings.triggers.giftMedia = '';
+    appSettings.triggers.giftMediaType = '';
+    renderTriggerMediaUI('gift');
+    saveCurrentSettings();
+    showToast('Gift alert custom media removed.', 'info', 'Gift Alert Media');
+  });
+
   // Triggers Save & Multi-Tier Tests
   $('trig-follow-msg')?.addEventListener('input', () => {
     if (!appSettings.triggers) appSettings.triggers = {};
@@ -1908,7 +2213,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   $('save-triggers-btn').addEventListener('click', () => {
-    appSettings.triggers = {
+    appSettings.triggers = Object.assign({}, appSettings.triggers || {}, {
       followMessage: $('trig-follow-msg').value,
       giftMessage: $('trig-gift-msg').value,
       alertDuration: +$('trig-duration').value || 5,
@@ -1921,9 +2226,13 @@ document.addEventListener('DOMContentLoaded', () => {
         gift_big: $('trig-sound-gift-big') ? $('trig-sound-gift-big').value : '/assets/sounds/fanfare.wav',
         like: $('trig-sound-like') ? $('trig-sound-like').value : '/assets/sounds/pop.wav'
       }
-    };
+    });
     saveCurrentSettings();
-    showToast('Triggers and sound settings saved!', 'success', 'Triggers & Sounds');
+    showToast('Triggers, media, and sound settings saved!', 'success', 'Triggers & Sounds');
+  });
+
+  $('test-tier1-btn')?.addEventListener('click', () => {
+    window.api.simulateEvent('follow', { user: 'Test Follower', nickname: 'Test Follower', uniqueId: 'testfollower', avatar: '/assets/avatar.png' });
   });
 
   // Sound volume slider live preview
