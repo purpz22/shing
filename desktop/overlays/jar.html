@@ -20,105 +20,105 @@
   }
   #jar-stage {
     position: relative;
-    width: 764px;
-    height: 1024px;
+    aspect-ratio: 764 / 1024;
+    height: 100%;
+    width: auto;
     max-width: 100vw;
     max-height: 100vh;
-    will-change: transform;
   }
   .layer {
     position: absolute;
     top: 0; left: 0;
     width: 100%; height: 100%;
     pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
   }
   #jar-back {
     z-index: 1;
-    object-fit: contain;
+    object-fit: fill;
+  }
+  #jar-front {
+    z-index: 2;
+    object-fit: fill;
   }
   #physics-canvas {
     position: absolute;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    z-index: 2;
-  }
-  #jar-front {
     z-index: 3;
-    object-fit: contain;
+  }
+  /* Top rim & pink bow stays in front of falling gifts at the jar mouth while keeping all gifts inside the jar 100% visible */
+  #jar-neck {
+    z-index: 4;
+    object-fit: fill;
+    clip-path: inset(0 0 67.5% 0);
   }
 
   /* Combo Badge above jar mouth */
   #combo-badge {
     position: absolute;
-    top: 130px;
+    top: 12%;
     left: 50%;
-    transform: translateX(-50%) scale(0.8);
+    transform: translateX(-50%) scale(0.85);
     opacity: 0;
     z-index: 10;
     background: linear-gradient(135deg, #ff4785, #7b3fe4);
     color: #fff;
-    padding: 8px 24px;
+    padding: 7px 22px;
     border-radius: 28px;
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 800;
     letter-spacing: 0.5px;
-    box-shadow: 0 8px 24px rgba(255, 71, 133, 0.45);
-    border: 2px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 6px 18px rgba(255, 71, 133, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.7);
     pointer-events: none;
-    transition: opacity 0.3s, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     text-transform: uppercase;
+    white-space: nowrap;
   }
   #combo-badge.show {
     opacity: 1;
     transform: translateX(-50%) scale(1);
-    animation: comboPulse 0.4s ease;
-  }
-  @keyframes comboPulse {
-    0% { transform: translateX(-50%) scale(0.9); }
-    50% { transform: translateX(-50%) scale(1.15); }
-    100% { transform: translateX(-50%) scale(1); }
   }
 
-  /* Biggest Gift Spotlight Badge */
+  /* Biggest Gift Spotlight Badge (GPU-friendly without backdrop-filter blur) */
   #gift-counter {
     position: absolute;
-    bottom: 34px;
+    bottom: 3.2%;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 5;
-    background: linear-gradient(135deg, rgba(38, 18, 68, 0.94), rgba(76, 29, 149, 0.94));
+    z-index: 6;
+    background: linear-gradient(135deg, rgba(38, 18, 68, 0.96), rgba(76, 29, 149, 0.96));
     color: #fff;
-    padding: 8px 24px;
+    padding: 8px 22px;
     border-radius: 26px;
-    font-size: 14.5px;
+    font-size: 14px;
     font-weight: 700;
     letter-spacing: 0.3px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 16px rgba(168, 85, 247, 0.3);
-    border: 1.5px solid rgba(255, 209, 102, 0.45);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    border: 1.5px solid rgba(255, 209, 102, 0.55);
     display: flex;
     align-items: center;
     gap: 8px;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.35s ease, transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
+    transition: opacity 0.3s ease, transform 0.22s ease;
     white-space: nowrap;
-    backdrop-filter: blur(8px);
   }
   #gift-counter.visible { opacity: 1; }
   #gift-counter.counter-pop {
-    transform: translateX(-50%) scale(1.12);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4), 0 0 24px rgba(255, 209, 102, 0.65);
-    border-color: rgba(255, 209, 102, 0.85);
+    transform: translateX(-50%) scale(1.08);
+    border-color: rgba(255, 209, 102, 0.9);
   }
   .top-gift-icon {
     display: inline-flex;
     align-items: center;
     color: #ffd166;
-    filter: drop-shadow(0 0 4px rgba(255, 209, 102, 0.6));
   }
   .top-gift-label {
     color: #e9d5ff;
-    font-size: 13px;
+    font-size: 12.5px;
     text-transform: uppercase;
     letter-spacing: 0.6px;
     font-weight: 700;
@@ -128,7 +128,7 @@
     font-weight: 800;
   }
   .top-gift-sep {
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.45);
     font-size: 12px;
   }
   .top-gift-detail {
@@ -143,8 +143,9 @@
   <div id="jar-stage">
     <div id="combo-badge">ROSE COMBO x5</div>
     <img id="jar-back" class="layer" src="/assets/jar/jar-back.png" alt="Jar Back">
+    <img id="jar-front" class="layer" src="/assets/jar/jar-front.png" alt="Jar Glass">
     <canvas id="physics-canvas" width="764" height="1024"></canvas>
-    <img id="jar-front" class="layer" src="/assets/jar/jar-front.png" alt="Jar Front">
+    <img id="jar-neck" class="layer" src="/assets/jar/jar-front.png" alt="Jar Bow Rim">
     <div id="gift-counter">
       <span class="top-gift-icon">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
@@ -162,7 +163,6 @@
 <script>
 'use strict';
 
-const jarStage = document.getElementById('jar-stage');
 const comboBadge = document.getElementById('combo-badge');
 const counterEl = document.getElementById('gift-counter');
 const topSenderEl = document.getElementById('top-gift-sender');
@@ -185,51 +185,124 @@ const GIFT_ICONS = {
   universe: '/assets/gifts/universe.png'
 };
 
+const SPRITE_SIZE = 96;
 const preloadedImgs = {};
-Object.entries(GIFT_ICONS).forEach(([k, src]) => {
+const spriteCache = {};
+const fallbackSpriteCache = {};
+
+function buildSpriteCanvas(img) {
+  if (!img || !img.complete || img.naturalWidth <= 0) return null;
+  if (img._spriteCanvas) return img._spriteCanvas;
+  try {
+    const off = document.createElement('canvas');
+    off.width = SPRITE_SIZE;
+    off.height = SPRITE_SIZE;
+    const octx = off.getContext('2d');
+    octx.imageSmoothingEnabled = true;
+    octx.drawImage(img, 2, 2, SPRITE_SIZE - 4, SPRITE_SIZE - 4);
+    img._spriteCanvas = off;
+    return off;
+  } catch (e) {
+    return null;
+  }
+}
+
+function toProxiedGiftUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  if (url.startsWith('/')) return url;
+  if (/^https?:\/\//i.test(url) && !url.includes('localhost') && !url.includes('127.0.0.1')) {
+    return `/api/gift-icon?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
+function loadAndCacheImage(cacheKey, rawUrl) {
+  const proxied = toProxiedGiftUrl(rawUrl);
+  if (!proxied) return null;
+  if (preloadedImgs[cacheKey]) return preloadedImgs[cacheKey];
+
   const img = new Image();
-  img.src = src;
-  preloadedImgs[k] = img;
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const sprite = buildSpriteCanvas(img);
+    if (sprite) spriteCache[cacheKey] = sprite;
+    needsRedraw = true;
+  };
+  img.onerror = () => {
+    if (!img._retriedLocal && rawUrl && !rawUrl.startsWith('/assets/')) {
+      img._retriedLocal = true;
+      img.src = '/assets/gifts/rose.png';
+    }
+  };
+  img.src = proxied;
+  preloadedImgs[cacheKey] = img;
+  return img;
+}
+
+Object.entries(GIFT_ICONS).forEach(([k, src]) => {
+  loadAndCacheImage(k, src);
 });
 
 // Cache for all 676+ TikTok gifts
 const catalogMap = {};
+const catalogList = [];
+
+function indexGiftCatalog(list) {
+  if (!Array.isArray(list)) return;
+  list.forEach(g => {
+    if (!g || !g.image) return;
+    catalogList.push(g);
+    const idStr = String(g.id);
+    catalogMap[idStr] = g.image;
+    if (g.name) {
+      const nameLower = g.name.toLowerCase().trim();
+      const snake = nameLower.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      const compact = nameLower.replace(/[^a-z0-9]/g, '');
+      catalogMap[nameLower] = g.image;
+      if (snake) catalogMap[snake] = g.image;
+      if (compact) catalogMap[compact] = g.image;
+      if (nameLower.includes('universe')) {
+        catalogMap['universe'] = g.image;
+        catalogMap['tiktok_universe'] = g.image;
+      }
+      if (nameLower.includes('lion')) {
+        catalogMap['lion'] = g.image;
+      }
+      if (nameLower.includes('money') && nameLower.includes('gun')) {
+        catalogMap['money_gun'] = g.image;
+      }
+    }
+  });
+}
+
 fetch('/api/gifts')
   .then(r => r.json())
-  .then(list => {
-    if (Array.isArray(list)) {
-      list.forEach(g => {
-        if (!g.image) return;
-        const idStr = String(g.id);
-        catalogMap[idStr] = g.image;
-        if (g.name) {
-          const nameLower = g.name.toLowerCase();
-          catalogMap[nameLower] = g.image;
-          catalogMap[nameLower.replace(/[^a-z0-9]/g, '_')] = g.image;
-          catalogMap[nameLower.replace(/[^a-z0-9]/g, '')] = g.image;
-          if (nameLower.includes('universe')) {
-            catalogMap['universe'] = g.image;
-            catalogMap['tiktok_universe'] = g.image;
-          }
-          if (nameLower.includes('lion')) {
-            catalogMap['lion'] = g.image;
-          }
-          if (nameLower.includes('money') && nameLower.includes('gun')) {
-            catalogMap['money_gun'] = g.image;
-          }
-        }
-      });
-    }
-  })
+  .then(indexGiftCatalog)
   .catch(() => {});
 
-function resolveGiftUrl(key, rawUrl, name) {
-  if (rawUrl && typeof rawUrl === 'string' && rawUrl.length > 5) return rawUrl;
-  const cleanKey = (key || '').toLowerCase().replace(/[^a-z0-9_]/g, '');
+function resolveGiftUrl(key, rawUrl, name, rawGiftId) {
+  if (rawUrl && typeof rawUrl === 'string' && rawUrl.length > 4) return rawUrl;
+  if (rawGiftId && catalogMap[String(rawGiftId)]) return catalogMap[String(rawGiftId)];
+  const cleanKey = (key || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+  const compactKey = cleanKey.replace(/_/g, '');
   if (GIFT_ICONS[cleanKey]) return GIFT_ICONS[cleanKey];
   if (catalogMap[cleanKey]) return catalogMap[cleanKey];
-  if (key && catalogMap[key]) return catalogMap[key];
-  if (name && catalogMap[name.toLowerCase()]) return catalogMap[name.toLowerCase()];
+  if (catalogMap[compactKey]) return catalogMap[compactKey];
+  if (key && catalogMap[String(key)]) return catalogMap[String(key)];
+  if (name) {
+    const lowerName = name.toLowerCase().trim();
+    const snakeName = lowerName.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const compactName = lowerName.replace(/[^a-z0-9]/g, '');
+    if (GIFT_ICONS[snakeName]) return GIFT_ICONS[snakeName];
+    if (catalogMap[lowerName]) return catalogMap[lowerName];
+    if (catalogMap[snakeName]) return catalogMap[snakeName];
+    if (catalogMap[compactName]) return catalogMap[compactName];
+    const partial = catalogList.find(g => g.name && (
+      g.name.toLowerCase().includes(lowerName) ||
+      lowerName.includes(g.name.toLowerCase())
+    ));
+    if (partial?.image) return partial.image;
+  }
   const localCandidates = ['universe', 'lion', 'money_gun', 'galaxy', 'rose', 'heart_me', 'gg', 'cap', 'doughnut', 'ice_cream', 'panda', 'perfume', 'sunglasses', 'tiktok'];
   for (const c of localCandidates) {
     if (cleanKey.includes(c) || (name && name.toLowerCase().includes(c))) {
@@ -239,27 +312,90 @@ function resolveGiftUrl(key, rawUrl, name) {
   return null;
 }
 
-function getGiftImage(key, url, name) {
-  const cacheKey = key || name || 'gift';
+function getGiftImage(key, url, name, rawGiftId) {
+  const resolvedUrl = resolveGiftUrl(key, url, name, rawGiftId);
+  const cacheKey = resolvedUrl || key || rawGiftId || name || 'gift';
   if (preloadedImgs[cacheKey]) return preloadedImgs[cacheKey];
-  const resolvedUrl = resolveGiftUrl(key, url, name);
   if (resolvedUrl) {
-    const img = new Image();
-    img.src = resolvedUrl;
-    preloadedImgs[cacheKey] = img;
-    return img;
+    return loadAndCacheImage(cacheKey, resolvedUrl);
   }
   return null;
 }
 
-// Setup Matter.js
-const { Engine, World, Bodies, Body, Events } = Matter;
-const engine = Engine.create({ enableSleeping: false });
+function getFallbackSprite(name, coins) {
+  const tier = coins >= 10000 ? 't4' : (coins >= 1000 ? 't3' : (coins >= 100 ? 't2' : 't1'));
+  const label = (name || 'GIFT').toUpperCase().slice(0, 6);
+  const key = `${tier}_${label}`;
+  if (fallbackSpriteCache[key]) return fallbackSpriteCache[key];
+
+  const off = document.createElement('canvas');
+  off.width = SPRITE_SIZE;
+  off.height = SPRITE_SIZE;
+  const octx = off.getContext('2d');
+  const r = (SPRITE_SIZE / 2) - 4;
+
+  octx.save();
+  octx.translate(SPRITE_SIZE / 2, SPRITE_SIZE / 2);
+  octx.beginPath();
+  octx.arc(0, 0, r, 0, Math.PI * 2);
+
+  const grad = octx.createRadialGradient(0, -r * 0.3, r * 0.2, 0, 0, r);
+  if (coins >= 10000) {
+    grad.addColorStop(0, '#ffe57f');
+    grad.addColorStop(0.6, '#ffd54f');
+    grad.addColorStop(1, '#ff8f00');
+  } else if (coins >= 1000) {
+    grad.addColorStop(0, '#f48fb1');
+    grad.addColorStop(0.6, '#ba68c8');
+    grad.addColorStop(1, '#7b1fa2');
+  } else if (coins >= 100) {
+    grad.addColorStop(0, '#80deea');
+    grad.addColorStop(0.7, '#26a69a');
+    grad.addColorStop(1, '#00695c');
+  } else {
+    grad.addColorStop(0, '#e1bee7');
+    grad.addColorStop(0.7, '#ab47bc');
+    grad.addColorStop(1, '#6a1b9a');
+  }
+  octx.fillStyle = grad;
+  octx.fill();
+
+  octx.lineWidth = 3;
+  octx.strokeStyle = coins >= 1000 ? '#fff8e1' : 'rgba(255, 255, 255, 0.9)';
+  octx.stroke();
+
+  let text = label;
+  if (text.length > 4) {
+    const words = (name || 'Gift').toUpperCase().split(/\s+/);
+    text = words.length > 1 ? (words[0].slice(0, 2) + words[1].slice(0, 2)) : text.slice(0, 4);
+  }
+  octx.fillStyle = coins >= 10000 ? '#3e2723' : '#ffffff';
+  octx.font = `bold ${Math.floor(r * 0.46)}px system-ui, sans-serif`;
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  octx.fillText(text, 0, 1);
+  octx.restore();
+
+  fallbackSpriteCache[key] = off;
+  return off;
+}
+
+// Setup Matter.js optimized for low-end PCs (enableSleeping: true + lower solver iterations)
+const { Engine, World, Bodies, Body, Sleeping } = Matter;
+const engine = Engine.create({
+  enableSleeping: true,
+  positionIterations: 4,
+  velocityIterations: 3,
+  constraintIterations: 1
+});
 engine.gravity.y = 0.95;
 
 const canvas = document.getElementById('physics-canvas');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
 const W = 764, H = 1024;
+
+let isPaused = false;
+let needsRedraw = true;
 
 // Top Gift record tracker
 let topGiftRecord = {
@@ -291,52 +427,57 @@ function recordTopGift(sender, giftName, coins, count = 1) {
       counterEl.classList.remove('counter-pop');
       void counterEl.offsetWidth;
       counterEl.classList.add('counter-pop');
-      setTimeout(() => counterEl.classList.remove('counter-pop'), 350);
+      setTimeout(() => counterEl.classList.remove('counter-pop'), 300);
     }
   }
 }
 
-// Build collision walls matching the glass jar curve plus outer floor for overflow
+// Build collision walls matching the glass jar curve plus funnel guide walls at the mouth
 function createJarWalls() {
   const walls = [];
-  const wallThick = 26;
-  const innerWallOpts = { isStatic: true, friction: 0.1, restitution: 0.35, render: { visible: false } };
-  const outerWallOpts = { isStatic: true, friction: 0.45, restitution: 0.18, render: { visible: false } };
+  const wallThick = 28;
+  const innerWallOpts = { isStatic: true, friction: 0.15, restitution: 0.25, render: { visible: false } };
+  const funnelOpts = { isStatic: true, friction: 0.02, restitution: 0.1, render: { visible: false } };
+  const outerWallOpts = { isStatic: true, friction: 0.45, restitution: 0.15, render: { visible: false } };
 
   // Bottom floor inside jar
-  walls.push(Bodies.rectangle(382, 852, 420, wallThick, innerWallOpts));
+  walls.push(Bodies.rectangle(382, 850, 430, wallThick, innerWallOpts));
 
-  // Outer stage floor (catches overflowing gifts so they pile around the base and never disappear)
+  // Outer stage floor (catches any overflowing gifts so they stay visible around the base)
   walls.push(Bodies.rectangle(382, 955, 764, 40, outerWallOpts));
 
-  // Outer left containment boundary
+  // Outer left & right containment boundaries
   walls.push(Bodies.rectangle(12, 512, 24, 1024, outerWallOpts));
-
-  // Outer right containment boundary
   walls.push(Bodies.rectangle(752, 512, 24, 1024, outerWallOpts));
 
-  // Left curve segments (double-sided collisions)
+  // Upper funnel guide walls (guides 100% of spawned gifts into the jar mouth)
+  const leftFunnelAngle = Math.atan2(240 - 40, 195 - 165);
+  walls.push(Bodies.rectangle(180 - wallThick * 0.4, 140, 210, wallThick, { ...funnelOpts, angle: leftFunnelAngle }));
+  const rightFunnelAngle = Math.atan2(240 - 40, 569 - 599);
+  walls.push(Bodies.rectangle(584 + wallThick * 0.4, 140, 210, wallThick, { ...funnelOpts, angle: rightFunnelAngle }));
+
+  // Left curve segments
   const leftPoints = [
-    [190, 240], [140, 320], [95, 420], [70, 520], [68, 620], [95, 720], [145, 800], [195, 845]
+    [195, 240], [140, 320], [95, 420], [70, 520], [68, 620], [95, 720], [145, 800], [195, 845]
   ];
   for (let i = 0; i < leftPoints.length - 1; i++) {
     const p1 = leftPoints[i], p2 = leftPoints[i + 1];
     const cx = (p1[0] + p2[0]) / 2, cy = (p1[1] + p2[1]) / 2;
     const len = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
     const angle = Math.atan2(p2[1] - p1[1], p2[0] - p1[0]);
-    walls.push(Bodies.rectangle(cx - wallThick * 0.4, cy, len + 2, wallThick, { ...innerWallOpts, angle }));
+    walls.push(Bodies.rectangle(cx - wallThick * 0.4, cy, len + 6, wallThick, { ...innerWallOpts, angle }));
   }
 
-  // Right curve segments (double-sided collisions)
+  // Right curve segments
   const rightPoints = [
-    [574, 240], [624, 320], [669, 420], [694, 520], [696, 620], [669, 720], [619, 800], [569, 845]
+    [569, 240], [624, 320], [669, 420], [694, 520], [696, 620], [669, 720], [619, 800], [569, 845]
   ];
   for (let i = 0; i < rightPoints.length - 1; i++) {
     const p1 = rightPoints[i], p2 = rightPoints[i + 1];
     const cx = (p1[0] + p2[0]) / 2, cy = (p1[1] + p2[1]) / 2;
     const len = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
     const angle = Math.atan2(p2[1] - p1[1], p2[0] - p1[0]);
-    walls.push(Bodies.rectangle(cx + wallThick * 0.4, cy, len + 2, wallThick, { ...innerWallOpts, angle }));
+    walls.push(Bodies.rectangle(cx + wallThick * 0.4, cy, len + 6, wallThick, { ...innerWallOpts, angle }));
   }
 
   return walls;
@@ -346,6 +487,8 @@ const jarWalls = createJarWalls();
 World.add(engine.world, jarWalls);
 
 const giftBodies = [];
+const spawnQueue = [];
+let frameCounter = 0;
 let totalGiftCount = 0;
 let screenTrauma = 0;
 
@@ -363,97 +506,107 @@ let jarSettings = {
   overflowAllowed: true
 };
 
-// Squash & Stretch Collision Listener
-Events.on(engine, 'collisionStart', evt => {
-  evt.pairs.forEach(pair => {
-    const { bodyA, bodyB } = pair;
-    const relVx = bodyA.velocity.x - bodyB.velocity.x;
-    const relVy = bodyA.velocity.y - bodyB.velocity.y;
-    const speed = Math.hypot(relVx, relVy);
-
-    if (speed > 2.8) {
-      if (bodyA.giftIcon) applySquash(bodyA, speed);
-      if (bodyB.giftIcon) applySquash(bodyB, speed);
-    }
-  });
-});
-
-function applySquash(body, impactSpeed) {
-  const intensity = Math.min(0.35, impactSpeed * 0.035);
-  body.squashX = 1.0 + intensity;
-  body.squashY = 1.0 - intensity;
-}
-
-function triggerCombo(giftName) {
+function triggerCombo(giftName, addCount = 1, explicitTotal = 0) {
   const now = Date.now();
-  if (lastGiftKey === giftName && (now - lastGiftTime < 3200)) {
-    comboCount++;
+  if (explicitTotal > 1) {
+    lastGiftKey = giftName;
+    comboCount = explicitTotal;
+  } else if (lastGiftKey === giftName && (now - lastGiftTime < 3500)) {
+    comboCount += addCount;
   } else {
     lastGiftKey = giftName;
-    comboCount = 1;
+    comboCount = addCount;
   }
   lastGiftTime = now;
 
   if (comboCount >= 2) {
     comboBadge.textContent = `${giftName} x${comboCount}!`;
-    comboBadge.classList.remove('show');
-    void comboBadge.offsetWidth;
     comboBadge.classList.add('show');
 
     clearTimeout(comboTimer);
     comboTimer = setTimeout(() => {
       comboBadge.classList.remove('show');
-    }, 2800);
+    }, 2600);
   }
 }
 
-function dropGift(type, sizeMul = 1.0, directImg = null, giftName = 'Gift', coinVal = 1) {
-  const baseRadius = 26 * jarSettings.giftScale * sizeMul;
-  const radius = Math.max(18, Math.min(68, baseRadius));
+function freezeOldestSettledGifts() {
+  // Keep active dynamic physics bodies under 70 so low-end CPUs never lag even with 500+ visible gifts
+  const maxActiveDynamic = 70;
+  if (giftBodies.length <= maxActiveDynamic) return;
 
-  const spawnX = 260 + Math.random() * 244;
-  const spawnY = -25 - Math.random() * 60;
+  const targetFreezeIdx = giftBodies.length - maxActiveDynamic;
+  for (let i = 0; i < targetFreezeIdx; i++) {
+    const b = giftBodies[i];
+    if (!b._frozenInPile && (b.isSleeping || (Date.now() - b.createdAt > 3000 && Math.abs(b.velocity.y) < 0.3))) {
+      b._frozenInPile = true;
+      Sleeping.set(b, true);
+      Body.setStatic(b, true);
+    }
+  }
+}
+
+function dropGift(type, sizeMul = 1.0, directImg = null, giftName = 'Gift', coinVal = 1, rawGiftId = '') {
+  const baseRadius = 27 * jarSettings.giftScale * sizeMul;
+  const radius = Math.max(19, Math.min(64, baseRadius));
+
+  // Spawn directly inside the upper mouth funnel so 100% of gifts enter the jar
+  const spawnX = 300 + Math.random() * 164;
+  const spawnY = 115 + Math.random() * 45;
 
   const giftBody = Bodies.circle(spawnX, spawnY, radius, {
-    restitution: jarSettings.bounciness,
+    restitution: Math.min(0.55, jarSettings.bounciness),
     friction: 0.35,
-    frictionAir: 0.008,
-    density: 0.002
+    frictionAir: 0.012,
+    density: 0.002,
+    sleepThreshold: 26
   });
 
   Body.setVelocity(giftBody, {
-    x: (Math.random() - 0.5) * 4.5,
-    y: 2 + Math.random() * 4
+    x: (Math.random() - 0.5) * 1.6,
+    y: 2.5 + Math.random() * 2.5
   });
-  Body.setAngularVelocity(giftBody, (Math.random() - 0.5) * 0.18);
+  Body.setAngularVelocity(giftBody, (Math.random() - 0.5) * 0.12);
 
   giftBody.giftIcon = type;
+  giftBody.rawGiftId = rawGiftId;
   giftBody.giftName = giftName;
   giftBody.coins = coinVal;
   giftBody.radius = radius;
-  giftBody.giftImg = directImg || preloadedImgs[type] || getGiftImage(type, null, giftName);
-  giftBody.alpha = 1.0;
+  giftBody.giftImg = directImg || getGiftImage(type, null, giftName, rawGiftId);
   giftBody.createdAt = Date.now();
-  giftBody.squashX = 1.0;
-  giftBody.squashY = 1.0;
 
   giftBodies.push(giftBody);
   World.add(engine.world, giftBody);
 
   totalGiftCount++;
+  needsRedraw = true;
 
-  // Enforce Max Gifts limit
-  if (giftBodies.length > jarSettings.maxGifts) {
+  // Enforce Max Gifts limit (default 500, up to 1000)
+  const maxAllowed = Math.max(50, Number(jarSettings.maxGifts) || 500);
+  while (giftBodies.length > maxAllowed) {
     const oldest = giftBodies.shift();
     World.remove(engine.world, oldest);
   }
+
+  freezeOldestSettledGifts();
 }
 
-function triggerScreenShake(intensity = 0.85) {
+function enqueueGiftDrops(item, count) {
+  const totalToDrop = Math.min(100, Math.max(1, count || 1));
+  for (let i = 0; i < totalToDrop; i++) {
+    spawnQueue.push(item);
+  }
+  needsRedraw = true;
+}
+
+function triggerScreenShake(intensity = 0.7) {
   screenTrauma = Math.max(screenTrauma, intensity);
+  needsRedraw = true;
 }
 
 function clearJar() {
+  spawnQueue.length = 0;
   giftBodies.forEach(b => World.remove(engine.world, b));
   giftBodies.length = 0;
   totalGiftCount = 0;
@@ -462,113 +615,105 @@ function clearJar() {
   if (topDetailEl) topDetailEl.textContent = '0 coins';
   if (counterEl) counterEl.classList.remove('visible', 'counter-pop');
   comboBadge.classList.remove('show');
+  ctx.clearRect(0, 0, W, H);
+  needsRedraw = true;
 }
 
-// Render loop with squash/stretch & screen shake
+// Ultra-lightweight render loop with idle sleep mode for low-end PCs
 function render() {
-  Engine.update(engine, 1000 / 60);
-  ctx.clearRect(0, 0, W, H);
+  requestAnimationFrame(render);
 
-  // Screen shake calculation
-  if (screenTrauma > 0.02) {
-    const t = Date.now() * 0.045;
-    const shakeX = Math.sin(t) * screenTrauma * 16;
-    const shakeY = Math.cos(t * 0.9) * screenTrauma * 12;
-    jarStage.style.transform = `translate3d(${shakeX.toFixed(2)}px, ${shakeY.toFixed(2)}px, 0)`;
-    screenTrauma *= 0.93;
-  } else if (screenTrauma > 0) {
-    screenTrauma = 0;
-    jarStage.style.transform = '';
+  if (isPaused || document.hidden) return;
+
+  frameCounter++;
+
+  // Process frame-paced gift spawn queue (1 gift every 3 frames so combos never spike CPU)
+  if (spawnQueue.length > 0 && (frameCounter % 3 === 0)) {
+    const next = spawnQueue.shift();
+    if (next) {
+      dropGift(next.key, next.sizeMul, next.img, next.giftName, next.coinVal, next.rawGiftId);
+    }
   }
 
-  // Render gift bodies
-  for (let i = giftBodies.length - 1; i >= 0; i--) {
+  // Check if any physics body is awake
+  let anyAwake = spawnQueue.length > 0 || screenTrauma > 0.01;
+  if (!anyAwake) {
+    for (let i = giftBodies.length - 1; i >= 0; i--) {
+      const b = giftBodies[i];
+      if (!b.isSleeping && !b._frozenInPile) {
+        anyAwake = true;
+        break;
+      }
+    }
+  }
+
+  if (!anyAwake && !needsRedraw) {
+    return; // 0% CPU and 0% GPU when all gifts in the jar have settled!
+  }
+
+  if (anyAwake) {
+    Engine.update(engine, 1000 / 60);
+    if (frameCounter % 30 === 0 && giftBodies.length > 70) {
+      freezeOldestSettledGifts();
+    }
+  }
+
+  needsRedraw = false;
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.save();
+  // Canvas-internal shake (avoids costly DOM layer re-rasterization)
+  if (screenTrauma > 0.02) {
+    const t = frameCounter * 0.65;
+    const shakeX = Math.sin(t) * screenTrauma * 10;
+    const shakeY = Math.cos(t * 0.9) * screenTrauma * 7;
+    ctx.translate(shakeX, shakeY);
+    screenTrauma *= 0.9;
+  } else {
+    screenTrauma = 0;
+  }
+
+  // Render all gift bodies in order (oldest to newest so newer gifts rest naturally on top)
+  for (let i = 0; i < giftBodies.length; i++) {
     const b = giftBodies[i];
 
-    if (b.position.y > H + 160) {
-      World.remove(engine.world, b);
-      giftBodies.splice(i, 1);
+    // If a gift ever slips below the canvas, put it back inside the jar mouth so no gift is ever lost
+    if (b.position.y > H + 80) {
+      Body.setPosition(b, { x: 340 + Math.random() * 84, y: 180 });
+      Body.setVelocity(b, { x: 0, y: 2 });
       continue;
     }
 
-    // Smooth squash spring return to 1.0
-    b.squashX += (1.0 - b.squashX) * 0.16;
-    b.squashY += (1.0 - b.squashY) * 0.16;
-
-    const { x, y } = b.position;
-    const r = b.radius;
-    const img = b.giftImg || preloadedImgs[b.giftIcon] || getGiftImage(b.giftIcon, null, b.giftName);
+    const x = b.position.x;
+    const y = b.position.y;
+    const drawR = b.radius * 1.22; // Slight visual boost so transparent-padded TikTok PNGs look full and clear
+    const img = b.giftImg || getGiftImage(b.giftIcon, null, b.giftName, b.rawGiftId);
 
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(b.angle);
-    ctx.scale(b.squashX, b.squashY);
-    ctx.globalAlpha = b.alpha || 1.0;
+    if (b.angle) ctx.rotate(b.angle);
 
-    // Gift graphic without circular border disc artifact
-    if (img && img.complete && img.naturalWidth > 0) {
-      ctx.drawImage(img, -r, -r, r * 2, r * 2);
-    } else {
-      drawGiftFallbackBadge(ctx, b, r);
+    let sprite = img ? (img._spriteCanvas || buildSpriteCanvas(img)) : null;
+    if (!sprite) {
+      sprite = getFallbackSprite(b.giftName || b.giftIcon, b.coins || 1);
     }
+
+    ctx.drawImage(sprite, -drawR, -drawR, drawR * 2, drawR * 2);
     ctx.restore();
   }
 
-  requestAnimationFrame(render);
-}
-
-function drawGiftFallbackBadge(ctx, b, r) {
-  const coins = b.coins || 1;
-  const name = (b.giftName || b.giftIcon || 'Gift').toUpperCase();
-
-  ctx.beginPath();
-  ctx.arc(0, 0, r, 0, Math.PI * 2);
-
-  const grad = ctx.createRadialGradient(0, -r * 0.3, r * 0.2, 0, 0, r);
-  if (coins >= 10000) {
-    grad.addColorStop(0, '#ffe57f');
-    grad.addColorStop(0.6, '#ffd54f');
-    grad.addColorStop(1, '#ff8f00');
-  } else if (coins >= 1000) {
-    grad.addColorStop(0, '#f48fb1');
-    grad.addColorStop(0.6, '#ba68c8');
-    grad.addColorStop(1, '#7b1fa2');
-  } else if (coins >= 100) {
-    grad.addColorStop(0, '#80deea');
-    grad.addColorStop(0.7, '#26a69a');
-    grad.addColorStop(1, '#00695c');
-  } else {
-    grad.addColorStop(0, '#e1bee7');
-    grad.addColorStop(0.7, '#ab47bc');
-    grad.addColorStop(1, '#6a1b9a');
-  }
-  ctx.fillStyle = grad;
-  ctx.fill();
-
-  ctx.lineWidth = Math.max(2, r * 0.08);
-  ctx.strokeStyle = coins >= 1000 ? '#fff8e1' : 'rgba(255, 255, 255, 0.85)';
-  ctx.stroke();
-
-  let text = name;
-  if (name.includes('UNIVERSE')) text = 'UNIV';
-  else if (name.includes('LION')) text = 'LION';
-  else if (name.includes('MONEY')) text = 'CASH';
-  else if (name.includes('GALAXY')) text = 'GLXY';
-  else if (name.includes('DRAGON')) text = 'DRAG';
-  else if (name.includes('WHALE')) text = 'WHAL';
-  else if (name.length > 5) {
-    const words = name.split(/\s+/);
-    text = words.length > 1 ? (words[0][0] + words[1][0]) : name.slice(0, 4);
-  }
-
-  ctx.fillStyle = coins >= 10000 ? '#3e2723' : '#ffffff';
-  ctx.font = `bold ${Math.floor(r * 0.44)}px system-ui, sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text, 0, 1);
+  ctx.restore();
 }
 
 requestAnimationFrame(render);
+
+// Allow parent dashboard window to pause background preview iframe when not on Jar tab
+window.addEventListener('message', evt => {
+  if (evt.data && evt.data.type === 'jar:set-paused') {
+    isPaused = Boolean(evt.data.paused);
+    if (!isPaused) needsRedraw = true;
+  }
+});
 
 // WebSocket integration
 function connectWS() {
@@ -581,48 +726,51 @@ function connectWS() {
       if (data.type === 'init' && data.settings?.jar) {
         jarSettings = Object.assign(jarSettings, data.settings.jar);
         engine.gravity.y = jarSettings.gravity;
+        needsRedraw = true;
       } else if (data.type === 'settings:update' && data.settings?.jar) {
         jarSettings = Object.assign(jarSettings, data.settings.jar);
         engine.gravity.y = jarSettings.gravity;
+        needsRedraw = true;
       } else if (data.type === 'gift') {
         const giftName = data.giftName || 'Gift';
-        const giftKey = (data.giftId || data.giftName || 'rose').toLowerCase().replace(/\s+/g, '_');
-        const resolvedUrl = data.giftPictureUrl || resolveGiftUrl(giftKey, null, giftName);
+        const rawGiftId = data.rawGiftId ? String(data.rawGiftId) : '';
+        const giftKey = (data.giftId || data.giftName || 'rose').toLowerCase().replace(/[^a-z0-9_]+/g, '_');
+        const resolvedUrl = resolveGiftUrl(giftKey, data.giftPictureUrl, giftName, rawGiftId);
 
-        let dynamicImg = null;
-        if (resolvedUrl) {
-          if (!preloadedImgs[giftKey]) {
-            dynamicImg = new Image();
-            dynamicImg.src = resolvedUrl;
-            preloadedImgs[giftKey] = dynamicImg;
-          } else {
-            dynamicImg = preloadedImgs[giftKey];
-          }
-        }
+        const dynamicImg = resolvedUrl
+          ? loadAndCacheImage(rawGiftId || giftKey, resolvedUrl)
+          : getGiftImage(giftKey, null, giftName, rawGiftId);
 
-        const count = Math.min(25, Math.max(1, data.count || 1));
-        const coinVal = data.coins || data.diamonds || 1;
+        const dropCount = Math.max(1, Number(data.jarCount ?? data.count ?? 1));
+        const comboTotal = Math.max(dropCount, Number(data.comboTotal || dropCount));
+        const coinVal = Number(data.coins || data.diamonds || 1) || 1;
+
         let sizeMul = 1.0;
-        if (coinVal >= 10000) sizeMul = 1.75;
-        else if (coinVal >= 1000) sizeMul = 1.45;
-        else if (coinVal >= 100) sizeMul = 1.25;
-        else if (coinVal >= 10) sizeMul = 1.12;
+        if (coinVal >= 10000) sizeMul = 1.7;
+        else if (coinVal >= 1000) sizeMul = 1.42;
+        else if (coinVal >= 100) sizeMul = 1.22;
+        else if (coinVal >= 10) sizeMul = 1.1;
 
         // Record and display Biggest Gift Spotlight
         const sender = data.nickname || data.uniqueId || data.user || 'Viewer';
-        recordTopGift(sender, giftName, coinVal, count);
+        recordTopGift(sender, giftName, coinVal, comboTotal);
 
         // Trigger combo badge
-        triggerCombo(giftName);
+        triggerCombo(giftName, dropCount, data.comboTotal ? comboTotal : 0);
 
         // Tier 4 screen shake
         if (coinVal >= 1000) {
-          triggerScreenShake(coinVal >= 10000 ? 1.0 : 0.7);
+          triggerScreenShake(coinVal >= 10000 ? 0.85 : 0.55);
         }
 
-        for (let i = 0; i < count; i++) {
-          setTimeout(() => dropGift(giftKey, sizeMul, dynamicImg, giftName, coinVal), i * 85);
-        }
+        enqueueGiftDrops({
+          key: giftKey,
+          rawGiftId,
+          sizeMul,
+          img: dynamicImg,
+          giftName,
+          coinVal
+        }, dropCount);
       } else if (data.type === 'clearJar') {
         clearJar();
       }
@@ -646,7 +794,7 @@ canvas.addEventListener('pointerdown', () => {
   const randSender = testSenders[Math.floor(Math.random() * testSenders.length)];
   dropGift(rand, 1.0, null, rand.replace(/_/g, ' '), randomCoins);
   recordTopGift(randSender, rand.replace(/_/g, ' '), randomCoins, 1);
-  triggerCombo(rand.replace(/_/g, ' '));
+  triggerCombo(rand.replace(/_/g, ' '), 1);
 });
 </script>
 </body>

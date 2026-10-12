@@ -530,8 +530,38 @@ function applyCustomMedia(item) {
 
 const queue = [];
 let isShowing = false;
+let currentAlertItem = null;
+
+function resolveGiftIcon(url) {
+  if (!url) return '/assets/gifts/rose.png';
+  if (url.startsWith('/')) return url;
+  if (/^https?:\/\//i.test(url) && !url.includes('localhost') && !url.includes('127.0.0.1')) {
+    return '/api/gift-icon?url=' + encodeURIComponent(url);
+  }
+  return url;
+}
 
 function showAlert(opts) {
+  if (opts.streakKey) {
+    // If the same user+gift streak is currently showing on screen, update its text/coins live instead of queueing duplicates
+    if (isShowing && currentAlertItem && currentAlertItem.streakKey === opts.streakKey) {
+      currentAlertItem.message = opts.message;
+      currentAlertItem.coins = opts.coins;
+      alertMsg.textContent = opts.message;
+      if (opts.coins && opts.coins >= 100) {
+        alertCoins.style.display = 'inline-flex';
+        coinCountText.textContent = opts.coins.toLocaleString() + ' Coins';
+      }
+      return;
+    }
+    // Or if it is waiting in the queue, update the queued item in-place
+    const existingQueued = queue.find(q => q.streakKey === opts.streakKey);
+    if (existingQueued) {
+      Object.assign(existingQueued, opts);
+      return;
+    }
+  }
+  if (queue.length >= 20) queue.shift();
   queue.push(opts);
   if (!isShowing) processQueue();
 }
@@ -539,11 +569,13 @@ function showAlert(opts) {
 function processQueue() {
   if (queue.length === 0) {
     isShowing = false;
+    currentAlertItem = null;
     container.className = '';
     return;
   }
   isShowing = true;
   const item = queue.shift();
+  currentAlertItem = item;
 
   // Play configured sound effect
   playAlertSound(item.type, item.coins || 1);
@@ -565,7 +597,7 @@ function processQueue() {
         alertGiftImg.src = '/assets/gifts/rose.png';
       }
     };
-    alertGiftImg.src = item.giftIconUrl;
+    alertGiftImg.src = resolveGiftIcon(item.giftIconUrl);
     alertGiftBubble.style.display = 'flex';
     alertBridge.style.display = 'flex';
   } else {
@@ -581,7 +613,7 @@ function processQueue() {
   }
 
   if (item.tierClass === 'tier-gift-legendary') {
-    spawnStarParticles(55);
+    spawnStarParticles(32);
   }
 
   alertBox.classList.add('show');
@@ -609,14 +641,16 @@ function connectWS() {
         }
       } else if (data.type === 'gift') {
         const giftName = data.giftName || 'Gift';
-        const count = data.count || 1;
+        const count = Math.max(1, Number(data.comboTotal || data.count || 1));
         const user = data.nickname || data.user || data.uniqueId || 'Viewer';
-        const coins = (data.coins || data.diamonds || 1) * count;
+        const coins = (Number(data.coins || data.diamonds || 1) || 1) * count;
         const avatarUrl = data.avatar || '/assets/avatar.png';
 
         const safeKey = (data.giftId || data.giftName || 'rose').toLowerCase().replace(/\s+/g, '_');
         const rawName = (data.giftName || '').toLowerCase();
+        const rawGiftId = data.rawGiftId ? String(data.rawGiftId) : '';
         const giftIconUrl = data.giftPictureUrl ||
+                            (rawGiftId && catalogMap[rawGiftId]) ||
                             catalogMap[safeKey] ||
                             catalogMap[rawName] ||
                             catalogMap[String(data.giftId)] ||
@@ -642,6 +676,7 @@ function connectWS() {
 
         showAlert({
           type: 'gift',
+          streakKey: data.streakKey || null,
           title: coins >= 1000 ? 'LEGENDARY GIFT!' : (coins >= 100 ? 'RARE GIFT!' : 'GIFT ALERT'),
           message: msg,
           avatarUrl,

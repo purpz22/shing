@@ -725,6 +725,17 @@ function switchTab(tabId) {
       }, 60);
     }
   }
+  const jarIfr = $('jar-preview-iframe');
+  if (jarIfr && jarIfr.contentWindow) {
+    try {
+      jarIfr.contentWindow.postMessage({ type: 'jar:set-paused', paused: tabId !== 'jar' }, '*');
+    } catch (e) {}
+    if (tabId === 'jar') {
+      setTimeout(() => {
+        try { jarIfr.contentWindow.dispatchEvent(new Event('resize')); } catch (e) {}
+      }, 60);
+    }
+  }
 }
 
 // Render Favorites list
@@ -1285,6 +1296,17 @@ async function initSettings() {
   if (typeof OverlayDemoManager !== 'undefined') {
     OverlayDemoManager.start();
   }
+  const jarIfr = $('jar-preview-iframe');
+  if (jarIfr) {
+    const syncJarPause = () => {
+      const isJarActive = Boolean(document.querySelector('.tab-pane#tab-jar')?.classList.contains('active'));
+      try {
+        jarIfr.contentWindow?.postMessage({ type: 'jar:set-paused', paused: !isJarActive }, '*');
+      } catch (e) {}
+    };
+    jarIfr.addEventListener('load', syncJarPause);
+    syncJarPause();
+  }
 }
 
 let currentPreviewAudio = null;
@@ -1384,7 +1406,7 @@ async function refreshSoundDropdowns() {
 
 async function populateGiftCatalogSelect() {
   try {
-    const res = await fetch('/api/gifts');
+    const res = await fetch('http://localhost:3333/api/gifts');
     if (res.ok) {
       fullGiftCatalog = await res.json();
     }
@@ -1404,12 +1426,14 @@ async function populateGiftCatalogSelect() {
     if (!existingValues.has(safeKey) && !existingValues.has(String(g.id))) {
       const opt = document.createElement('option');
       opt.value = safeKey;
+      if (g.id !== undefined && g.id !== null) opt.setAttribute('data-id', String(g.id));
       opt.setAttribute('data-name', g.name || safeKey);
       const coins = g.diamonds || g.coins || 1;
       opt.setAttribute('data-coins', coins);
       if (g.image) opt.setAttribute('data-img', g.image);
       opt.textContent = `${g.name} (${coins.toLocaleString()} coins)`;
       frag.appendChild(opt);
+      existingValues.add(safeKey);
     }
   });
   sel.appendChild(frag);
@@ -1773,6 +1797,8 @@ async function downloadAndInstallUpdate(isAutoStartup = false) {
     if (demoCompIfr) demoCompIfr.src = `http://localhost:3333/overlays/companion?muted=1&t=${Date.now()}`;
     const compIfr = $('comp-preview-iframe');
     if (compIfr) compIfr.src = `http://localhost:3333/overlays/companion?t=${Date.now()}`;
+    const jarIfr = $('jar-preview-iframe');
+    if (jarIfr) jarIfr.src = `http://localhost:3333/overlays/jar?t=${Date.now()}`;
 
     // Show restart modal
     if ($('restart-dialog-msg')) {
@@ -1812,6 +1838,18 @@ function openChangelogModal() {
   container.innerHTML = '';
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
+    {
+      version: '1.3.5',
+      releaseName: 'Shing Live v1.3.5 - Low-End PC Gift Jar Performance & 100% Gift Visibility',
+      releaseDate: '2026-10-12',
+      summary: 'Eliminated Gift Jar lag on low-end PCs with sleeping/auto-freezing physics, offscreen sprite caching, streak delta deduplication, and full unobstructed visibility for all 676+ TikTok gifts.',
+      highlights: [
+        '100% Unobstructed Gift Visibility: Positioned the physics gift layer in front of the opaque jar body while keeping the top glass rim and bow in front of the mouth so no gifts are ever hidden',
+        'All 676+ TikTok Gifts & Live Room Catalog: Fixed String vs Number giftId matching, merged live room gift pages, and fixed /api/gifts loading on file:// so every TikTok gift icon is visible',
+        'Low-End PC Physics Optimization: Enabled Matter.js body sleeping, automatic freezing of settled gifts, 96x96 offscreen canvas sprite caching, and 0% CPU/GPU idle mode',
+        'Combo Streak Deduplication & Coalescing: Fixed gift combo streaks to drop only incremental delta gifts (20 taps = 20 gifts instead of 230) and coalesced rapid alert popups'
+      ]
+    },
     {
       version: '1.3.4',
       releaseName: 'Shing Live v1.3.4 - Cute Chat Overlay & Direct TikTok Webcast Engine Fixes',
@@ -2557,17 +2595,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const sel = $('select-any-gift');
     const opt = sel.options[sel.selectedIndex];
     const giftId = sel.value;
+    const rawGiftId = opt.getAttribute('data-id') || giftId;
     const giftName = opt.getAttribute('data-name') || giftId;
     const coins = +(opt.getAttribute('data-coins') || opt.getAttribute('data-diamonds') || 1);
     let giftPictureUrl = opt.getAttribute('data-img') || null;
     if (!giftPictureUrl && fullGiftCatalog.length > 0) {
-      const match = fullGiftCatalog.find(g => String(g.id) === String(giftId) || (g.name && g.name.toLowerCase() === giftName.toLowerCase()));
+      const match = fullGiftCatalog.find(g => String(g.id) === String(rawGiftId) || String(g.id) === String(giftId) || (g.name && g.name.toLowerCase() === giftName.toLowerCase()));
       if (match && match.image) giftPictureUrl = match.image;
     }
     window.api.simulateEvent('gift', {
       user: 'Supporter',
       nickname: 'Supporter',
       giftId,
+      rawGiftId,
       giftName,
       coins,
       giftPictureUrl: giftPictureUrl || undefined,

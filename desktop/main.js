@@ -292,7 +292,32 @@ async function getTikTokConnector() {
           room_id: roomId,
           aid: '8311'
         }, false);
-        return res?.data?.gifts || [];
+        const list = [...(res?.data?.gifts || [])];
+        if (Array.isArray(res?.data?.pages)) {
+          for (const page of res.data.pages) {
+            if (Array.isArray(page?.gifts)) list.push(...page.gifts);
+          }
+        }
+        const existingIds = new Set(giftCatalog.map(g => String(g.id)));
+        for (const g of list) {
+          if (!g || !g.id) continue;
+          const imgUrl = g.image?.url_list?.[0] || g.icon?.url_list?.[0] || null;
+          if (!imgUrl) continue;
+          const entry = {
+            id: g.id,
+            name: g.name || `Gift ${g.id}`,
+            diamonds: g.diamond_count || 1,
+            image: imgUrl
+          };
+          if (overlayServer?.dynamicGifts) {
+            overlayServer.dynamicGifts.set(String(g.id), entry);
+          }
+          if (!existingIds.has(String(g.id))) {
+            giftCatalog.push(entry);
+            existingIds.add(String(g.id));
+          }
+        }
+        return list;
       };
     }
   }
@@ -543,32 +568,107 @@ function attachTikTokListeners(conn, targetUser, WebcastEvent) {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('tiktok:event', payload);
   });
 
+  const giftStreaks = new Map();
+
   conn.on(WebcastEvent.GIFT, data => {
     const viewerName = data.user?.nickname || data.nickname || data.user?.displayId || data.uniqueId || 'Viewer';
-    const avatar = data.user?.avatarThumb?.urlList?.[0] || data.profilePictureUrl || '../assets/avatar.png';
+    const userKey = data.user?.id || data.user?.displayId || data.uniqueId || viewerName;
+    const avatar = data.user?.avatarThumb?.urlList?.[0] || data.profilePictureUrl || '/assets/avatar.png';
 
-    const rawGiftName = data.gift?.name || data.giftName || data.extendedGiftInfo?.name || 'Gift';
-    const safeKey = rawGiftName.toLowerCase().replace(/\s+/g, '_');
+    const rawGiftIdStr = (data.giftId !== undefined && data.giftId !== null && String(data.giftId) !== '0')
+      ? String(data.giftId)
+      : (data.gift?.id ? String(data.gift.id) : '');
+
+    const roomGifts = Array.isArray(conn?.availableGifts)
+      ? conn.availableGifts
+      : (Array.isArray(conn?._availableGifts) ? conn._availableGifts : []);
+    const roomGiftMatch = rawGiftIdStr
+      ? roomGifts.find(g => String(g?.id) === rawGiftIdStr)
+      : null;
+
+    let rawGiftName = data.gift?.name ||
+                      data.giftName ||
+                      data.extendedGiftInfo?.name ||
+                      roomGiftMatch?.name ||
+                      '';
+
+    const catalogMatch = giftCatalog.find(g =>
+      (rawGiftIdStr && String(g.id) === rawGiftIdStr) ||
+      (rawGiftName && g.name && g.name.toLowerCase() === rawGiftName.toLowerCase())
+    );
+
+    if (!rawGiftName && catalogMatch?.name) {
+      rawGiftName = catalogMatch.name;
+    }
+    if (!rawGiftName) {
+      rawGiftName = 'Gift';
+    }
+
+    const safeKey = rawGiftName.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || 'gift';
 
     let giftPic = data.gift?.image?.urlList?.[0] ||
                   data.gift?.icon?.urlList?.[0] ||
                   data.giftPictureUrl ||
                   data.extendedGiftInfo?.image?.url_list?.[0] ||
                   data.extendedGiftInfo?.icon?.url_list?.[0] ||
-                  data.image?.url_list?.[0] || null;
-
-    if (!giftPic && giftCatalog.length > 0) {
-      const match = giftCatalog.find(g => (data.giftId && g.id === data.giftId) || (g.name && g.name.toLowerCase() === rawGiftName.toLowerCase()));
-      if (match) giftPic = match.image;
-    }
+                  roomGiftMatch?.image?.url_list?.[0] ||
+                  roomGiftMatch?.icon?.url_list?.[0] ||
+                  catalogMatch?.image ||
+                  data.image?.url_list?.[0] ||
+                  null;
 
     if (!giftPic) {
       const localPath = path.join(__dirname, 'assets', 'gifts', `${safeKey}.png`);
       if (fs.existsSync(localPath)) giftPic = `/assets/gifts/${safeKey}.png`;
     }
 
-    const coinCount = data.gift?.diamondCount || data.fanTicketCount || data.diamondCount || data.extendedGiftInfo?.diamond_count || data.coins || 1;
-    const repeatCount = data.repeatCount || data.count || 1;
+    const coinCount = Number(
+      data.gift?.diamondCount ||
+      data.diamondCount ||
+      data.extendedGiftInfo?.diamond_count ||
+      roomGiftMatch?.diamond_count ||
+      catalogMatch?.diamonds ||
+      data.fanTicketCount ||
+      data.coins ||
+      1
+    ) || 1;
+
+    const totalRepeatCount = Math.max(1, Number(data.repeatCount || data.comboCount || data.count || 1));
+    const isStreakable = (data.gift?.type === 1) || (data.giftType === 1) || Boolean(data.groupId && String(data.groupId) !== '0');
+    const isRepeatEnd = Boolean(data.repeatEnd);
+    const groupIdStr = (data.groupId && String(data.groupId) !== '0') ? String(data.groupId) : 'default';
+    const streakKey = `${userKey}_${rawGiftIdStr || safeKey}_${groupIdStr}`;
+
+    let jarDelta = totalRepeatCount;
+    if (isStreakable) {
+      const now = Date.now();
+      const prev = giftStreaks.get(streakKey);
+      if (prev && (now - prev.ts < 15000)) {
+        if (totalRepeatCount > prev.count) {
+          jarDelta = totalRepeatCount - prev.count;
+          prev.count = totalRepeatCount;
+          prev.ts = now;
+        } else if (isRepeatEnd && totalRepeatCount <= prev.count) {
+          // Final summary message for a streak whose taps were already dropped in real time
+          giftStreaks.delete(streakKey);
+          return;
+        } else {
+          jarDelta = 1;
+          prev.count += 1;
+          prev.ts = now;
+        }
+      } else {
+        giftStreaks.set(streakKey, { count: totalRepeatCount, ts: now });
+      }
+      if (isRepeatEnd) {
+        giftStreaks.delete(streakKey);
+      }
+      if (giftStreaks.size > 200) {
+        for (const [k, v] of giftStreaks.entries()) {
+          if (now - v.ts > 20000) giftStreaks.delete(k);
+        }
+      }
+    }
 
     const payload = {
       type: 'gift',
@@ -576,9 +676,14 @@ function attachTikTokListeners(conn, targetUser, WebcastEvent) {
       nickname: viewerName,
       username: data.user?.displayId || data.uniqueId || '',
       giftId: safeKey,
+      rawGiftId: rawGiftIdStr,
       giftName: rawGiftName,
       giftPictureUrl: giftPic,
-      count: repeatCount,
+      count: jarDelta,
+      jarCount: jarDelta,
+      comboTotal: totalRepeatCount,
+      streakKey,
+      streakActive: isStreakable && !isRepeatEnd,
       coins: coinCount,
       diamonds: coinCount,
       avatar: avatar

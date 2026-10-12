@@ -16,6 +16,9 @@ class OverlayServer {
     this.clients = new Set();
     this.topLikers = new Map();
     this.viewerStay = new Map();
+    this.imageCache = new Map();
+    this.dynamicGifts = new Map();
+    this.cachedGiftCatalog = null;
     this.rankingTimer = null;
     this.settings = this.loadSettings();
   }
@@ -750,13 +753,26 @@ class OverlayServer {
       return res.end(JSON.stringify(this.getRankingsSnapshot()));
     }
 
-    // Avatar Proxy for CORS-safe Canvas & Overlay Profile Pictures
-    if (pathname === '/api/avatar-proxy') {
+    // Avatar & Gift Icon Proxy with In-Memory Cache for CORS-safe Canvas & Zero-Lag Repeat Loads
+    if (pathname === '/api/avatar-proxy' || pathname === '/api/gift-icon') {
       const targetUrl = (url.searchParams.get('url') || '').trim();
-      const fallbackPath = path.join(this.baseDir, 'assets', 'avatar.png');
+      const isGift = pathname === '/api/gift-icon' || targetUrl.includes('webcast');
+      const fallbackPath = path.join(this.baseDir, 'assets', isGift ? path.join('gifts', 'rose.png') : 'avatar.png');
       if (!targetUrl || !/^https?:\/\//i.test(targetUrl)) {
         return this.serveStatic(fallbackPath, res);
       }
+
+      const cached = this.imageCache.get(targetUrl);
+      if (cached && cached.buffer && (Date.now() - cached.ts < 3600000)) {
+        res.writeHead(200, {
+          'Content-Type': cached.contentType || 'image/webp',
+          'Content-Length': cached.buffer.length,
+          'Cache-Control': 'public, max-age=86400',
+          'Access-Control-Allow-Origin': '*'
+        });
+        return res.end(cached.buffer);
+      }
+
       try {
         const client = targetUrl.startsWith('https') ? https : http;
         const proxyReq = client.get(targetUrl, {
@@ -769,12 +785,30 @@ class OverlayServer {
           if (proxyRes.statusCode !== 200) {
             return this.serveStatic(fallbackPath, res);
           }
-          res.writeHead(200, {
-            'Content-Type': proxyRes.headers['content-type'] || 'image/jpeg',
-            'Cache-Control': 'public, max-age=3600',
-            'Access-Control-Allow-Origin': '*'
+          const contentType = proxyRes.headers['content-type'] || 'image/webp';
+          const chunks = [];
+          let totalLen = 0;
+          proxyRes.on('data', chunk => {
+            chunks.push(chunk);
+            totalLen += chunk.length;
           });
-          proxyRes.pipe(res);
+          proxyRes.on('end', () => {
+            const buf = Buffer.concat(chunks, totalLen);
+            if (buf.length > 0 && buf.length < 1500000) {
+              if (this.imageCache.size >= 350) {
+                const oldestKey = this.imageCache.keys().next().value;
+                if (oldestKey) this.imageCache.delete(oldestKey);
+              }
+              this.imageCache.set(targetUrl, { buffer: buf, contentType, ts: Date.now() });
+            }
+            res.writeHead(200, {
+              'Content-Type': contentType,
+              'Content-Length': buf.length,
+              'Cache-Control': 'public, max-age=86400',
+              'Access-Control-Allow-Origin': '*'
+            });
+            res.end(buf);
+          });
         });
         proxyReq.on('error', () => this.serveStatic(fallbackPath, res));
         proxyReq.on('timeout', () => {
@@ -790,10 +824,25 @@ class OverlayServer {
     if (pathname === '/api/gifts') {
       const catalogPath = path.join(this.baseDir, 'assets', 'gifts-catalog.json');
       try {
-        if (fs.existsSync(catalogPath)) {
-          const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify(catalog));
+        if (!this.cachedGiftCatalog && fs.existsSync(catalogPath)) {
+          this.cachedGiftCatalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+        }
+        if (Array.isArray(this.cachedGiftCatalog)) {
+          const merged = [...this.cachedGiftCatalog];
+          if (this.dynamicGifts.size > 0) {
+            const seenIds = new Set(merged.map(g => String(g.id)));
+            for (const dynGift of this.dynamicGifts.values()) {
+              if (!seenIds.has(String(dynGift.id))) {
+                merged.push(dynGift);
+                seenIds.add(String(dynGift.id));
+              }
+            }
+          }
+          res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          });
+          return res.end(JSON.stringify(merged));
         }
         const giftsDir = path.join(this.baseDir, 'assets', 'gifts');
         const files = fs.readdirSync(giftsDir);
@@ -802,7 +851,10 @@ class OverlayServer {
           name: path.basename(f, path.extname(f)).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
           image: `/assets/gifts/${f}`
         }));
-        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
         return res.end(JSON.stringify(gifts));
       } catch (e) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
