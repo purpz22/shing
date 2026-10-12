@@ -26,6 +26,11 @@ class OverlayServer {
     if (!this.settings.jar.transform) {
       this.settings.jar.transform = { x: 50.0, y: 82.0, scale: 1.0 };
     }
+    if (!this.settings.rankings) this.settings.rankings = {};
+    if (!this.settings.rankings.topLikersTheme) this.settings.rankings.topLikersTheme = 'Purple';
+    if (this.settings.rankings.topLikersScale === undefined) this.settings.rankings.topLikersScale = 1.0;
+    if (!this.settings.rankings.viewerRankingTheme) this.settings.rankings.viewerRankingTheme = 'Purple';
+    if (this.settings.rankings.viewerRankingScale === undefined) this.settings.rankings.viewerRankingScale = 1.0;
   }
 
   resolveUserDataDir() {
@@ -234,7 +239,11 @@ class OverlayServer {
       rankings: {
         topLikersCount: 3,
         viewerRankingCount: 3,
-        leaveTimeoutMin: 5
+        leaveTimeoutMin: 5,
+        topLikersTheme: 'Purple',
+        topLikersScale: 1.0,
+        viewerRankingTheme: 'Purple',
+        viewerRankingScale: 1.0
       },
       headpat: {
         triggerOnFollow: true,
@@ -259,6 +268,23 @@ class OverlayServer {
     const topLikersCount = Math.max(1, Math.min(25, Number(this.settings?.rankings?.topLikersCount) || 3));
     const viewerRankingCount = Math.max(1, Math.min(25, Number(this.settings?.rankings?.viewerRankingCount) || 3));
 
+    const allowedThemes = ['Purple', 'Pink', 'Blue', 'Green', 'Dark', 'Light'];
+    const topLikersTheme = allowedThemes.includes(this.settings?.rankings?.topLikersTheme)
+      ? this.settings.rankings.topLikersTheme
+      : 'Purple';
+    const viewerRankingTheme = allowedThemes.includes(this.settings?.rankings?.viewerRankingTheme)
+      ? this.settings.rankings.viewerRankingTheme
+      : 'Purple';
+
+    const clampScale = (val) => {
+      if (val === null || val === undefined || val === '') return 1.0;
+      const num = Number(val);
+      if (!Number.isFinite(num)) return 1.0;
+      return Math.max(0.5, Math.min(1.5, num));
+    };
+    const topLikersScale = clampScale(this.settings?.rankings?.topLikersScale);
+    const viewerRankingScale = clampScale(this.settings?.rankings?.viewerRankingScale);
+
     const allLikers = Array.from(this.topLikers.values())
       .sort((a, b) => (b.likes - a.likes) || (b.updatedAt - a.updatedAt));
     const totalLikes = allLikers.reduce((acc, item) => acc + (item.likes || 0), 0);
@@ -279,6 +305,10 @@ class OverlayServer {
       allViewersCount: allViewers.length,
       topLikersLimit: topLikersCount,
       viewerRankingLimit: viewerRankingCount,
+      topLikersTheme,
+      topLikersScale,
+      viewerRankingTheme,
+      viewerRankingScale,
       timestamp: Date.now()
     };
   }
@@ -362,23 +392,15 @@ class OverlayServer {
         v.avatar = cleanAvatar;
       }
       if (!v.isPresent) {
-        // Viewer came back after leaving: reset current time to 0, keep bestTimeSec intact
-        v.isPresent = true;
-        v.sessionStartAt = now;
-        v.currentTimeSec = 0;
-        v.lastSeenAt = now;
-      } else if (data.type === 'join' && (now - v.lastSeenAt > 15000 || data.rejoined === true)) {
-        // Explicit re-join event after leaving room: finalize previous session if needed, then reset current timer to 0
-        if (v.currentTimeSec > v.bestTimeSec) {
-          v.bestTimeSec = v.currentTimeSec;
-        }
+        // Viewer came back after leaving: start new session, keep bestTimeSec intact
         v.isPresent = true;
         v.sessionStartAt = now;
         v.currentTimeSec = 0;
         v.lastSeenAt = now;
       } else {
+        // Active viewer: keep session continuity, refresh lastSeenAt and update stay duration
         v.lastSeenAt = now;
-        v.currentTimeSec = Math.max(0, Math.floor((now - v.sessionStartAt) / 1000));
+        v.currentTimeSec = Math.max(v.currentTimeSec, Math.floor((now - v.sessionStartAt) / 1000));
         if (v.currentTimeSec > v.bestTimeSec) {
           v.bestTimeSec = v.currentTimeSec;
         }
