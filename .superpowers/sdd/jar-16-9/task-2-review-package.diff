@@ -1,0 +1,214 @@
+﻿071b684 feat(jar): implement 16:9 responsive viewport transform in jar overlay
+ desktop/overlays/jar.html                   | 40 ++++++++++++++++------
+ desktop/tests/test-jar-overlay-transform.js | 53 +++++++++++++++++++++++++++++
+ 2 files changed, 83 insertions(+), 10 deletions(-)
+diff --git a/desktop/overlays/jar.html b/desktop/overlays/jar.html
+index 1de7871..c5f7260 100644
+--- a/desktop/overlays/jar.html
++++ b/desktop/overlays/jar.html
+@@ -1,37 +1,39 @@
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+ <meta charset="utf-8">
+ <title>Shing Glass Jar Overlay</title>
+ <style>
+   * { box-sizing: border-box; margin: 0; padding: 0; }
+   html, body {
+     width: 100%; height: 100%;
++    margin: 0; padding: 0;
+     background: transparent;
+     overflow: hidden;
+     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+   }
+   #container {
+     position: relative;
+-    width: 100%; height: 100%;
+-    display: flex;
+-    align-items: center;
+-    justify-content: center;
++    width: 100vw;
++    height: 100vh;
++    overflow: hidden;
+   }
+   #jar-stage {
+-    position: relative;
+-    aspect-ratio: 764 / 1024;
+-    height: 100%;
+-    width: auto;
+-    max-width: 100vw;
+-    max-height: 100vh;
++    position: absolute;
++    width: 764px;
++    height: 1024px;
++    transform-origin: center center;
++    left: var(--jar-x, 50%);
++    top: var(--jar-y, 82%);
++    transform: translate(-50%, -50%) scale(calc(var(--jar-scale, 1.0) * (100vh / 1024px) * 0.48));
++    pointer-events: none;
+   }
+   .layer {
+     position: absolute;
+     top: 0; left: 0;
+     width: 100%; height: 100%;
+     pointer-events: none;
+     user-select: none;
+     -webkit-user-drag: none;
+   }
+   #jar-back {
+@@ -40,20 +42,21 @@
+   }
+   #jar-front {
+     z-index: 2;
+     object-fit: fill;
+   }
+   #physics-canvas {
+     position: absolute;
+     top: 0; left: 0;
+     width: 100%; height: 100%;
+     z-index: 3;
++    pointer-events: auto;
+   }
+   /* Top rim & pink bow stays in front of falling gifts at the jar mouth while keeping all gifts inside the jar 100% visible */
+   #jar-neck {
+     z-index: 4;
+     object-fit: fill;
+     clip-path: inset(0 0 67.5% 0);
+   }
+ 
+   /* Combo Badge above jar mouth */
+   #combo-badge {
+@@ -160,20 +163,21 @@
+   </div>
+ </div>
+ 
+ <script>
+ 'use strict';
+ 
+ const comboBadge = document.getElementById('combo-badge');
+ const counterEl = document.getElementById('gift-counter');
+ const topSenderEl = document.getElementById('top-gift-sender');
+ const topDetailEl = document.getElementById('top-gift-detail');
++const jarStage = document.getElementById('jar-stage');
+ 
+ const GIFT_ICONS = {
+   rose: '/assets/gifts/rose.png',
+   heart_me: '/assets/gifts/heart_me.png',
+   gg: '/assets/gifts/gg.png',
+   ice_cream: '/assets/gifts/ice_cream.png',
+   doughnut: '/assets/gifts/doughnut.png',
+   perfume: '/assets/gifts/perfume.png',
+   tiktok: '/assets/gifts/tiktok.png',
+   galaxy: '/assets/gifts/galaxy.png',
+@@ -733,36 +737,52 @@ function render() {
+ requestAnimationFrame(render);
+ 
+ // Allow parent dashboard window to pause background preview iframe when not on Jar tab
+ window.addEventListener('message', evt => {
+   if (evt.data && evt.data.type === 'jar:set-paused') {
+     isPaused = Boolean(evt.data.paused);
+     if (!isPaused) needsRedraw = true;
+   }
+ });
+ 
++function applyJarTransform(tf) {
++  if (!tf || typeof tf !== 'object') return;
++  if (typeof tf.x === 'number') jarStage.style.setProperty('--jar-x', `${tf.x}%`);
++  if (typeof tf.y === 'number') jarStage.style.setProperty('--jar-y', `${tf.y}%`);
++  if (typeof tf.scale === 'number') jarStage.style.setProperty('--jar-scale', tf.scale);
++  needsRedraw = true;
++}
++
+ // WebSocket integration
+ function connectWS() {
+   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+   const ws = new WebSocket(`${proto}//${location.host}`);
+ 
+   ws.onmessage = async evt => {
+     try {
+       const data = JSON.parse(evt.data);
+       if (data.type === 'init' && data.settings?.jar) {
+         jarSettings = Object.assign(jarSettings, data.settings.jar);
+         engine.gravity.y = jarSettings.gravity;
++        if (data.settings.jar.transform) {
++          applyJarTransform(data.settings.jar.transform);
++        }
+         needsRedraw = true;
+       } else if (data.type === 'settings:update' && data.settings?.jar) {
+         jarSettings = Object.assign(jarSettings, data.settings.jar);
+         engine.gravity.y = jarSettings.gravity;
++        if (data.settings.jar.transform) {
++          applyJarTransform(data.settings.jar.transform);
++        }
+         needsRedraw = true;
++      } else if (data.type === 'jar:transform') {
++        applyJarTransform(data);
+       } else if (data.type === 'gift') {
+         if (catalogList.length === 0) {
+           await catalogReadyPromise;
+         }
+         const giftName = data.giftName || 'Gift';
+         const rawGiftId = data.rawGiftId ? String(data.rawGiftId) : '';
+         const giftKey = (data.giftId || data.giftName || 'rose').toLowerCase().replace(/[^a-z0-9_]+/g, '_');
+         const resolvedUrl = resolveGiftUrl(giftKey, data.giftPictureUrl, giftName, rawGiftId);
+ 
+         const dynamicImg = resolvedUrl
+diff --git a/desktop/tests/test-jar-overlay-transform.js b/desktop/tests/test-jar-overlay-transform.js
+new file mode 100644
+index 0000000..1cbf29b
+--- /dev/null
++++ b/desktop/tests/test-jar-overlay-transform.js
+@@ -0,0 +1,53 @@
++'use strict';
++
++const fs = require('fs');
++const path = require('path');
++const assert = require('assert');
++
++const targetPath = fs.existsSync(path.resolve(__dirname, '../overlays/jar.html'))
++  ? path.resolve(__dirname, '../overlays/jar.html')
++  : path.resolve('desktop/overlays/jar.html');
++
++const html = fs.readFileSync(targetPath, 'utf8');
++
++// Assert CSS properties & rules
++assert(html.includes('--jar-x'), 'Missing --jar-x CSS variable in jar.html');
++assert(html.includes('--jar-y'), 'Missing --jar-y CSS variable in jar.html');
++assert(html.includes('--jar-scale'), 'Missing --jar-scale CSS variable in jar.html');
++assert(html.includes('100vw') && html.includes('100vh'), 'Missing 100vw/100vh container sizing');
++assert(html.includes('scale(calc(var(--jar-scale'), 'Missing responsive scale calc formula');
++
++// Assert JS function & WebSocket listeners
++assert(html.includes('applyJarTransform'), 'Missing applyJarTransform function in jar.html');
++assert(html.includes('jar:transform'), 'Missing jar:transform listener in jar.html');
++
++// Test functional behavior of applyJarTransform in isolation
++const fnMatch = html.match(/function\s+applyJarTransform\s*\([^)]*\)\s*\{([\s\S]*?)\n\s*\}/);
++assert(fnMatch, 'Could not extract applyJarTransform function body');
++
++const mockJarStage = {
++  style: {
++    props: {},
++    setProperty(k, v) { this.props[k] = String(v); }
++  }
++};
++let needsRedraw = false;
++
++const applyJarTransform = new Function('tf', 'jarStage', 'needsRedraw', `
++  ${fnMatch[1]}
++  return { jarStage, needsRedraw };
++`);
++
++// Test valid transform
++let res = applyJarTransform({ x: 45.5, y: 70.2, scale: 1.2 }, mockJarStage, false);
++assert.strictEqual(mockJarStage.style.props['--jar-x'], '45.5%');
++assert.strictEqual(mockJarStage.style.props['--jar-y'], '70.2%');
++assert.strictEqual(mockJarStage.style.props['--jar-scale'], '1.2');
++assert.strictEqual(res.needsRedraw, true);
++
++// Test null/undefined resilience
++mockJarStage.style.props = {};
++res = applyJarTransform(null, mockJarStage, false);
++assert.deepStrictEqual(mockJarStage.style.props, {});
++
++console.log('Task 2 overlay transform test passed!');

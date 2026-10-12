@@ -1,0 +1,287 @@
+﻿df7a1e3 feat(jar): add 16:9 interactive preview card with drag handle, scale slider, and reset button
+ desktop/renderer/index.html                  |  24 ++++-
+ desktop/renderer/styles.css                  | 153 ++++++++++++++++++++++++++-
+ desktop/tests/test-jar-dashboard-elements.js |  28 +++++
+ 3 files changed, 201 insertions(+), 4 deletions(-)
+diff --git a/desktop/renderer/index.html b/desktop/renderer/index.html
+index 7ba4aeb..63ac564 100644
+--- a/desktop/renderer/index.html
++++ b/desktop/renderer/index.html
+@@ -782,22 +782,42 @@
+               <option value="whale" data-name="Whale Diving" data-diamonds="2150">Whale Diving (2,150 coins)</option>
+               <option value="dragon" data-name="Dragon Flame" data-diamonds="26999">Dragon Flame (26,999 coins)</option>
+               <option value="lion" data-name="Leon and Lion" data-diamonds="34000">Lion (34,000 coins)</option>
+               <option value="universe" data-name="TikTok Universe+" data-diamonds="34999">TikTok Universe (34,999 coins)</option>
+             </select>
+             <button class="btn btn-primary" id="drop-selected-gift-btn">Drop</button>
+           </div>
+         </div>
+ 
+         <div class="jar-live-preview-card">
+-          <div class="preview-title">Jar Live Stream Preview</div>
+-          <iframe id="jar-preview-iframe" src="http://localhost:3333/overlays/jar" class="jar-iframe" allowtransparency="true"></iframe>
++          <div class="stage-header">
++            <span class="preview-title">Jar 16:9 Live Stream Preview</span>
++            <span class="stage-tag">Drag to Position</span>
++          </div>
++
++          <div class="jar-stage-preview-16-9" id="jar-preview-stage">
++            <iframe id="jar-preview-iframe" src="http://localhost:3333/overlays/jar" class="jar-iframe-16-9" allowtransparency="true"></iframe>
++            <div class="jar-drag-overlay" id="jar-drag-overlay">
++              <div class="jar-drag-target" id="jar-drag-target" title="Click and drag to position jar">
++                <div class="jar-drag-crosshair"></div>
++                <span class="jar-drag-label">Jar</span>
++              </div>
++            </div>
++          </div>
++
++          <div class="jar-transform-controls">
++            <div class="control-row">
++              <label for="jar-scale-slider" class="control-label">Jar Size: <span id="jar-scale-badge" class="scale-badge">100%</span></label>
++              <input type="range" id="jar-scale-slider" min="0.4" max="1.5" step="0.05" value="1.0" class="form-range">
++            </div>
++            <button class="btn btn-secondary btn-sm" id="jar-reset-transform-btn">Reset Position & Size</button>
++          </div>
+         </div>
+       </div>
+     </section>
+ 
+     <!-- 6. TIMER TAB -->
+     <section id="tab-timer" class="tab-pane">
+       <div class="section-header">
+         <h2>Stream Timer</h2>
+         <p>Countdown timer overlay with subathon gift bonus support.</p>
+       </div>
+diff --git a/desktop/renderer/styles.css b/desktop/renderer/styles.css
+index b7fb8ca..0d86494 100644
+--- a/desktop/renderer/styles.css
++++ b/desktop/renderer/styles.css
+@@ -953,43 +953,192 @@ input[type="range"] {
+   background: #ef4444;
+   color: #fff;
+ }
+ .btn-large {
+   padding: 10px 22px;
+   font-size: 14px;
+ }
+ 
+ /* Preview Windows */
+ .jar-live-preview-card {
+-  width: 380px;
++  width: 100%;
++  max-width: 580px;
+   background: var(--bg-card);
+   border: 1.5px solid var(--border-color);
+   border-radius: var(--radius-lg);
+   padding: 16px;
+   display: flex;
+   flex-direction: column;
++  gap: 14px;
+   box-shadow: var(--shadow-sm);
+ }
+ .preview-title {
+   font-size: 13px;
+   font-weight: 700;
+   color: var(--primary);
+-  margin-bottom: 10px;
+ }
+ .jar-iframe {
+   width: 100%;
+   height: 480px;
+   border: 1.5px solid var(--border-color);
+   border-radius: var(--radius-md);
+   background: #181226 radial-gradient(circle, rgba(123, 63, 228, 0.18) 1.5px, transparent 1.5px);
+   background-size: 18px 18px;
+ }
++
++/* 16:9 Jar Interactive Preview Stage & Controls */
++.jar-stage-preview-16-9 {
++  position: relative;
++  width: 100%;
++  aspect-ratio: 16 / 9;
++  border-radius: var(--radius-md);
++  overflow: hidden;
++  background: #181226 radial-gradient(circle, rgba(123, 63, 228, 0.18) 1.5px, transparent 1.5px);
++  background-size: 18px 18px;
++  border: 1.5px solid var(--border-color);
++  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
++}
++
++.jar-iframe-16-9 {
++  position: absolute;
++  top: 0;
++  left: 0;
++  width: 100%;
++  height: 100%;
++  border: none;
++  background: transparent;
++  pointer-events: none;
++}
++
++.jar-drag-overlay {
++  position: absolute;
++  top: 0;
++  left: 0;
++  width: 100%;
++  height: 100%;
++  pointer-events: auto;
++  touch-action: none;
++  user-select: none;
++  z-index: 5;
++}
++
++.jar-drag-target {
++  position: absolute;
++  left: 50%;
++  top: 82%;
++  transform: translate(-50%, -50%) scale(1);
++  width: 68px;
++  height: 92px;
++  border: 2px dashed #ff6fae;
++  border-radius: 12px;
++  background: rgba(255, 111, 174, 0.12);
++  cursor: grab;
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  justify-content: center;
++  transition: box-shadow 0.15s, border-color 0.15s;
++  pointer-events: auto;
++  z-index: 6;
++}
++
++.jar-drag-target:active,
++.jar-drag-target.dragging {
++  cursor: grabbing;
++  border-color: #7b3fe4;
++  background: rgba(123, 63, 228, 0.22);
++  box-shadow: 0 0 12px rgba(123, 63, 228, 0.5);
++}
++
++.jar-drag-crosshair {
++  width: 14px;
++  height: 14px;
++  position: relative;
++  margin-bottom: 4px;
++  opacity: 0.75;
++}
++
++.jar-drag-crosshair::before,
++.jar-drag-crosshair::after {
++  content: '';
++  position: absolute;
++  background: #ff6fae;
++  border-radius: 1px;
++}
++
++.jar-drag-crosshair::before {
++  top: 6px;
++  left: 0;
++  width: 14px;
++  height: 2px;
++}
++
++.jar-drag-crosshair::after {
++  top: 0;
++  left: 6px;
++  width: 2px;
++  height: 14px;
++}
++
++.jar-drag-target:active .jar-drag-crosshair::before,
++.jar-drag-target:active .jar-drag-crosshair::after,
++.jar-drag-target.dragging .jar-drag-crosshair::before,
++.jar-drag-target.dragging .jar-drag-crosshair::after {
++  background: #7b3fe4;
++}
++
++.jar-drag-label {
++  font-size: 10px;
++  font-weight: 700;
++  color: #fff;
++  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
++  text-transform: uppercase;
++  letter-spacing: 0.5px;
++}
++
++.jar-transform-controls {
++  display: flex;
++  flex-direction: column;
++  gap: 12px;
++  padding-top: 4px;
++}
++
++.jar-transform-controls .control-row {
++  display: flex;
++  flex-direction: column;
++  gap: 6px;
++}
++
++.jar-transform-controls .control-label {
++  display: flex;
++  align-items: center;
++  font-size: 13px;
++  font-weight: 600;
++  color: var(--text-main);
++}
++
++.jar-transform-controls .form-range {
++  width: 100%;
++  accent-color: var(--primary);
++  cursor: pointer;
++}
++
++.scale-badge {
++  display: inline-block;
++  padding: 2px 8px;
++  border-radius: 10px;
++  font-weight: 700;
++  font-size: 12px;
++  background: var(--primary-light);
++  color: var(--primary);
++  margin-left: 6px;
++}
+ .companion-layout {
+   display: flex;
+   flex-direction: column;
+   gap: 18px;
+ }
+ .companion-stage-card {
+   width: 100%;
+   background: var(--bg-card);
+   border: 1.5px solid var(--border-color);
+   border-radius: var(--radius-lg);
+diff --git a/desktop/tests/test-jar-dashboard-elements.js b/desktop/tests/test-jar-dashboard-elements.js
+new file mode 100644
+index 0000000..ada19bd
+--- /dev/null
++++ b/desktop/tests/test-jar-dashboard-elements.js
+@@ -0,0 +1,28 @@
++'use strict';
++
++const fs = require('fs');
++const path = require('path');
++const assert = require('assert');
++
++const htmlPath = fs.existsSync(path.resolve(__dirname, '../renderer/index.html'))
++  ? path.resolve(__dirname, '../renderer/index.html')
++  : path.resolve('desktop/renderer/index.html');
++
++const cssPath = fs.existsSync(path.resolve(__dirname, '../renderer/styles.css'))
++  ? path.resolve(__dirname, '../renderer/styles.css')
++  : path.resolve('desktop/renderer/styles.css');
++
++const html = fs.readFileSync(htmlPath, 'utf8');
++
++assert(html.includes('id="jar-preview-stage"'), 'Missing jar-preview-stage');
++assert(html.includes('id="jar-drag-target"'), 'Missing jar-drag-target');
++assert(html.includes('id="jar-scale-slider"'), 'Missing jar-scale-slider');
++assert(html.includes('id="jar-scale-badge"'), 'Missing jar-scale-badge');
++assert(html.includes('id="jar-reset-transform-btn"'), 'Missing jar-reset-transform-btn');
++
++const css = fs.readFileSync(cssPath, 'utf8');
++assert(css.includes('.jar-stage-preview-16-9'), 'Missing .jar-stage-preview-16-9 CSS rule');
++assert(css.includes('.jar-drag-target'), 'Missing .jar-drag-target CSS rule');
++assert(css.includes('.jar-drag-overlay'), 'Missing .jar-drag-overlay CSS rule');
++
++console.log('Task 3 dashboard elements test passed!');

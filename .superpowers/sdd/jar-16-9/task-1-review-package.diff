@@ -1,0 +1,305 @@
+﻿4a815a6 feat(jar): add jar:transform schema and debounced websocket broadcast handler
+ desktop/server/overlayServer.js            |  73 ++++++++++++++++----
+ desktop/tests/test-jar-transform-server.js | 106 +++++++++++++++++++++++++++++
+ 2 files changed, 166 insertions(+), 13 deletions(-)
+diff --git a/desktop/server/overlayServer.js b/desktop/server/overlayServer.js
+index af582fe..2d43a97 100644
+--- a/desktop/server/overlayServer.js
++++ b/desktop/server/overlayServer.js
+@@ -13,21 +13,26 @@ class OverlayServer {
+     this.userDataDir = this.resolveUserDataDir();
+     this.server = null;
+     this.wss = null;
+     this.clients = new Set();
+     this.topLikers = new Map();
+     this.viewerStay = new Map();
+     this.imageCache = new Map();
+     this.dynamicGifts = new Map();
+     this.cachedGiftCatalog = null;
+     this.rankingTimer = null;
++    this.settingsSaveTimer = null;
+     this.settings = this.loadSettings();
++    if (!this.settings.jar) this.settings.jar = {};
++    if (!this.settings.jar.transform) {
++      this.settings.jar.transform = { x: 50.0, y: 82.0, scale: 1.0 };
++    }
+   }
+ 
+   resolveUserDataDir() {
+     const appData = process.env.APPDATA || (process.platform === 'darwin'
+       ? path.join(process.env.HOME || '', 'Library', 'Application Support')
+       : path.join(process.env.HOME || '', '.config'));
+     const dir = appData ? path.join(appData, 'Shing Live') : this.baseDir;
+     try {
+       if (!fs.existsSync(dir)) {
+         fs.mkdirSync(dir, { recursive: true });
+@@ -112,22 +117,38 @@ class OverlayServer {
+         console.error('Backup recovery failed', bakErr.message);
+       }
+     }
+ 
+     if (raw) {
+       return this.deepMerge(defaults, raw);
+     }
+     return defaults;
+   }
+ 
++  scheduleSettingsSave(delay = 300) {
++    if (this.settingsSaveTimer) {
++      clearTimeout(this.settingsSaveTimer);
++    }
++    this.settingsSaveTimer = setTimeout(() => {
++      this.settingsSaveTimer = null;
++      this.saveSettings();
++    }, delay);
++  }
++
+   saveSettings(newSettings) {
+-    this.settings = this.deepMerge(this.settings, newSettings);
++    if (this.settingsSaveTimer) {
++      clearTimeout(this.settingsSaveTimer);
++      this.settingsSaveTimer = null;
++    }
++    if (newSettings) {
++      this.settings = this.deepMerge(this.settings, newSettings);
++    }
+     const p = this.getSettingsPath();
+     const bak = this.getBackupPath();
+     const serialized = JSON.stringify(this.settings, null, 2);
+     try {
+       if (fs.existsSync(p)) {
+         fs.copyFileSync(p, bak);
+       }
+       fs.writeFileSync(p, serialized, 'utf8');
+     } catch (e) {
+       console.error('Failed to save settings.json in userDataDir:', e.message);
+@@ -159,21 +180,26 @@ class OverlayServer {
+         hair: 'twintails',
+         hc: '#7b3fe4',
+         oc: '#9b5cf0',
+         cats: ['purple', 'black']
+       },
+       jar: {
+         gravity: 0.9,
+         giftScale: 0.85,
+         bounciness: 0.4,
+         maxGifts: 500,
+-        overflowAllowed: true
++        overflowAllowed: true,
++        transform: {
++          x: 50.0,
++          y: 82.0,
++          scale: 1.0
++        }
+       },
+       lowerThird: {
+         tiktok: '@shimmy_ming',
+         instagram: '',
+         youtube: '',
+         discord: '',
+         speed: 8,
+         interval: 30
+       },
+       chat: {
+@@ -437,31 +463,21 @@ class OverlayServer {
+           rankings: this.getRankingsSnapshot()
+         }));
+         if (this.tiktokStatus) {
+           ws.send(JSON.stringify(Object.assign({ type: 'tiktok:status' }, this.tiktokStatus)));
+         }
+         ws.on('close', () => this.clients.delete(ws));
+         ws.on('error', () => this.clients.delete(ws));
+         ws.on('message', raw => {
+           try {
+             const data = JSON.parse(raw);
+-            if (data.type === 'settings:save') {
+-              this.saveSettings(data.settings);
+-            } else if (data.type === 'test:event') {
+-              this.broadcast(data.event);
+-            } else if (data.type === 'rankings:reset' || data.type === 'viewer:leave') {
+-              this.processRankingEvent(data);
+-            } else if (data.type === 'tiktok:connect' && typeof this.onConnectRequest === 'function') {
+-              this.onConnectRequest(data.username, { manual: Boolean(data.manual) });
+-            } else if (data.type === 'tiktok:disconnect' && typeof this.onDisconnectRequest === 'function') {
+-              this.onDisconnectRequest();
+-            }
++            this.handleWsMessage(ws, data);
+           } catch (e) {
+             console.warn('Bad message from client', e);
+           }
+         });
+       });
+ 
+       let retries = 0;
+       const tryListen = () => {
+         this.server.listen(this.port, '0.0.0.0', () => {
+           console.log(`Overlay server running at http://localhost:${this.port}`);
+@@ -475,25 +491,56 @@ class OverlayServer {
+           setTimeout(tryListen, 250);
+           return;
+         }
+         reject(err);
+       });
+ 
+       tryListen();
+     });
+   }
+ 
++  handleWsMessage(ws, data) {
++    if (!data || typeof data !== 'object') return;
++
++    if (data.type === 'jar:transform') {
++      const x = Math.max(5, Math.min(95, Number(data.x) || 50));
++      const y = Math.max(8, Math.min(96, Number(data.y) || 82));
++      const scale = Math.max(0.4, Math.min(1.5, Number(data.scale) || 1.0));
++      if (!this.settings.jar) this.settings.jar = {};
++      this.settings.jar.transform = { x, y, scale };
++      this.broadcast({ type: 'jar:transform', x, y, scale });
++      this.scheduleSettingsSave();
++      return;
++    }
++
++    if (data.type === 'settings:save') {
++      this.saveSettings(data.settings);
++    } else if (data.type === 'test:event') {
++      this.broadcast(data.event);
++    } else if (data.type === 'rankings:reset' || data.type === 'viewer:leave') {
++      this.processRankingEvent(data);
++    } else if (data.type === 'tiktok:connect' && typeof this.onConnectRequest === 'function') {
++      this.onConnectRequest(data.username, { manual: Boolean(data.manual) });
++    } else if (data.type === 'tiktok:disconnect' && typeof this.onDisconnectRequest === 'function') {
++      this.onDisconnectRequest();
++    }
++  }
++
+   stop() {
+     if (this.rankingTimer) {
+       clearInterval(this.rankingTimer);
+       this.rankingTimer = null;
+     }
++    if (this.settingsSaveTimer) {
++      clearTimeout(this.settingsSaveTimer);
++      this.settingsSaveTimer = null;
++    }
+     for (const ws of this.clients) {
+       try { ws.terminate(); } catch (e) {}
+     }
+     this.clients.clear();
+     if (this.wss) {
+       try { this.wss.close(); } catch (e) {}
+     }
+     if (this.server) {
+       try { this.server.close(); } catch (e) {}
+     }
+diff --git a/desktop/tests/test-jar-transform-server.js b/desktop/tests/test-jar-transform-server.js
+new file mode 100644
+index 0000000..a9721bf
+--- /dev/null
++++ b/desktop/tests/test-jar-transform-server.js
+@@ -0,0 +1,106 @@
++'use strict';
++
++const assert = require('assert');
++const WebSocket = require('ws');
++const path = require('path');
++const fs = require('fs');
++const OverlayServer = require('../server/overlayServer');
++
++async function run() {
++  const testPort = 3334;
++  const tempDir = path.join(__dirname, 'tmp-user-data');
++  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
++
++  const server = new OverlayServer(testPort, path.resolve(__dirname, '..'));
++  server.userDataDir = tempDir;
++
++  // Verify initial default settings schema includes transform
++  assert(server.settings.jar, 'server.settings.jar should exist');
++  assert.deepStrictEqual(server.settings.jar.transform, { x: 50.0, y: 82.0, scale: 1.0 });
++
++  await server.start();
++
++  try {
++    const ws = new WebSocket(`ws://localhost:${testPort}`);
++    await new Promise((resolve, reject) => {
++      ws.on('open', resolve);
++      ws.on('error', reject);
++    });
++
++    let receivedQueue = [];
++    ws.on('message', raw => {
++      try {
++        const data = JSON.parse(raw);
++        if (data.type === 'jar:transform') receivedQueue.push(data);
++      } catch (e) {}
++    });
++
++    // 1. Valid transform update
++    ws.send(JSON.stringify({ type: 'jar:transform', x: 75.5, y: 80.0, scale: 1.25 }));
++    await new Promise(resolve => setTimeout(resolve, 100));
++
++    assert(receivedQueue.length === 1, 'Expected 1 received transform message');
++    let received = receivedQueue[0];
++    assert.strictEqual(received.x, 75.5);
++    assert.strictEqual(received.y, 80.0);
++    assert.strictEqual(received.scale, 1.25);
++    assert.strictEqual(server.settings.jar.transform.x, 75.5);
++    assert.strictEqual(server.settings.jar.transform.y, 80.0);
++    assert.strictEqual(server.settings.jar.transform.scale, 1.25);
++
++    // 2. Underflow clamping (x < 5, y < 8, scale < 0.4)
++    ws.send(JSON.stringify({ type: 'jar:transform', x: -20, y: 2, scale: 0.1 }));
++    await new Promise(resolve => setTimeout(resolve, 100));
++
++    assert(receivedQueue.length === 2, 'Expected 2 received transform messages');
++    received = receivedQueue[1];
++    assert.strictEqual(received.x, 5);
++    assert.strictEqual(received.y, 8);
++    assert.strictEqual(received.scale, 0.4);
++
++    // 3. Overflow clamping (x > 95, y > 96, scale > 1.5)
++    ws.send(JSON.stringify({ type: 'jar:transform', x: 120, y: 150, scale: 3.5 }));
++    await new Promise(resolve => setTimeout(resolve, 100));
++
++    assert(receivedQueue.length === 3, 'Expected 3 received transform messages');
++    received = receivedQueue[2];
++    assert.strictEqual(received.x, 95);
++    assert.strictEqual(received.y, 96);
++    assert.strictEqual(received.scale, 1.5);
++
++    // 4. Missing / invalid values fallback
++    ws.send(JSON.stringify({ type: 'jar:transform', x: 'invalid', y: null, scale: undefined }));
++    await new Promise(resolve => setTimeout(resolve, 100));
++
++    assert(receivedQueue.length === 4, 'Expected 4 received transform messages');
++    received = receivedQueue[3];
++    assert.strictEqual(received.x, 50.0);
++    assert.strictEqual(received.y, 82.0);
++    assert.strictEqual(received.scale, 1.0);
++
++    // Set final target position matching brief requirement: { x: 75.5, y: 80.0, scale: 1.25 }
++    ws.send(JSON.stringify({ type: 'jar:transform', x: 75.5, y: 80.0, scale: 1.25 }));
++    await new Promise(resolve => setTimeout(resolve, 100));
++
++    ws.close();
++
++    // Verify debounced persistence saved to disk after 300ms
++    await new Promise(resolve => setTimeout(resolve, 350));
++    const savedPath = server.getSettingsPath();
++    assert(fs.existsSync(savedPath), 'settings.json should have been written to disk');
++    const savedJson = JSON.parse(fs.readFileSync(savedPath, 'utf8'));
++    assert.strictEqual(savedJson.jar.transform.x, 75.5);
++    assert.strictEqual(savedJson.jar.transform.y, 80.0);
++    assert.strictEqual(savedJson.jar.transform.scale, 1.25);
++
++    console.log('Task 1 server transform test passed!');
++  } finally {
++    server.stop();
++    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (e) {}
++  }
++}
++
++run().catch(err => {
++  console.error(err);
++  process.exit(1);
++});

@@ -1967,6 +1967,19 @@ function openChangelogModal() {
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
     {
+      version: '1.4.0',
+      releaseName: 'Shing Live v1.4.0 - 16:9 Landscape Draggable Gift Jar & Live Studio Sync',
+      releaseDate: '2026-10-12',
+      summary: 'Full 16:9 widescreen landscape Gift Jar overlay with real-time click-and-drag positioning preview, jar size slider (0.4x to 1.5x), instantaneous reset button, and zero-latency live synchronization to TikTok LIVE Studio and OBS.',
+      highlights: [
+        '16:9 Landscape Canvas: Upgraded Gift Jar overlay to native 16:9 widescreen coordinate space matching standard TikTok LIVE Studio and OBS stream resolutions (1920x1080 and 1440p)',
+        'Interactive Drag-to-Position: Drag the jar anywhere on the 16:9 canvas directly inside the desktop dashboard with scale-aware boundary clamping so the jar never clips off-screen',
+        'Jar Size Slider: Adjust the jar scale dynamically from 40% to 150% with live percentage readout badge and instant transform updates',
+        'Live Studio Sync: Broadcasts drag and scale changes over low-latency WebSockets in real time, synchronizing TikTok LIVE Studio and OBS without needing browser source refreshes',
+        'Quick Reset: Instant one-click reset button restoring the jar to its default bottom-center position (50% X, 82% Y) and 100% scale'
+      ]
+    },
+    {
       version: '1.3.7',
       releaseName: 'Shing Live v1.3.7 - Glass Jar Layering & Stream-Stage Contrast',
       releaseDate: '2026-10-12',
