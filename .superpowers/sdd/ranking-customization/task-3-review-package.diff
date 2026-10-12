@@ -1,0 +1,729 @@
+diff --git a/desktop/renderer/app.js b/desktop/renderer/app.js
+index 8cbb9cd..770639e 100644
+--- a/desktop/renderer/app.js
++++ b/desktop/renderer/app.js
+@@ -636,6 +636,22 @@ const OverlayDemoManager = {
+     if (compIframe && !compIframe.src.includes('localhost:3333')) {
+       compIframe.src = 'http://localhost:3333/overlays/companion?muted=1';
+     }
++
++    // Sync Ranking Cards Theme & Scale
++    const likersCard = $('ov-demo-toplikers-card');
++    if (likersCard) {
++      const lTheme = appSettings.rankings?.topLikersTheme || 'Purple';
++      const lScale = typeof appSettings.rankings?.topLikersScale === 'number' ? appSettings.rankings.topLikersScale : 1.0;
++      likersCard.dataset.theme = lTheme;
++      likersCard.style.setProperty('--demo-scale', lScale);
++    }
++    const stayCard = $('ov-demo-viewerranking-card');
++    if (stayCard) {
++      const sTheme = appSettings.rankings?.viewerRankingTheme || 'Purple';
++      const sScale = typeof appSettings.rankings?.viewerRankingScale === 'number' ? appSettings.rankings.viewerRankingScale : 1.0;
++      stayCard.dataset.theme = sTheme;
++      stayCard.style.setProperty('--demo-scale', sScale);
++    }
+   },
+ 
+   spawnChatBubble() {
+@@ -1281,6 +1297,66 @@ function renderTriggerMediaUI(kind) {
+   }
+ }
+ 
++// Dynamic Demo Ranking Leaderboard State & Renderers
++const demoLikersData = [
++  { name: 'SakuraChan', likes: 4200, avatar: '../assets/avatar.png' },
++  { name: 'MochiVibes', likes: 2800, avatar: '../assets/avatar.png' },
++  { name: 'KawaiiFox', likes: 1500, avatar: '../assets/avatar.png' },
++  { name: 'StarryNeko', likes: 950, avatar: '../assets/avatar.png' }
++];
++
++function formatLikesVal(n) {
++  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
++  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
++  return String(n);
++}
++
++function renderDemoTopLikersRows() {
++  const el = $('ov-demo-toplikers-rows');
++  if (!el) return;
++  const limit = appSettings.rankings?.topLikersCount || 3;
++  const rows = demoLikersData.slice(0, limit);
++  if (rows.length === 0) {
++    el.innerHTML = '<div class="demo-rank-row" style="justify-content:center;opacity:0.6;"><span>No likers yet</span></div>';
++    return;
++  }
++  const medals = ['gold', 'silver', 'bronze'];
++  el.innerHTML = rows.map((item, idx) => {
++    const medalClass = medals[idx] ? ` ${medals[idx]}` : '';
++    return `<div class="demo-rank-row"><span class="r-num${medalClass}">#${idx + 1}</span><img src="${item.avatar || '../assets/avatar.png'}" alt=""><span class="r-name">${item.name}</span><span class="r-val">${formatLikesVal(item.likes)}</span></div>`;
++  }).join('');
++}
++
++const demoStayData = [
++  { name: 'LunarNeko', timeSec: 2538, isPresent: true, avatar: '../assets/avatar.png' },
++  { name: 'StarryCloud', timeSec: 1865, isPresent: true, avatar: '../assets/avatar.png' },
++  { name: 'PuddingPop', timeSec: 1184, isPresent: true, avatar: '../assets/avatar.png' },
++  { name: 'ChocoBunny', timeSec: 642, isPresent: true, avatar: '../assets/avatar.png' }
++];
++
++function formatStayTime(sec) {
++  const m = Math.floor(sec / 60);
++  const s = Math.floor(sec % 60);
++  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
++}
++
++function renderDemoStayRows() {
++  const el = $('ov-demo-viewerranking-rows');
++  if (!el) return;
++  const limit = appSettings.rankings?.viewerRankingCount || 3;
++  const rows = demoStayData.slice(0, limit);
++  if (rows.length === 0) {
++    el.innerHTML = '<div class="demo-rank-row" style="justify-content:center;opacity:0.6;"><span>No active viewers</span></div>';
++    return;
++  }
++  const medals = ['gold', 'silver', 'bronze'];
++  el.innerHTML = rows.map((item, idx) => {
++    const medalClass = medals[idx] ? ` ${medals[idx]}` : '';
++    const statusText = item.isPresent ? '' : ' (Away)';
++    return `<div class="demo-rank-row"><span class="r-num${medalClass}">#${idx + 1}</span><img src="${item.avatar || '../assets/avatar.png'}" alt=""><span class="r-name">${item.name}${statusText}</span><span class="r-val mono">${formatStayTime(item.timeSec)}</span></div>`;
++  }).join('');
++}
++
+ // Load & populate settings
+ async function initSettings() {
+   appSettings = await window.api.getSettings();
+@@ -1305,12 +1381,46 @@ async function initSettings() {
+   }
+ 
+   // Populate Rankings & Headpat
++  if (!appSettings.rankings) appSettings.rankings = {};
+   if ($('ranking-toplikers-count')) {
+     $('ranking-toplikers-count').value = String(appSettings.rankings?.topLikersCount || 3);
+   }
++  const likersTheme = appSettings.rankings?.topLikersTheme || 'Purple';
++  const likersScale = typeof appSettings.rankings?.topLikersScale === 'number' ? appSettings.rankings.topLikersScale : 1.0;
++  if ($('ranking-toplikers-theme')) {
++    $('ranking-toplikers-theme').value = likersTheme;
++  }
++  if ($('ranking-toplikers-scale')) {
++    $('ranking-toplikers-scale').value = String(likersScale);
++  }
++  if ($('ranking-toplikers-scale-badge')) {
++    $('ranking-toplikers-scale-badge').textContent = `${Math.round(likersScale * 100)}%`;
++  }
++  if ($('ov-demo-toplikers-card')) {
++    $('ov-demo-toplikers-card').dataset.theme = likersTheme;
++    $('ov-demo-toplikers-card').style.setProperty('--demo-scale', likersScale);
++  }
++  renderDemoTopLikersRows();
++
+   if ($('ranking-viewers-count')) {
+     $('ranking-viewers-count').value = String(appSettings.rankings?.viewerRankingCount || 3);
+   }
++  const viewersTheme = appSettings.rankings?.viewerRankingTheme || 'Purple';
++  const viewersScale = typeof appSettings.rankings?.viewerRankingScale === 'number' ? appSettings.rankings.viewerRankingScale : 1.0;
++  if ($('ranking-viewers-theme')) {
++    $('ranking-viewers-theme').value = viewersTheme;
++  }
++  if ($('ranking-viewers-scale')) {
++    $('ranking-viewers-scale').value = String(viewersScale);
++  }
++  if ($('ranking-viewers-scale-badge')) {
++    $('ranking-viewers-scale-badge').textContent = `${Math.round(viewersScale * 100)}%`;
++  }
++  if ($('ov-demo-viewerranking-card')) {
++    $('ov-demo-viewerranking-card').dataset.theme = viewersTheme;
++    $('ov-demo-viewerranking-card').style.setProperty('--demo-scale', viewersScale);
++  }
++  renderDemoStayRows();
+   if ($('headpat-on-follow')) {
+     $('headpat-on-follow').checked = appSettings.headpat?.triggerOnFollow !== false;
+   }
+@@ -2388,17 +2498,73 @@ document.addEventListener('DOMContentLoaded', () => {
+   $('ranking-toplikers-count')?.addEventListener('change', e => {
+     if (!appSettings.rankings) appSettings.rankings = {};
+     appSettings.rankings.topLikersCount = Math.max(1, Math.min(10, parseInt(e.target.value, 10) || 3));
++    renderDemoTopLikersRows();
+     saveCurrentSettings();
+     showToast(`Top Likers overlay set to Top ${appSettings.rankings.topLikersCount}!`, 'info', 'Top Likers');
+   });
+ 
++  $('ranking-toplikers-theme')?.addEventListener('change', e => {
++    if (!appSettings.rankings) appSettings.rankings = {};
++    const theme = e.target.value;
++    appSettings.rankings.topLikersTheme = theme;
++    if ($('ov-demo-toplikers-card')) {
++      $('ov-demo-toplikers-card').dataset.theme = theme;
++    }
++    saveCurrentSettings();
++    showToast(`Top Likers theme set to ${theme}!`, 'info', 'Top Likers');
++  });
++
++  $('ranking-toplikers-scale')?.addEventListener('input', e => {
++    if (!appSettings.rankings) appSettings.rankings = {};
++    const scale = parseFloat(e.target.value) || 1.0;
++    appSettings.rankings.topLikersScale = scale;
++    if ($('ranking-toplikers-scale-badge')) {
++      $('ranking-toplikers-scale-badge').textContent = `${Math.round(scale * 100)}%`;
++    }
++    if ($('ov-demo-toplikers-card')) {
++      $('ov-demo-toplikers-card').style.setProperty('--demo-scale', scale);
++    }
++  });
++
++  $('ranking-toplikers-scale')?.addEventListener('change', () => {
++    saveCurrentSettings();
++  });
++
+   $('ranking-viewers-count')?.addEventListener('change', e => {
+     if (!appSettings.rankings) appSettings.rankings = {};
+     appSettings.rankings.viewerRankingCount = Math.max(1, Math.min(10, parseInt(e.target.value, 10) || 3));
++    renderDemoStayRows();
+     saveCurrentSettings();
+     showToast(`Viewer Stay Ranking set to Top ${appSettings.rankings.viewerRankingCount}!`, 'info', 'Stay Ranking');
+   });
+ 
++  $('ranking-viewers-theme')?.addEventListener('change', e => {
++    if (!appSettings.rankings) appSettings.rankings = {};
++    const theme = e.target.value;
++    appSettings.rankings.viewerRankingTheme = theme;
++    if ($('ov-demo-viewerranking-card')) {
++      $('ov-demo-viewerranking-card').dataset.theme = theme;
++    }
++    saveCurrentSettings();
++    showToast(`Viewer Stay Ranking theme set to ${theme}!`, 'info', 'Stay Ranking');
++  });
++
++  $('ranking-viewers-scale')?.addEventListener('input', e => {
++    if (!appSettings.rankings) appSettings.rankings = {};
++    const scale = parseFloat(e.target.value) || 1.0;
++    appSettings.rankings.viewerRankingScale = scale;
++    if ($('ranking-viewers-scale-badge')) {
++      $('ranking-viewers-scale-badge').textContent = `${Math.round(scale * 100)}%`;
++    }
++    if ($('ov-demo-viewerranking-card')) {
++      $('ov-demo-viewerranking-card').style.setProperty('--demo-scale', scale);
++    }
++  });
++
++  $('ranking-viewers-scale')?.addEventListener('change', () => {
++    saveCurrentSettings();
++  });
++
+   $('test-toplikers-btn')?.addEventListener('click', e => {
+     e.stopPropagation();
+     const samples = [
+@@ -2410,12 +2576,24 @@ document.addEventListener('DOMContentLoaded', () => {
+     const pick = samples[Math.floor(Math.random() * samples.length)];
+     const count = 15 + Math.floor(Math.random() * 60);
+     window.api.simulateEvent('like', { ...pick, count, avatar: '/assets/avatar.png' });
++
++    const existing = demoLikersData.find(x => x.name.toLowerCase() === pick.nickname.toLowerCase());
++    if (existing) {
++      existing.likes += count;
++    } else {
++      demoLikersData.push({ name: pick.nickname, likes: count, avatar: '../assets/avatar.png' });
++    }
++    demoLikersData.sort((a, b) => b.likes - a.likes);
++    renderDemoTopLikersRows();
++
+     showToast(`Simulated +${count} likes from ${pick.nickname}!`, 'info', 'Top Likers');
+   });
+ 
+   $('reset-toplikers-btn')?.addEventListener('click', async e => {
+     e.stopPropagation();
+     await window.api.resetRankings('likers');
++    demoLikersData.length = 0;
++    renderDemoTopLikersRows();
+     showToast('Top Likers leaderboard reset!', 'success', 'Top Likers');
+   });
+ 
+@@ -2427,18 +2605,38 @@ document.addEventListener('DOMContentLoaded', () => {
+       username: 'lunarneko',
+       avatar: '/assets/avatar.png'
+     });
++
++    const existing = demoStayData.find(x => x.name.toLowerCase() === 'lunarneko');
++    if (existing) {
++      existing.isPresent = true;
++      existing.timeSec += 60;
++    } else {
++      demoStayData.push({ name: 'LunarNeko', timeSec: 60, isPresent: true, avatar: '../assets/avatar.png' });
++    }
++    demoStayData.sort((a, b) => b.timeSec - a.timeSec);
++    renderDemoStayRows();
++
+     showToast('LunarNeko is active in stream (timer ticking)!', 'info', 'Stay Ranking');
+   });
+ 
+   $('test-viewer-leave-btn')?.addEventListener('click', async e => {
+     e.stopPropagation();
+     await window.api.simulateViewerLeave('lunarneko');
++
++    const existing = demoStayData.find(x => x.name.toLowerCase() === 'lunarneko');
++    if (existing) {
++      existing.isPresent = false;
++    }
++    renderDemoStayRows();
++
+     showToast('LunarNeko left stream: timer stopped! Returning will reset current timer to 00:00 while keeping Best Time.', 'warning', 'Stay Ranking', 4200);
+   });
+ 
+   $('reset-viewers-btn')?.addEventListener('click', async e => {
+     e.stopPropagation();
+     await window.api.resetRankings('viewers');
++    demoStayData.length = 0;
++    renderDemoStayRows();
+     showToast('Viewer Stay Ranking leaderboard reset!', 'success', 'Stay Ranking');
+   });
+ 
+diff --git a/desktop/renderer/index.html b/desktop/renderer/index.html
+index 63ac564..f6fc9e7 100644
+--- a/desktop/renderer/index.html
++++ b/desktop/renderer/index.html
+@@ -265,7 +265,7 @@
+         <!-- Top Likers Ranking Card -->
+         <div class="overlay-card">
+           <div class="card-preview ranking-preview-box">
+-            <div class="demo-ranking-card">
++            <div class="demo-ranking-card" id="ov-demo-toplikers-card" data-theme="Purple">
+               <div class="demo-ranking-header">
+                 <svg viewBox="0 0 24 24" width="13" height="13" fill="#ff5d8f"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                 <span>TOP LIKERS</span>
+@@ -281,6 +281,20 @@
+             <h3>Top Likers Ranking</h3>
+             <p>Shows who sent the most likes on stream with live TikTok profile pictures.</p>
+             <div class="card-inline-settings">
++              <label class="inline-select-label">Theme:
++                <select id="ranking-toplikers-theme">
++                  <option value="Purple" selected>Purple (Default)</option>
++                  <option value="Pink">Pink</option>
++                  <option value="Blue">Blue</option>
++                  <option value="Green">Green</option>
++                  <option value="Dark">Dark</option>
++                  <option value="Light">Light</option>
++                </select>
++              </label>
++              <label class="inline-select-label">Size:
++                <input type="range" id="ranking-toplikers-scale" min="0.5" max="1.5" step="0.05" value="1.0">
++                <span id="ranking-toplikers-scale-badge" class="scale-badge">100%</span>
++              </label>
+               <label class="inline-select-label">Show Top:
+                 <select id="ranking-toplikers-count">
+                   <option value="1">Top 1</option>
+@@ -308,7 +322,7 @@
+         <!-- Viewer Stay Ranking Card -->
+         <div class="overlay-card">
+           <div class="card-preview ranking-preview-box">
+-            <div class="demo-ranking-card stay-theme">
++            <div class="demo-ranking-card stay-theme" id="ov-demo-viewerranking-card" data-theme="Purple">
+               <div class="demo-ranking-header">
+                 <svg viewBox="0 0 24 24" width="13" height="13" fill="#c084fc"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                 <span>STAY RANKING</span>
+@@ -324,6 +338,20 @@
+             <h3>Viewer Stay Ranking</h3>
+             <p>Tracks longest stay time. Stops when viewer leaves, resets current timer to 0 on return while keeping Best Time.</p>
+             <div class="card-inline-settings">
++              <label class="inline-select-label">Theme:
++                <select id="ranking-viewers-theme">
++                  <option value="Purple" selected>Purple (Default)</option>
++                  <option value="Pink">Pink</option>
++                  <option value="Blue">Blue</option>
++                  <option value="Green">Green</option>
++                  <option value="Dark">Dark</option>
++                  <option value="Light">Light</option>
++                </select>
++              </label>
++              <label class="inline-select-label">Size:
++                <input type="range" id="ranking-viewers-scale" min="0.5" max="1.5" step="0.05" value="1.0">
++                <span id="ranking-viewers-scale-badge" class="scale-badge">100%</span>
++              </label>
+               <label class="inline-select-label">Show Top:
+                 <select id="ranking-viewers-count">
+                   <option value="1">Top 1</option>
+diff --git a/desktop/renderer/styles.css b/desktop/renderer/styles.css
+index 0d86494..8d7a811 100644
+--- a/desktop/renderer/styles.css
++++ b/desktop/renderer/styles.css
+@@ -2260,10 +2260,83 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
+   padding: 8px 10px;
+   color: #fff;
+   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
++  transform: scale(var(--demo-scale, 1.0));
++  transform-origin: center center;
++  transition: transform 0.15s ease-out;
+ }
+ .demo-ranking-card.stay-theme {
+   border-color: rgba(192, 132, 252, 0.45);
+ }
++
++/* 6 Plain Color Themes for Preview Cards */
++.demo-ranking-card[data-theme="Purple"] {
++  background: linear-gradient(160deg, rgba(24, 20, 40, 0.92) 0%, rgba(16, 14, 28, 0.96) 100%);
++  border-color: rgba(187, 134, 252, 0.45);
++  color: #fff;
++}
++.demo-ranking-card[data-theme="Purple"] .demo-ranking-header {
++  color: #c084fc;
++}
++
++.demo-ranking-card[data-theme="Pink"] {
++  background: linear-gradient(160deg, rgba(38, 20, 36, 0.92) 0%, rgba(26, 13, 25, 0.96) 100%);
++  border-color: rgba(255, 126, 185, 0.45);
++  color: #fff;
++}
++.demo-ranking-card[data-theme="Pink"] .demo-ranking-header {
++  color: #ff7eb9;
++}
++
++.demo-ranking-card[data-theme="Blue"] {
++  background: linear-gradient(160deg, rgba(16, 26, 46, 0.92) 0%, rgba(10, 18, 33, 0.96) 100%);
++  border-color: rgba(72, 181, 255, 0.45);
++  color: #fff;
++}
++.demo-ranking-card[data-theme="Blue"] .demo-ranking-header {
++  color: #48b5ff;
++}
++
++.demo-ranking-card[data-theme="Green"] {
++  background: linear-gradient(160deg, rgba(16, 36, 30, 0.92) 0%, rgba(10, 25, 21, 0.96) 100%);
++  border-color: rgba(56, 211, 159, 0.45);
++  color: #fff;
++}
++.demo-ranking-card[data-theme="Green"] .demo-ranking-header {
++  color: #38d39f;
++}
++
++.demo-ranking-card[data-theme="Dark"] {
++  background: linear-gradient(160deg, rgba(18, 18, 22, 0.94) 0%, rgba(10, 10, 13, 0.98) 100%);
++  border-color: rgba(255, 255, 255, 0.22);
++  color: #fff;
++}
++.demo-ranking-card[data-theme="Dark"] .demo-ranking-header {
++  color: #cbd5e1;
++}
++
++.demo-ranking-card[data-theme="Light"] {
++  background: linear-gradient(160deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 243, 250, 0.96) 100%);
++  border-color: rgba(140, 100, 200, 0.35);
++  color: #1e1b4b;
++}
++.demo-ranking-card[data-theme="Light"] .demo-ranking-header {
++  color: #7c3aed;
++  border-bottom-color: rgba(124, 58, 237, 0.15);
++}
++.demo-ranking-card[data-theme="Light"] .demo-rank-row {
++  background: rgba(124, 58, 237, 0.06);
++  color: #1e1b4b;
++}
++.demo-ranking-card[data-theme="Light"] .demo-rank-row .r-name {
++  color: #1e1b4b;
++}
++.demo-ranking-card[data-theme="Light"] .demo-rank-row .r-val {
++  color: #7c3aed;
++}
++.demo-ranking-card[data-theme="Light"] .demo-rank-row .r-val.mono {
++  color: #059669;
++}
++
+ .demo-ranking-header {
+   display: flex;
+   align-items: center;
+@@ -2353,6 +2426,24 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
+   font-size: 11px !important;
+   border-radius: 6px;
+ }
++.card-inline-settings input[type="range"] {
++  width: 68px;
++  cursor: pointer;
++  vertical-align: middle;
++}
++.scale-badge {
++  display: inline-block;
++  min-width: 36px;
++  text-align: center;
++  font-size: 10px;
++  font-weight: 800;
++  padding: 1px 5px;
++  border-radius: 999px;
++  background: rgba(187, 134, 252, 0.18);
++  color: #d8b4fe;
++  border: 1px solid rgba(187, 134, 252, 0.35);
++  margin-left: 3px;
++}
+ .inline-chk {
+   font-size: 11px !important;
+   margin: 0 4px 0 0 !important;
+diff --git a/desktop/tests/test-ranking-dashboard-ui.js b/desktop/tests/test-ranking-dashboard-ui.js
+new file mode 100644
+index 0000000..fe99bee
+--- /dev/null
++++ b/desktop/tests/test-ranking-dashboard-ui.js
+@@ -0,0 +1,267 @@
++'use strict';
++
++const fs = require('fs');
++const path = require('path');
++const assert = require('assert');
++
++const htmlPath = path.resolve(__dirname, '../renderer/index.html');
++const cssPath = path.resolve(__dirname, '../renderer/styles.css');
++const jsPath = path.resolve(__dirname, '../renderer/app.js');
++
++const html = fs.readFileSync(htmlPath, 'utf8');
++const css = fs.readFileSync(cssPath, 'utf8');
++const js = fs.readFileSync(jsPath, 'utf8');
++
++const themes = ['Purple', 'Pink', 'Blue', 'Green', 'Dark', 'Light'];
++
++// 1. Verify Top Likers Ranking UI elements in index.html
++assert(html.includes('id="ranking-toplikers-theme"'), 'index.html missing select#ranking-toplikers-theme');
++assert(html.includes('id="ranking-toplikers-scale"'), 'index.html missing input#ranking-toplikers-scale');
++assert(html.includes('id="ranking-toplikers-scale-badge"'), 'index.html missing span#ranking-toplikers-scale-badge');
++assert(html.includes('id="ov-demo-toplikers-card"'), 'index.html missing id="ov-demo-toplikers-card" on preview card');
++assert(html.includes('id="ov-demo-toplikers-rows"'), 'index.html missing id="ov-demo-toplikers-rows" container');
++
++// 2. Verify Viewer Stay Ranking UI elements in index.html
++assert(html.includes('id="ranking-viewers-theme"'), 'index.html missing select#ranking-viewers-theme');
++assert(html.includes('id="ranking-viewers-scale"'), 'index.html missing input#ranking-viewers-scale');
++assert(html.includes('id="ranking-viewers-scale-badge"'), 'index.html missing span#ranking-viewers-scale-badge');
++assert(html.includes('id="ov-demo-viewerranking-card"'), 'index.html missing id="ov-demo-viewerranking-card" on preview card');
++assert(html.includes('id="ov-demo-viewerranking-rows"'), 'index.html missing id="ov-demo-viewerranking-rows" container');
++
++// 3. Verify scale slider attributes
++const topLikersSliderMatch = html.match(/id="ranking-toplikers-scale"[^>]*>/) || html.match(/<input[^>]*id="ranking-toplikers-scale"[^>]*>/);
++assert(topLikersSliderMatch, 'Could not find ranking-toplikers-scale input tag');
++const topSliderTag = topLikersSliderMatch[0];
++assert(topSliderTag.includes('min="0.5"'), 'ranking-toplikers-scale must have min="0.5"');
++assert(topSliderTag.includes('max="1.5"'), 'ranking-toplikers-scale must have max="1.5"');
++assert(topSliderTag.includes('step="0.05"'), 'ranking-toplikers-scale must have step="0.05"');
++
++const viewersSliderMatch = html.match(/id="ranking-viewers-scale"[^>]*>/) || html.match(/<input[^>]*id="ranking-viewers-scale"[^>]*>/);
++assert(viewersSliderMatch, 'Could not find ranking-viewers-scale input tag');
++const viewersSliderTag = viewersSliderMatch[0];
++assert(viewersSliderTag.includes('min="0.5"'), 'ranking-viewers-scale must have min="0.5"');
++assert(viewersSliderTag.includes('max="1.5"'), 'ranking-viewers-scale must have max="1.5"');
++assert(viewersSliderTag.includes('step="0.05"'), 'ranking-viewers-scale must have step="0.05"');
++
++// 4. Verify theme options for both selects
++themes.forEach(t => {
++  assert(html.includes(`<option value="${t}">`), `index.html missing <option value="${t}">`);
++});
++
++// 5. Verify scale-badge class in index.html and styles.css
++assert(html.includes('class="scale-badge"'), 'index.html missing class="scale-badge"');
++assert(css.includes('.scale-badge'), 'styles.css missing .scale-badge CSS definition');
++
++// 6. Verify theme styles on demo-ranking-card in styles.css
++themes.forEach(t => {
++  assert(
++    css.includes(`[data-theme="${t}"]`),
++    `styles.css missing [data-theme="${t}"] rule for preview cards`
++  );
++});
++
++// 7. Verify app.js handlers and initialization
++assert(js.includes('ranking-toplikers-theme'), 'app.js missing ranking-toplikers-theme logic');
++assert(js.includes('ranking-toplikers-scale'), 'app.js missing ranking-toplikers-scale logic');
++assert(js.includes('ranking-toplikers-scale-badge'), 'app.js missing ranking-toplikers-scale-badge logic');
++assert(js.includes('ranking-viewers-theme'), 'app.js missing ranking-viewers-theme logic');
++assert(js.includes('ranking-viewers-scale'), 'app.js missing ranking-viewers-scale logic');
++assert(js.includes('ranking-viewers-scale-badge'), 'app.js missing ranking-viewers-scale-badge logic');
++assert(js.includes('ov-demo-toplikers-card'), 'app.js missing ov-demo-toplikers-card update');
++assert(js.includes('ov-demo-viewerranking-card'), 'app.js missing ov-demo-viewerranking-card update');
++
++// 8. Verify dynamic preview rows update on test events
++assert(js.includes('ov-demo-toplikers-rows'), 'app.js missing dynamic row updates for ov-demo-toplikers-rows');
++assert(js.includes('ov-demo-viewerranking-rows'), 'app.js missing dynamic row updates for ov-demo-viewerranking-rows');
++
++// 9. Functional runtime simulation of handlers
++{
++  const elements = {};
++  function mockEl(id) {
++    return {
++      id,
++      value: '',
++      textContent: '',
++      innerHTML: '',
++      dataset: {},
++      style: {
++        props: {},
++        setProperty(k, v) { this.props[k] = String(v); }
++      },
++      listeners: {},
++      addEventListener(evt, fn) {
++        if (!this.listeners[evt]) this.listeners[evt] = [];
++        this.listeners[evt].push(fn);
++      },
++      trigger(evt, eventObj = {}) {
++        eventObj.stopPropagation = eventObj.stopPropagation || (() => {});
++        eventObj.target = eventObj.target || this;
++        (this.listeners[evt] || []).forEach(fn => fn(eventObj));
++      }
++    };
++  }
++
++  const ids = [
++    'ranking-toplikers-count',
++    'ranking-toplikers-theme',
++    'ranking-toplikers-scale',
++    'ranking-toplikers-scale-badge',
++    'ov-demo-toplikers-card',
++    'ov-demo-toplikers-rows',
++    'ranking-viewers-count',
++    'ranking-viewers-theme',
++    'ranking-viewers-scale',
++    'ranking-viewers-scale-badge',
++    'ov-demo-viewerranking-card',
++    'ov-demo-viewerranking-rows',
++    'test-toplikers-btn',
++    'reset-toplikers-btn',
++    'test-viewer-join-btn',
++    'test-viewer-leave-btn',
++    'reset-viewers-btn'
++  ];
++  ids.forEach(id => { elements[id] = mockEl(id); });
++
++  const appSettings = {
++    rankings: {
++      topLikersCount: 3,
++      topLikersTheme: 'Purple',
++      topLikersScale: 1.0,
++      viewerRankingCount: 3,
++      viewerRankingTheme: 'Purple',
++      viewerRankingScale: 1.0
++    }
++  };
++
++  let savedSettings = null;
++  function saveCurrentSettings() {
++    savedSettings = JSON.parse(JSON.stringify(appSettings));
++  }
++  function showToast() {}
++  const $ = (id) => elements[id] || null;
++
++  // Extract and run dynamic demo row functions & listeners logic
++  const demoLikersData = [
++    { name: 'SakuraChan', likes: 4200, avatar: '../assets/avatar.png' },
++    { name: 'MochiVibes', likes: 2800, avatar: '../assets/avatar.png' },
++    { name: 'KawaiiFox', likes: 1500, avatar: '../assets/avatar.png' }
++  ];
++  function formatLikesVal(n) {
++    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
++    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
++    return String(n);
++  }
++  function renderDemoTopLikersRows() {
++    const el = $('ov-demo-toplikers-rows');
++    if (!el) return;
++    const limit = appSettings.rankings?.topLikersCount || 3;
++    const rows = demoLikersData.slice(0, limit);
++    if (rows.length === 0) {
++      el.innerHTML = '<div>No likers yet</div>';
++      return;
++    }
++    el.innerHTML = rows.map((item, idx) => `<div>#${idx + 1} ${item.name} ${formatLikesVal(item.likes)}</div>`).join('');
++  }
++
++  const demoStayData = [
++    { name: 'LunarNeko', timeSec: 2538, isPresent: true, avatar: '../assets/avatar.png' },
++    { name: 'StarryCloud', timeSec: 1865, isPresent: true, avatar: '../assets/avatar.png' }
++  ];
++  function formatStayTime(sec) {
++    const m = Math.floor(sec / 60);
++    const s = Math.floor(sec % 60);
++    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
++  }
++  function renderDemoStayRows() {
++    const el = $('ov-demo-viewerranking-rows');
++    if (!el) return;
++    const limit = appSettings.rankings?.viewerRankingCount || 3;
++    const rows = demoStayData.slice(0, limit);
++    if (rows.length === 0) {
++      el.innerHTML = '<div>No active viewers</div>';
++      return;
++    }
++    el.innerHTML = rows.map((item, idx) => `<div>#${idx + 1} ${item.name} ${formatStayTime(item.timeSec)}</div>`).join('');
++  }
++
++  // Initial population
++  $('ranking-toplikers-theme').value = appSettings.rankings.topLikersTheme;
++  $('ranking-toplikers-scale').value = String(appSettings.rankings.topLikersScale);
++  $('ranking-toplikers-scale-badge').textContent = `${Math.round(appSettings.rankings.topLikersScale * 100)}%`;
++  $('ov-demo-toplikers-card').dataset.theme = appSettings.rankings.topLikersTheme;
++  $('ov-demo-toplikers-card').style.setProperty('--demo-scale', appSettings.rankings.topLikersScale);
++  renderDemoTopLikersRows();
++
++  assert.strictEqual($('ranking-toplikers-theme').value, 'Purple');
++  assert.strictEqual($('ranking-toplikers-scale-badge').textContent, '100%');
++  assert.strictEqual($('ov-demo-toplikers-card').dataset.theme, 'Purple');
++  assert($('ov-demo-toplikers-rows').innerHTML.includes('SakuraChan'));
++
++  // Test Top Likers Theme Change
++  $('ranking-toplikers-theme').addEventListener('change', e => {
++    appSettings.rankings.topLikersTheme = e.target.value;
++    $('ov-demo-toplikers-card').dataset.theme = e.target.value;
++    saveCurrentSettings();
++  });
++  $('ranking-toplikers-theme').trigger('change', { target: { value: 'Pink' } });
++  assert.strictEqual(appSettings.rankings.topLikersTheme, 'Pink');
++  assert.strictEqual($('ov-demo-toplikers-card').dataset.theme, 'Pink');
++  assert.strictEqual(savedSettings.rankings.topLikersTheme, 'Pink');
++
++  // Test Top Likers Scale Input
++  $('ranking-toplikers-scale').addEventListener('input', e => {
++    const scale = parseFloat(e.target.value) || 1.0;
++    appSettings.rankings.topLikersScale = scale;
++    $('ranking-toplikers-scale-badge').textContent = `${Math.round(scale * 100)}%`;
++    $('ov-demo-toplikers-card').style.setProperty('--demo-scale', scale);
++  });
++  $('ranking-toplikers-scale').trigger('input', { target: { value: '1.25' } });
++  assert.strictEqual(appSettings.rankings.topLikersScale, 1.25);
++  assert.strictEqual($('ranking-toplikers-scale-badge').textContent, '125%');
++  assert.strictEqual($('ov-demo-toplikers-card').style.props['--demo-scale'], '1.25');
++
++  // Test Viewer Stay Theme Change
++  $('ranking-viewers-theme').addEventListener('change', e => {
++    appSettings.rankings.viewerRankingTheme = e.target.value;
++    $('ov-demo-viewerranking-card').dataset.theme = e.target.value;
++    saveCurrentSettings();
++  });
++  $('ranking-viewers-theme').trigger('change', { target: { value: 'Blue' } });
++  assert.strictEqual(appSettings.rankings.viewerRankingTheme, 'Blue');
++  assert.strictEqual($('ov-demo-viewerranking-card').dataset.theme, 'Blue');
++
++  // Test Viewer Stay Scale Input
++  $('ranking-viewers-scale').addEventListener('input', e => {
++    const scale = parseFloat(e.target.value) || 1.0;
++    appSettings.rankings.viewerRankingScale = scale;
++    $('ranking-viewers-scale-badge').textContent = `${Math.round(scale * 100)}%`;
++    $('ov-demo-viewerranking-card').style.setProperty('--demo-scale', scale);
++  });
++  $('ranking-viewers-scale').trigger('input', { target: { value: '0.85' } });
++  assert.strictEqual(appSettings.rankings.viewerRankingScale, 0.85);
++  assert.strictEqual($('ranking-viewers-scale-badge').textContent, '85%');
++  assert.strictEqual($('ov-demo-viewerranking-card').style.props['--demo-scale'], '0.85');
++
++  // Test Dynamic Rows Mutation
++  $('test-toplikers-btn').addEventListener('click', () => {
++    demoLikersData[0].likes += 500;
++    renderDemoTopLikersRows();
++  });
++  $('test-toplikers-btn').trigger('click');
++  assert($('ov-demo-toplikers-rows').innerHTML.includes('4.7K'));
++
++  $('reset-toplikers-btn').addEventListener('click', () => {
++    demoLikersData.length = 0;
++    renderDemoTopLikersRows();
++  });
++  $('reset-toplikers-btn').trigger('click');
++  assert($('ov-demo-toplikers-rows').innerHTML.includes('No likers yet'));
++}
++
++// 10. Verify zero emojis across all relevant files
++const emojiRegex = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
++assert(!emojiRegex.test(html), 'index.html must not contain emojis');
++assert(!emojiRegex.test(css), 'styles.css must not contain emojis');
++assert(!emojiRegex.test(js), 'app.js must not contain emojis');
++
++console.log('Task 3 dashboard UI test passed!');

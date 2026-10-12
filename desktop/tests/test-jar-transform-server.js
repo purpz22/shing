@@ -11,8 +11,8 @@ async function run() {
   const tempDir = path.join(__dirname, 'tmp-user-data');
   if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
-  const server = new OverlayServer(testPort, path.resolve(__dirname, '..'));
-  server.userDataDir = tempDir;
+  const server = new OverlayServer(testPort, path.resolve(__dirname, '..'), tempDir);
+  server.settings = server.getDefaultSettings();
 
   // Verify initial default settings schema includes transform
   assert(server.settings.jar, 'server.settings.jar should exist');

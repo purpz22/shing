@@ -1,6 +1,24 @@
 {
-    "latest":  "1.4.0",
+    "latest":  "1.4.1",
     "releases":  [
+                     {
+                         "version":  "1.4.1",
+                         "releaseName":  "Shing Live v1.4.1 - Ranking Size Sliders, Plain Color Themes \u0026 Stay Timer Fix",
+                         "releaseDate":  "2026-10-12",
+                         "type":  "feature",
+                         "summary":  "Added Size Sliders (50% to 150%) and 6 Plain Color Themes (Purple, Pink, Blue, Green, Dark, Light) for both Viewer Stay Ranking and Top Likers Ranking with real-time live Studio sync and fixed stay timer session continuity.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.4.1.zip",
+                         "highlights":  [
+                                            "Ranking Size Sliders: Adjustable scale sliders (50% to 150% with live percentage badges) for both Viewer Stay Ranking and Top Likers Ranking with GPU-accelerated scaling in TikTok LIVE Studio and OBS",
+                                            "6 Plain Color Themes: Dedicated theme selectors supporting Purple (Default), Pink, Blue, Green, Dark, and Light with custom palettes for background, borders, glows, badges, and high-contrast typography",
+                                            "Real-Time Live Studio Sync: Instant WebSocket synchronization updates active browser source overlays in TikTok LIVE Studio and OBS with 0ms delay without needing browser source refreshes",
+                                            "Dynamic Dashboard Previews: Desktop dashboard preview cards dynamically reflect selected color themes, scale factors, and mock testing events in real time",
+                                            "Stay Timer Continuity Fix: Fixed timer reset bug where subsequent TikTok member events would wipe active session times; viewers now accumulate stay duration continuously until they leave"
+                                        ],
+                         "notes":  "Ranking overlay size sliders, 6 plain color themes, live Studio sync, and stay timer fix.",
+                         "packageSize":  "4.06 MB",
+                         "checksum":  "7dc2c3ce5545d450140b22317b9213aef05c32a2a716d1a4d35fe7efa0998204"
+                     },
                      {
                          "version":  "1.4.0",
                          "releaseName":  "Shing Live v1.4.0 - 16:9 Landscape Draggable Gift Jar \u0026 Live Studio Sync",

@@ -1,0 +1,279 @@
+diff --git a/desktop/server/overlayServer.js b/desktop/server/overlayServer.js
+index 2d43a97..7ee9075 100644
+--- a/desktop/server/overlayServer.js
++++ b/desktop/server/overlayServer.js
+@@ -26,6 +26,11 @@ class OverlayServer {
+     if (!this.settings.jar.transform) {
+       this.settings.jar.transform = { x: 50.0, y: 82.0, scale: 1.0 };
+     }
++    if (!this.settings.rankings) this.settings.rankings = {};
++    if (!this.settings.rankings.topLikersTheme) this.settings.rankings.topLikersTheme = 'Purple';
++    if (this.settings.rankings.topLikersScale === undefined) this.settings.rankings.topLikersScale = 1.0;
++    if (!this.settings.rankings.viewerRankingTheme) this.settings.rankings.viewerRankingTheme = 'Purple';
++    if (this.settings.rankings.viewerRankingScale === undefined) this.settings.rankings.viewerRankingScale = 1.0;
+   }
+ 
+   resolveUserDataDir() {
+@@ -234,7 +239,11 @@ class OverlayServer {
+       rankings: {
+         topLikersCount: 3,
+         viewerRankingCount: 3,
+-        leaveTimeoutMin: 5
++        leaveTimeoutMin: 5,
++        topLikersTheme: 'Purple',
++        topLikersScale: 1.0,
++        viewerRankingTheme: 'Purple',
++        viewerRankingScale: 1.0
+       },
+       headpat: {
+         triggerOnFollow: true,
+@@ -259,6 +268,23 @@ class OverlayServer {
+     const topLikersCount = Math.max(1, Math.min(25, Number(this.settings?.rankings?.topLikersCount) || 3));
+     const viewerRankingCount = Math.max(1, Math.min(25, Number(this.settings?.rankings?.viewerRankingCount) || 3));
+ 
++    const allowedThemes = ['Purple', 'Pink', 'Blue', 'Green', 'Dark', 'Light'];
++    const topLikersTheme = allowedThemes.includes(this.settings?.rankings?.topLikersTheme)
++      ? this.settings.rankings.topLikersTheme
++      : 'Purple';
++    const viewerRankingTheme = allowedThemes.includes(this.settings?.rankings?.viewerRankingTheme)
++      ? this.settings.rankings.viewerRankingTheme
++      : 'Purple';
++
++    const clampScale = (val) => {
++      if (val === null || val === undefined || val === '') return 1.0;
++      const num = Number(val);
++      if (!Number.isFinite(num)) return 1.0;
++      return Math.max(0.5, Math.min(1.5, num));
++    };
++    const topLikersScale = clampScale(this.settings?.rankings?.topLikersScale);
++    const viewerRankingScale = clampScale(this.settings?.rankings?.viewerRankingScale);
++
+     const allLikers = Array.from(this.topLikers.values())
+       .sort((a, b) => (b.likes - a.likes) || (b.updatedAt - a.updatedAt));
+     const totalLikes = allLikers.reduce((acc, item) => acc + (item.likes || 0), 0);
+@@ -279,6 +305,10 @@ class OverlayServer {
+       allViewersCount: allViewers.length,
+       topLikersLimit: topLikersCount,
+       viewerRankingLimit: viewerRankingCount,
++      topLikersTheme,
++      topLikersScale,
++      viewerRankingTheme,
++      viewerRankingScale,
+       timestamp: Date.now()
+     };
+   }
+@@ -362,23 +392,15 @@ class OverlayServer {
+         v.avatar = cleanAvatar;
+       }
+       if (!v.isPresent) {
+-        // Viewer came back after leaving: reset current time to 0, keep bestTimeSec intact
+-        v.isPresent = true;
+-        v.sessionStartAt = now;
+-        v.currentTimeSec = 0;
+-        v.lastSeenAt = now;
+-      } else if (data.type === 'join' && (now - v.lastSeenAt > 15000 || data.rejoined === true)) {
+-        // Explicit re-join event after leaving room: finalize previous session if needed, then reset current timer to 0
+-        if (v.currentTimeSec > v.bestTimeSec) {
+-          v.bestTimeSec = v.currentTimeSec;
+-        }
++        // Viewer came back after leaving: start new session, keep bestTimeSec intact
+         v.isPresent = true;
+         v.sessionStartAt = now;
+         v.currentTimeSec = 0;
+         v.lastSeenAt = now;
+       } else {
++        // Active viewer: keep session continuity, refresh lastSeenAt and update stay duration
+         v.lastSeenAt = now;
+-        v.currentTimeSec = Math.max(0, Math.floor((now - v.sessionStartAt) / 1000));
++        v.currentTimeSec = Math.max(v.currentTimeSec, Math.floor((now - v.sessionStartAt) / 1000));
+         if (v.currentTimeSec > v.bestTimeSec) {
+           v.bestTimeSec = v.currentTimeSec;
+         }
+diff --git a/desktop/tests/test-ranking-server-settings.js b/desktop/tests/test-ranking-server-settings.js
+new file mode 100644
+index 0000000..094db8d
+--- /dev/null
++++ b/desktop/tests/test-ranking-server-settings.js
+@@ -0,0 +1,182 @@
++'use strict';
++
++const assert = require('assert');
++const path = require('path');
++const fs = require('fs');
++const OverlayServer = require('../server/overlayServer');
++
++async function run() {
++  const testPort = 3336;
++  const tempDir = path.join(__dirname, 'tmp-ranking-test-data');
++  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
++
++  const server = new OverlayServer(testPort, path.resolve(__dirname, '..'));
++  server.userDataDir = tempDir;
++  // Initialize with clean default settings
++  server.settings = server.getDefaultSettings();
++
++  try {
++    // 1. Verify default settings schema contains theme and scale properties
++    assert(server.settings.rankings, 'server.settings.rankings must exist');
++    assert.strictEqual(
++      server.settings.rankings.topLikersTheme,
++      'Purple',
++      'Default topLikersTheme must be Purple'
++    );
++    assert.strictEqual(
++      server.settings.rankings.topLikersScale,
++      1.0,
++      'Default topLikersScale must be 1.0'
++    );
++    assert.strictEqual(
++      server.settings.rankings.viewerRankingTheme,
++      'Purple',
++      'Default viewerRankingTheme must be Purple'
++    );
++    assert.strictEqual(
++      server.settings.rankings.viewerRankingScale,
++      1.0,
++      'Default viewerRankingScale must be 1.0'
++    );
++
++    // 2. Verify getRankingsSnapshot() includes validated theme and scale fields
++    const defaultSnap = server.getRankingsSnapshot();
++    assert.strictEqual(
++      defaultSnap.topLikersTheme,
++      'Purple',
++      'Snapshot topLikersTheme must match default Purple'
++    );
++    assert.strictEqual(
++      defaultSnap.topLikersScale,
++      1.0,
++      'Snapshot topLikersScale must match default 1.0'
++    );
++    assert.strictEqual(
++      defaultSnap.viewerRankingTheme,
++      'Purple',
++      'Snapshot viewerRankingTheme must match default Purple'
++    );
++    assert.strictEqual(
++      defaultSnap.viewerRankingScale,
++      1.0,
++      'Snapshot viewerRankingScale must match default 1.0'
++    );
++
++    // 2b. Test theme validation and fallback
++    server.settings.rankings.topLikersTheme = 'Pink';
++    server.settings.rankings.viewerRankingTheme = 'Dark';
++    let snap = server.getRankingsSnapshot();
++    assert.strictEqual(snap.topLikersTheme, 'Pink');
++    assert.strictEqual(snap.viewerRankingTheme, 'Dark');
++
++    // Invalid themes must fall back to 'Purple'
++    server.settings.rankings.topLikersTheme = 'InvalidTheme';
++    server.settings.rankings.viewerRankingTheme = 'NeonGreen';
++    snap = server.getRankingsSnapshot();
++    assert.strictEqual(snap.topLikersTheme, 'Purple', 'Invalid topLikersTheme must fallback to Purple');
++    assert.strictEqual(snap.viewerRankingTheme, 'Purple', 'Invalid viewerRankingTheme must fallback to Purple');
++
++    // 2c. Test scale validation, clamping [0.5, 1.5], and fallback
++    server.settings.rankings.topLikersScale = 1.35;
++    server.settings.rankings.viewerRankingScale = 0.75;
++    snap = server.getRankingsSnapshot();
++    assert.strictEqual(snap.topLikersScale, 1.35);
++    assert.strictEqual(snap.viewerRankingScale, 0.75);
++
++    // Underflow clamping (< 0.5)
++    server.settings.rankings.topLikersScale = 0.1;
++    snap = server.getRankingsSnapshot();
++    assert.strictEqual(snap.topLikersScale, 0.5, 'topLikersScale underflow must clamp to 0.5');
++
++    // Overflow clamping (> 1.5)
++    server.settings.rankings.viewerRankingScale = 2.8;
++    snap = server.getRankingsSnapshot();
++    assert.strictEqual(snap.viewerRankingScale, 1.5, 'viewerRankingScale overflow must clamp to 1.5');
++
++    // Non-numeric / NaN scale must fallback to 1.0
++    server.settings.rankings.topLikersScale = 'not-a-number';
++    server.settings.rankings.viewerRankingScale = null;
++    snap = server.getRankingsSnapshot();
++    assert.strictEqual(snap.topLikersScale, 1.0, 'Invalid topLikersScale must fallback to 1.0');
++    assert.strictEqual(snap.viewerRankingScale, 1.0, 'Invalid viewerRankingScale must fallback to 1.0');
++
++    // Reset settings for stay timer test
++    server.settings = server.getDefaultSettings();
++
++    // 3. Stay timer continuity test
++    // Initial join
++    server.processRankingEvent({ type: 'join', username: 'alice', nickname: 'Alice' });
++    const alice = server.viewerStay.get('alice');
++    assert(alice, 'alice must be tracked in viewerStay');
++    assert.strictEqual(alice.isPresent, true, 'alice must be present');
++    assert.strictEqual(alice.currentTimeSec, 0, 'Initial currentTimeSec must be 0');
++    assert.strictEqual(alice.bestTimeSec, 0, 'Initial bestTimeSec must be 0');
++
++    // Simulate 10 seconds of presence
++    server.tickViewerRankings(10);
++    assert.strictEqual(alice.currentTimeSec, 10, 'currentTimeSec must be 10 after 10s tick');
++    assert.strictEqual(alice.bestTimeSec, 10, 'bestTimeSec must be 10 after 10s tick');
++
++    // Simulate repeated TikTok member events (join event while already present)
++    // Even if more than 15 seconds passed since lastSeenAt or rejoined: true
++    const originalSessionStart = alice.sessionStartAt;
++    alice.lastSeenAt = Date.now() - 25000; // 25 seconds ago
++
++    server.processRankingEvent({ type: 'join', username: 'alice', nickname: 'Alice' });
++    assert.strictEqual(alice.isPresent, true, 'alice must remain present');
++    assert.strictEqual(
++      alice.sessionStartAt,
++      originalSessionStart,
++      'sessionStartAt must NOT be wiped by repeated join event when viewer is present'
++    );
++    assert.ok(
++      alice.currentTimeSec >= 10,
++      `currentTimeSec must not be reset to 0 (was ${alice.currentTimeSec})`
++    );
++
++    // Tick another 5 seconds
++    server.tickViewerRankings(5);
++    assert.strictEqual(alice.currentTimeSec, 15, 'currentTimeSec must accumulate to 15');
++    assert.strictEqual(alice.bestTimeSec, 15, 'bestTimeSec must accumulate to 15');
++
++    // 4. Viewer leave event
++    server.processRankingEvent({ type: 'leave', username: 'alice' });
++    assert.strictEqual(alice.isPresent, false, 'alice must be marked not present after leave');
++    assert.strictEqual(alice.bestTimeSec, 15, 'bestTimeSec must be preserved at 15 after leave');
++
++    // 5. Reconnect after leaving starts a new session while preserving bestTimeSec
++    server.processRankingEvent({ type: 'join', username: 'alice', nickname: 'Alice' });
++    assert.strictEqual(alice.isPresent, true, 'alice must be marked present upon rejoin');
++    assert.strictEqual(alice.currentTimeSec, 0, 'Rejoining viewer starts a new session with currentTimeSec = 0');
++    assert.strictEqual(alice.bestTimeSec, 15, 'bestTimeSec must remain 15 when starting new session');
++
++    // Tick new session for 5 seconds
++    server.tickViewerRankings(5);
++    assert.strictEqual(alice.currentTimeSec, 5, 'currentTimeSec should be 5 in new session');
++    assert.strictEqual(alice.bestTimeSec, 15, 'bestTimeSec should still be 15 because 5 < 15');
++
++    // Tick new session past bestTimeSec (12 more seconds -> 17s total)
++    server.tickViewerRankings(12);
++    assert.strictEqual(alice.currentTimeSec, 17, 'currentTimeSec should be 17');
++    assert.strictEqual(alice.bestTimeSec, 17, 'bestTimeSec should update to 17 because 17 > 15');
++
++    // 6. Timeout handling: viewer inactive exceeds leaveTimeoutMin
++    server.settings.rankings.leaveTimeoutMin = 1;
++    alice.lastSeenAt = Date.now() - 70000; // 70 seconds ago (> 1 min)
++    server.tickViewerRankings();
++    assert.strictEqual(alice.isPresent, false, 'alice must be marked not present after timeout');
++    assert.strictEqual(alice.bestTimeSec, 17, 'bestTimeSec must be preserved after timeout');
++
++    console.log('All ranking server settings and stay timer tests passed successfully!');
++  } finally {
++    try {
++      if (server.server) server.stop();
++      fs.rmSync(tempDir, { recursive: true, force: true });
++    } catch (e) {}
++  }
++}
++
++run().catch(err => {
++  console.error('Test failed:', err);
++  process.exit(1);
++});

@@ -7,10 +7,10 @@ const path = require('path');
 const { WebSocketServer } = require('ws');
 
 class OverlayServer {
-  constructor(port = 3333, baseDir = path.resolve(__dirname, '..')) {
+  constructor(port = 3333, baseDir = path.resolve(__dirname, '..'), userDataDir = null) {
     this.port = port;
     this.baseDir = baseDir;
-    this.userDataDir = this.resolveUserDataDir();
+    this.userDataDir = userDataDir || this.resolveUserDataDir();
     this.server = null;
     this.wss = null;
     this.clients = new Set();

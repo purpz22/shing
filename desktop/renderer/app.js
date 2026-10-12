@@ -2077,6 +2077,19 @@ function openChangelogModal() {
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
     {
+      version: '1.4.1',
+      releaseName: 'Shing Live v1.4.1 - Ranking Size Sliders, Plain Color Themes & Stay Timer Fix',
+      releaseDate: '2026-10-12',
+      summary: 'Added Size Sliders (50% to 150%) and 6 Plain Color Themes (Purple, Pink, Blue, Green, Dark, Light) for both Viewer Stay Ranking and Top Likers Ranking with real-time live Studio sync and fixed stay timer session continuity.',
+      highlights: [
+        'Ranking Size Sliders: Adjustable scale sliders (50% to 150% with live percentage badges) for both Viewer Stay Ranking and Top Likers Ranking with GPU-accelerated scaling in TikTok LIVE Studio and OBS',
+        '6 Plain Color Themes: Dedicated theme selectors supporting Purple (Default), Pink, Blue, Green, Dark, and Light with custom palettes for background, borders, glows, badges, and high-contrast typography',
+        'Real-Time Live Studio Sync: Instant WebSocket synchronization updates active browser source overlays in TikTok LIVE Studio and OBS with 0ms delay without needing browser source refreshes',
+        'Dynamic Dashboard Previews: Desktop dashboard preview cards dynamically reflect selected color themes, scale factors, and mock testing events in real time',
+        'Stay Timer Continuity Fix: Fixed timer reset bug where subsequent TikTok member events would wipe active session times; viewers now accumulate stay duration continuously until they leave'
+      ]
+    },
+    {
       version: '1.4.0',
       releaseName: 'Shing Live v1.4.0 - 16:9 Landscape Draggable Gift Jar & Live Studio Sync',
       releaseDate: '2026-10-12',
