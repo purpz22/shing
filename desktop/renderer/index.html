@@ -403,207 +403,85 @@
     <!-- 2. TRIGGERS TAB -->
     <section id="tab-triggers" class="tab-pane">
       <div class="section-header">
-        <h2>Triggers & Alerts</h2>
-        <p>Set custom messages, sounds, and videos/photos/GIFs when viewers follow, send gifts, or like.</p>
+        <h2>Events</h2>
+        <p>Here you can define what will trigger your actions on stream.</p>
       </div>
 
-      <div class="form-grid">
-        <div class="form-card">
-          <h3>Follow Event</h3>
-          <label>Alert Message
-            <input type="text" id="trig-follow-msg" value="Thank you {user} for following!">
-          </label>
-          <div class="hint-text">Use {user} to display the follower's username.</div>
-
-          <label style="margin-top: 12px;">Follow Alert Sound
-            <div class="sound-control-row">
-              <select id="trig-sound-follow" class="sound-select">
-                <option value="/assets/sounds/chime.wav">Chime (Default)</option>
-                <option value="/assets/sounds/coin.wav">Coin</option>
-                <option value="/assets/sounds/pop.wav">Pop</option>
-                <option value="/assets/sounds/level_up.wav">Level Up</option>
-                <option value="/assets/sounds/fanfare.wav">Fanfare</option>
-                <option value="/assets/sounds/anime_wow.mp3">Anime Wow</option>
-                <option value="none">No Sound (Mute)</option>
-              </select>
-              <button class="btn btn-secondary btn-icon test-sound-btn" data-target="trig-sound-follow" title="Preview Sound">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-              </button>
-              <button class="btn btn-secondary btn-icon search-sound-btn" data-target="trig-sound-follow" title="Search MyInstants">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-              </button>
-              <button class="btn btn-secondary btn-icon upload-sound-btn" data-target="trig-sound-follow" title="Choose Local File">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
-              </button>
-            </div>
-          </label>
-
-          <div class="trigger-media-box" style="margin-top: 12px;">
-            <div class="trigger-media-header">
-              <span class="trigger-media-label">Follow Video / Photo / GIF</span>
-              <span class="trigger-media-status" id="trig-follow-media-status">None (Default Avatar)</span>
-            </div>
-            <div class="trigger-media-preview hidden" id="trig-follow-media-preview"></div>
-            <div class="btn-row" style="margin-top: 8px; gap: 8px;">
-              <button class="btn btn-secondary btn-sm" id="upload-follow-media-btn">Choose Video / Photo / GIF</button>
-              <button class="btn btn-secondary btn-sm hidden" id="clear-follow-media-btn">Remove Media</button>
-            </div>
+      <!-- Events Table Card -->
+      <div class="form-card full-width events-table-card">
+        <div class="events-toolbar-row">
+          <div class="events-toolbar-left">
+            <span class="events-count-badge" id="events-active-count-badge">5 Active Events</span>
+            <span class="events-hint-txt">Click the edit icon to customize message, sound, and video/photo/GIF for any event.</span>
           </div>
-
-          <div class="btn-row" style="margin-top: 14px;">
-            <button class="btn btn-secondary" id="test-follow-btn">Test Follow Alert</button>
-          </div>
-        </div>
-
-        <div class="form-card">
-          <h3>Gift Event</h3>
-          <label>Alert Message
-            <input type="text" id="trig-gift-msg" value="{user} sent {gift} x{count}!">
-          </label>
-
-          <label style="margin-top: 12px;">Standard Gift Sound
-            <div class="sound-control-row">
-              <select id="trig-sound-gift" class="sound-select">
-                <option value="/assets/sounds/coin.wav">Coin (Default)</option>
-                <option value="/assets/sounds/chime.wav">Chime</option>
-                <option value="/assets/sounds/pop.wav">Pop</option>
-                <option value="/assets/sounds/level_up.wav">Level Up</option>
-                <option value="/assets/sounds/fanfare.wav">Fanfare</option>
-                <option value="/assets/sounds/anime_wow.mp3">Anime Wow</option>
-                <option value="none">No Sound (Mute)</option>
-              </select>
-              <button class="btn btn-secondary btn-icon test-sound-btn" data-target="trig-sound-gift" title="Preview Sound">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-              </button>
-              <button class="btn btn-secondary btn-icon search-sound-btn" data-target="trig-sound-gift" title="Search MyInstants">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-              </button>
-              <button class="btn btn-secondary btn-icon upload-sound-btn" data-target="trig-sound-gift" title="Choose Local File">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
-              </button>
-            </div>
-          </label>
-
-          <label style="margin-top: 10px;">Big Gift Sound (1,000+ coins)
-            <div class="sound-control-row">
-              <select id="trig-sound-gift-big" class="sound-select">
-                <option value="/assets/sounds/fanfare.wav">Fanfare (Default)</option>
-                <option value="/assets/sounds/level_up.wav">Level Up</option>
-                <option value="/assets/sounds/chime.wav">Chime</option>
-                <option value="/assets/sounds/coin.wav">Coin</option>
-                <option value="/assets/sounds/anime_wow.mp3">Anime Wow</option>
-                <option value="none">No Sound (Mute)</option>
-              </select>
-              <button class="btn btn-secondary btn-icon test-sound-btn" data-target="trig-sound-gift-big" title="Preview Sound">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-              </button>
-              <button class="btn btn-secondary btn-icon search-sound-btn" data-target="trig-sound-gift-big" title="Search MyInstants">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-              </button>
-              <button class="btn btn-secondary btn-icon upload-sound-btn" data-target="trig-sound-gift-big" title="Choose Local File">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
-              </button>
-            </div>
-          </label>
-
-          <div class="trigger-media-box" style="margin-top: 12px;">
-            <div class="trigger-media-header">
-              <span class="trigger-media-label">Gift Video / Photo / GIF</span>
-              <span class="trigger-media-status" id="trig-gift-media-status">None (Default Gift Icon)</span>
-            </div>
-            <div class="trigger-media-preview hidden" id="trig-gift-media-preview"></div>
-            <div class="btn-row" style="margin-top: 8px; gap: 8px;">
-              <button class="btn btn-secondary btn-sm" id="upload-gift-media-btn">Choose Video / Photo / GIF</button>
-              <button class="btn btn-secondary btn-sm hidden" id="clear-gift-media-btn">Remove Media</button>
-            </div>
-          </div>
-
-          <div class="btn-row" style="flex-wrap: wrap; gap: 8px; margin-top: 14px;">
-            <button class="btn btn-secondary" id="test-tier1-btn">Tier 1: Follow</button>
-            <button class="btn btn-secondary" id="test-tier2-btn">Tier 2: Rose (1c)</button>
-            <button class="btn btn-secondary" id="test-tier3-btn">Tier 3: Money Gun (500c)</button>
-            <button class="btn btn-secondary" id="test-tier4-btn">Tier 4: Lion (29,999c)</button>
-          </div>
-        </div>
-
-        <div class="form-card">
-          <h3>Alert Audio & Timing</h3>
-          <label>Display Duration (seconds)
-            <input type="number" id="trig-duration" min="2" max="15" value="5">
-          </label>
-          <label>Likes Milestone Threshold
-            <input type="number" id="trig-likes-thresh" min="10" max="1000" step="10" value="50">
-          </label>
-
-          <label style="margin-top: 10px;">Likes Milestone Sound
-            <div class="sound-control-row">
-              <select id="trig-sound-like" class="sound-select">
-                <option value="/assets/sounds/pop.wav">Pop (Default)</option>
-                <option value="/assets/sounds/coin.wav">Coin</option>
-                <option value="/assets/sounds/chime.wav">Chime</option>
-                <option value="/assets/sounds/level_up.wav">Level Up</option>
-                <option value="/assets/sounds/anime_wow.mp3">Anime Wow</option>
-                <option value="none">No Sound (Mute)</option>
-              </select>
-              <button class="btn btn-secondary btn-icon test-sound-btn" data-target="trig-sound-like" title="Preview Sound">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-              </button>
-              <button class="btn btn-secondary btn-icon search-sound-btn" data-target="trig-sound-like" title="Search MyInstants">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-              </button>
-              <button class="btn btn-secondary btn-icon upload-sound-btn" data-target="trig-sound-like" title="Choose Local File">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
-              </button>
-            </div>
-          </label>
-
-          <label style="margin-top: 10px;">Alert Sound Volume
-            <input type="range" id="trig-volume" min="0" max="1" step="0.05" value="0.85">
-            <span class="range-val" id="trig-volume-val">85%</span>
-          </label>
-          <label class="checkbox-label" style="margin-top: 6px;">
-            <input type="checkbox" id="trig-sound-enabled" checked> Enable Sound Effects on Stream
-          </label>
-
-          <div class="btn-row" style="margin-top: 14px;">
-            <button class="btn btn-primary" id="save-triggers-btn">Save Triggers</button>
-          </div>
-        </div>
-
-        <!-- Sound Library & Quick Search Card -->
-        <div class="form-card full-width">
-          <div class="card-header-row">
-            <div>
-              <h3>Sound Library & MyInstants Search</h3>
-              <p class="hint-text">Search and preview meme sounds, anime effects, and chimes from MyInstants, or import local audio files from your computer.</p>
-            </div>
-          </div>
-
-          <div class="btn-row" style="gap: 10px; margin-top: 10px; flex-wrap: wrap;">
-            <button class="btn btn-primary" id="open-myinstants-modal-btn">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <div class="events-toolbar-right">
+            <button class="btn btn-secondary btn-sm" id="open-myinstants-modal-btn">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
               <span>Search MyInstants Online</span>
             </button>
-            <button class="btn btn-secondary" id="import-local-sound-btn">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
-              <span>Add Sound from Local Computer</span>
+            <button class="btn btn-secondary btn-sm" id="import-local-sound-btn">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+              <span>Add Local Sound</span>
             </button>
           </div>
+        </div>
 
-          <div style="margin-top: 12px;">
-            <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">Quick Search Categories:</div>
-            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-              <button class="btn-pill sound-quick-pill" data-q="anime wow">Anime Wow</button>
-              <button class="btn-pill sound-quick-pill" data-q="chime">Chime</button>
-              <button class="btn-pill sound-quick-pill" data-q="coin">Coin</button>
-              <button class="btn-pill sound-quick-pill" data-q="level up">Level Up</button>
-              <button class="btn-pill sound-quick-pill" data-q="victory">Victory</button>
-              <button class="btn-pill sound-quick-pill" data-q="kaching">Ka-Ching</button>
-              <button class="btn-pill sound-quick-pill" data-q="applause">Applause</button>
-              <button class="btn-pill sound-quick-pill" data-q="bruh">Bruh</button>
-              <button class="btn-pill sound-quick-pill" data-q="fart">Fart</button>
-            </div>
+        <div class="events-table-wrapper">
+          <table class="events-table" id="events-table">
+            <thead>
+              <tr>
+                <th style="width: 86px; text-align: center;">Actions</th>
+                <th style="width: 70px; text-align: center;">Active</th>
+                <th style="width: 90px;">User</th>
+                <th style="width: 220px;">Trigger</th>
+                <th>Action(s)</th>
+              </tr>
+            </thead>
+            <tbody id="events-table-body">
+              <!-- Populated dynamically via renderEventsTable() in app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- General Alert Settings Card -->
+      <div class="form-card full-width trigger-general-card" style="margin-top: 18px;">
+        <div class="card-header-row">
+          <div>
+            <h3>General Alert Settings</h3>
+            <p class="hint-text">Configure global display timing and master sound effect controls for popup alerts.</p>
           </div>
+        </div>
+
+        <div class="form-grid" style="margin-top: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+          <div>
+            <label>Display Duration (seconds)
+              <input type="number" id="trig-duration" min="2" max="15" value="5">
+            </label>
+          </div>
+
+          <div>
+            <label>Likes Milestone Threshold
+              <input type="number" id="trig-likes-thresh" min="10" max="1000" step="10" value="50">
+            </label>
+          </div>
+
+          <div>
+            <label>Alert Sound Volume
+              <input type="range" id="trig-volume" min="0" max="1" step="0.05" value="0.85">
+              <span class="range-val" id="trig-volume-val">85%</span>
+            </label>
+          </div>
+
+          <div style="display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 8px;">
+            <label class="checkbox-label">
+              <input type="checkbox" id="trig-sound-enabled" checked> Enable Sound Effects on Stream
+            </label>
+          </div>
+        </div>
+
+        <div class="btn-row" style="margin-top: 16px;">
+          <button class="btn btn-primary" id="save-triggers-btn">Save General Settings</button>
         </div>
       </div>
     </section>
@@ -890,6 +768,24 @@
           </label>
           <label>Bonus Seconds per Gift Received
             <input type="number" id="timer-bonus" min="0" max="3600" step="1" value="15">
+          </label>
+
+          <label>Theme
+            <select id="timer-theme">
+              <option value="Purple">Purple (Default)</option>
+              <option value="Pink">Pink</option>
+              <option value="Blue">Blue</option>
+              <option value="Green">Green</option>
+              <option value="Dark">Dark</option>
+              <option value="Light">Light</option>
+            </select>
+          </label>
+
+          <label>Overlay Size
+            <div class="scale-slider-row">
+              <input type="range" id="timer-scale-slider" min="0.5" max="1.5" step="0.05" value="1.0">
+              <span class="scale-badge" id="timer-scale-badge">100%</span>
+            </div>
           </label>
 
           <div class="btn-row">
@@ -1329,8 +1225,84 @@
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" id="modal-sound-search-dismiss">Done</button>
+<!-- Modal: Event Editor -->
+<div id="modal-event-editor" class="modal-backdrop">
+  <div class="modal-card event-editor-card">
+    <div class="modal-header">
+      <div class="event-modal-hdr-left">
+        <span class="event-modal-icon-badge" id="event-modal-icon-wrap">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </span>
+        <div>
+          <h3 id="event-modal-title" style="margin: 0; font-size: 17px;">Follow Event</h3>
+          <p id="event-modal-desc" class="hint-text" style="margin: 0; font-size: 12px;">Customize alert message, sound, and media when viewers follow.</p>
+        </div>
+      </div>
+      <button class="modal-close-btn" id="event-modal-close">&times;</button>
+    </div>
+
+    <div class="modal-body event-modal-body">
+      <!-- Alert Message -->
+      <div class="event-modal-section">
+        <label for="event-modal-msg">Alert Message</label>
+        <input type="text" id="event-modal-msg" class="event-modal-input" value="Thank you {user} for following!">
+        <div class="hint-text" id="event-modal-hint" style="margin-top: 4px;">Use {user} to display the follower's username.</div>
+      </div>
+
+      <!-- Alert Sound -->
+      <div class="event-modal-section">
+        <label for="event-modal-sound">Alert Sound</label>
+        <div class="sound-control-row">
+          <select id="event-modal-sound" class="sound-select">
+            <option value="/assets/sounds/chime.wav">Chime (Default)</option>
+            <option value="/assets/sounds/coin.wav">Coin</option>
+            <option value="/assets/sounds/pop.wav">Pop</option>
+            <option value="/assets/sounds/level_up.wav">Level Up</option>
+            <option value="/assets/sounds/fanfare.wav">Fanfare</option>
+            <option value="/assets/sounds/anime_wow.mp3">Anime Wow</option>
+            <option value="none">No Sound (Mute)</option>
+          </select>
+          <button class="btn btn-secondary btn-icon" id="event-modal-sound-test" title="Preview Sound">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <button class="btn btn-secondary btn-icon" id="event-modal-sound-search" title="Search MyInstants">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          </button>
+          <button class="btn btn-secondary btn-icon" id="event-modal-sound-upload" title="Choose Local File">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Alert Video / Photo / GIF -->
+      <div class="event-modal-section" id="event-modal-media-box">
+        <div class="trigger-media-box">
+          <div class="trigger-media-header">
+            <span class="trigger-media-label" id="event-modal-media-label">Alert Video / Photo / GIF</span>
+            <span class="trigger-media-status" id="event-modal-media-status">None (Default Avatar)</span>
+          </div>
+          <div class="trigger-media-preview hidden" id="event-modal-media-preview"></div>
+          <div class="btn-row" style="margin-top: 10px; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" id="event-modal-upload-media-btn">Choose Video / Photo / GIF</button>
+            <button class="btn btn-secondary btn-sm hidden" id="event-modal-clear-media-btn">Remove Media</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Extra Option: Likes Threshold (Shown only for Likes Milestone) -->
+      <div class="event-modal-section hidden" id="event-modal-likes-row">
+        <label for="event-modal-likes-input">Likes Milestone Threshold</label>
+        <input type="number" id="event-modal-likes-input" class="event-modal-input" min="10" max="1000" step="10" value="50">
+        <div class="hint-text" style="margin-top: 4px;">Trigger alert when a viewer taps this many likes.</div>
+      </div>
+    </div>
+
+    <div class="modal-footer" style="justify-content: space-between;">
+      <button class="btn btn-secondary" id="event-modal-test-btn">Test Alert</button>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-secondary" id="event-modal-cancel-btn">Cancel</button>
+        <button class="btn btn-primary" id="event-modal-save-btn">Save Changes</button>
+      </div>
     </div>
   </div>
 </div>
