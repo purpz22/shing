@@ -416,7 +416,7 @@ const engine = Engine.create({
 engine.gravity.y = 0.95;
 
 const canvas = document.getElementById('physics-canvas');
-const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
+const ctx = canvas.getContext('2d', { alpha: true });
 const W = 764, H = 1024;
 
 let isPaused = false;

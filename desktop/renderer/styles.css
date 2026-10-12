@@ -978,9 +978,10 @@ input[type="range"] {
 .jar-iframe {
   width: 100%;
   height: 480px;
-  border: 1px dashed var(--border-color);
+  border: 1.5px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: transparent;
+  background: #181226 radial-gradient(circle, rgba(123, 63, 228, 0.18) 1.5px, transparent 1.5px);
+  background-size: 18px 18px;
 }
 .companion-layout {
   display: flex;

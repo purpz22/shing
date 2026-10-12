@@ -1839,6 +1839,17 @@ function openChangelogModal() {
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
     {
+      version: '1.3.7',
+      releaseName: 'Shing Live v1.3.7 - Glass Jar Layering & Stream-Stage Contrast',
+      releaseDate: '2026-10-12',
+      summary: 'Restored full glass body visibility on the Gift Jar overlay by removing desynchronized canvas alpha occlusions and added high-contrast stream-stage backdrops to the dashboard preview.',
+      highlights: [
+        'Full Glass Jar Visibility: Fixed hardware canvas desynchronization that occluded the lower jar body and cursive logo in Chromium / Electron',
+        'Stream-Stage Preview Backdrop: Added dark dotted canvas backdrop with allowtransparency support to the dashboard preview for crystal-clear contrast',
+        'Layered Glass Depth: Seamlessly preserved front bow and rim depth at the jar mouth while keeping 100% of falling and settled gifts visible inside the jar'
+      ]
+    },
+    {
       version: '1.3.6',
       releaseName: 'Shing Live v1.3.6 - Zero Blank Gifts & Universal TikTok Icon Resolver',
       releaseDate: '2026-10-12',
