@@ -75,6 +75,9 @@ class OverlayServer {
     if (this.settings.triggers.giftBigMedia === undefined) this.settings.triggers.giftBigMedia = '';
     if (this.settings.triggers.giftBigMediaType === undefined) this.settings.triggers.giftBigMediaType = '';
 
+    if (!this.settings.chat) this.settings.chat = {};
+    if (!this.settings.chat.fontFamily) this.settings.chat.fontFamily = 'quicksand';
+
     const initialSec = Math.max(0, (Number(this.settings.timer.durationMin) || 30) * 60);
     this.timerState = {
       remainingSeconds: initialSec,
@@ -260,6 +263,7 @@ class OverlayServer {
       },
       chat: {
         theme: 'pastel-purple',
+        fontFamily: 'quicksand',
         fontSize: 14,
         bubbleRadius: 16,
         autoFadeSec: 15,

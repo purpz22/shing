@@ -717,12 +717,17 @@ const OverlayDemoManager = {
     // Sync Chat Card Theme & Shapes
     const chatBox = $('ov-demo-chat-box');
     const theme = appSettings.chat?.theme || 'pastel-purple';
+    const fontKey = appSettings.chat?.fontFamily || 'quicksand';
     const radius = appSettings.chat?.bubbleRadius || 16;
     const shape = appSettings.chat?.avatarShape || 'circle';
     const showBadges = appSettings.chat?.showBadges !== false;
     if (chatBox) {
-      chatBox.className = `card-preview chat-preview-box chat-dash-preview theme-${theme}`;
+      const fontCls = ` font-${fontKey}`;
+      chatBox.className = `card-preview chat-preview-box chat-dash-preview theme-${theme}${fontCls}`;
       chatBox.style.setProperty('--bubble-radius', `${radius}px`);
+      const resolvedFont = CHAT_FONT_MAP[fontKey] || CHAT_FONT_MAP['quicksand'];
+      chatBox.style.setProperty('--chat-font-family', resolvedFont);
+      chatBox.style.fontFamily = resolvedFont;
       chatBox.querySelectorAll('.demo-chat-pfp').forEach(img => {
         img.className = `demo-chat-pfp shape-${shape}`;
       });
@@ -1271,9 +1276,22 @@ function resolveDashboardAvatar(url) {
   return url;
 }
 
+const CHAT_FONT_MAP = {
+  'quicksand': "'Quicksand', 'Nunito', 'Segoe UI', sans-serif",
+  'fredoka': "'Fredoka', 'Quicksand', sans-serif",
+  'nunito': "'Nunito', 'Segoe UI', sans-serif",
+  'itim': "'Itim', 'Comic Sans MS', cursive, sans-serif",
+  'sniglet': "'Sniglet', 'Fredoka', cursive, sans-serif",
+  'dynapuff': "'DynaPuff', 'Fredoka', cursive, sans-serif",
+  'comfortaa': "'Comfortaa', 'Quicksand', sans-serif",
+  'pixel': "'Press Start 2P', 'Courier New', monospace",
+  'system': "'Segoe UI', system-ui, -apple-system, sans-serif"
+};
+
 function updateChatPreviewBox() {
   const previewContainer = $('dashboard-chat-preview');
   const theme = $('chat-theme') ? $('chat-theme').value : (appSettings.chat?.theme || 'pastel-purple');
+  const fontKey = $('chat-font-family') ? $('chat-font-family').value : (appSettings.chat?.fontFamily || 'quicksand');
   const shape = $('chat-avatar-shape') ? $('chat-avatar-shape').value : (appSettings.chat?.avatarShape || 'circle');
   const anim = $('chat-avatar-anim') ? $('chat-avatar-anim').value : (appSettings.chat?.avatarAnim || 'elastic');
   const radius = $('chat-radius') ? +$('chat-radius').value : (appSettings.chat?.bubbleRadius || 16);
@@ -1282,6 +1300,7 @@ function updateChatPreviewBox() {
 
   if (!appSettings.chat) appSettings.chat = {};
   appSettings.chat.theme = theme;
+  appSettings.chat.fontFamily = fontKey;
   appSettings.chat.avatarShape = shape;
   appSettings.chat.avatarAnim = anim;
   appSettings.chat.bubbleRadius = radius;
@@ -1289,9 +1308,13 @@ function updateChatPreviewBox() {
   appSettings.chat.showBadges = showBadges;
 
   if (previewContainer) {
-    previewContainer.className = `chat-dash-preview theme-${theme}`;
+    const fontCls = ` font-${fontKey}`;
+    previewContainer.className = `chat-dash-preview theme-${theme}${fontCls}`;
     previewContainer.style.setProperty('--bubble-radius', `${radius}px`);
     previewContainer.style.setProperty('--chat-font-size', `${fontSize}px`);
+    const resolvedFont = CHAT_FONT_MAP[fontKey] || CHAT_FONT_MAP['quicksand'];
+    previewContainer.style.setProperty('--chat-font-family', resolvedFont);
+    previewContainer.style.fontFamily = resolvedFont;
 
     previewContainer.querySelectorAll('.preview-pfp-wrap').forEach(wrap => {
       wrap.className = `preview-pfp-wrap shape-${shape}`;
@@ -1869,6 +1892,7 @@ async function initSettings() {
   // Populate Chat
   if (appSettings.chat) {
     if ($('chat-theme')) $('chat-theme').value = appSettings.chat.theme || 'pastel-purple';
+    if ($('chat-font-family')) $('chat-font-family').value = appSettings.chat.fontFamily || 'quicksand';
     $('chat-font-size').value = appSettings.chat.fontSize || 14;
     $('chat-font-val').textContent = `${$('chat-font-size').value}px`;
     $('chat-radius').value = appSettings.chat.bubbleRadius || 16;
@@ -3378,6 +3402,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Chat Settings & Live Preview
   $('chat-theme')?.addEventListener('change', updateChatPreviewBox);
+  $('chat-font-family')?.addEventListener('change', updateChatPreviewBox);
   $('chat-avatar-shape')?.addEventListener('change', updateChatPreviewBox);
   $('chat-avatar-anim')?.addEventListener('change', updateChatPreviewBox);
   $('chat-badges')?.addEventListener('change', updateChatPreviewBox);
@@ -3394,6 +3419,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const rawAutoFade = parseInt($('chat-autofade').value, 10);
     appSettings.chat = {
       theme: $('chat-theme') ? $('chat-theme').value : 'pastel-purple',
+      fontFamily: $('chat-font-family') ? $('chat-font-family').value : 'quicksand',
       fontSize: +$('chat-font-size').value || 14,
       bubbleRadius: +$('chat-radius').value || 16,
       autoFadeSec: Number.isNaN(rawAutoFade) ? 15 : Math.max(0, rawAutoFade),

@@ -1469,6 +1469,7 @@ input[type="range"] {
 /* Dashboard Chat Preview & Themes */
 .chat-dash-preview {
   background: rgba(247, 242, 252, 0.7);
+  font-family: var(--chat-font-family, 'Quicksand', 'Nunito', 'Segoe UI', system-ui, sans-serif);
   --bubble-bg: rgba(255, 255, 255, 0.95);
   --bubble-border: #dcd0f8;
   --bubble-shadow: 0 4px 14px rgba(123, 63, 228, 0.1);
@@ -1662,6 +1663,23 @@ input[type="range"] {
   color: var(--text-color, #231737);
   line-height: 1.3;
   word-break: break-word;
+}
+
+/* Chat Font Specific Styles */
+.chat-dash-preview.font-pixel .preview-uname,
+.chat-dash-preview.font-pixel .demo-chat-user {
+  font-size: 11px;
+  letter-spacing: 0;
+}
+.chat-dash-preview.font-pixel .preview-comment,
+.chat-dash-preview.font-pixel .demo-chat-text {
+  font-size: calc(var(--chat-font-size, 14px) - 2px);
+  line-height: 1.5;
+}
+.chat-dash-preview.font-pixel .badge,
+.chat-dash-preview.font-pixel .demo-chat-tag {
+  font-size: 8px;
+  letter-spacing: 0;
 }
 
 /* Role Badges */

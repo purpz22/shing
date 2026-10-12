@@ -1,6 +1,24 @@
 {
-    "latest":  "1.4.6",
+    "latest":  "1.4.7",
     "releases":  [
+                     {
+                         "version":  "1.4.7",
+                         "releaseName":  "Shing Live v1.4.7 - Cute Chat Font Changer \u0026 Real-Time Sync",
+                         "releaseDate":  "2026-10-12",
+                         "type":  "feature",
+                         "summary":  "Added a live cute chat font changer to the Chat tab and stream overlay with 8 handpicked cute fonts plus system default, real-time WebSocket sync, and live preview rendering.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.4.7.zip",
+                         "highlights":  [
+                                            "Curated Cute Font Collection: Switch seamlessly between Quicksand, Fredoka, Nunito, Itim, Sniglet, DynaPuff, Comfortaa, Retro Pixel, and System Default",
+                                            "Live Stream Overlay Sync: Instant real-time font updating across TikTok LIVE Studio and OBS browser sources over WebSocket",
+                                            "Synchronized Dashboard Previews: Both the Chat Tab live preview and Overlay Hub cards immediately reflect the selected font styling and sizing",
+                                            "Retro Pixel Layout Optimizations: Specially tuned compact line height and badge scaling when Retro Pixel is selected for crisp 8-bit stream aesthetics",
+                                            "Settings Persistence: Retains chosen font style across restarts in settings.json with graceful fallback"
+                                        ],
+                         "notes":  "Added cute stream chat font changer with 8 cute fonts, real-time sync, and retro pixel optimization.",
+                         "packageSize":  "4.09 MB",
+                         "checksum":  "c1915613f0e7786f606ba6a0965941c03de825b0a00cca51d9e01ccbcf34ccb5"
+                     },
                      {
                          "version":  "1.4.6",
                          "releaseName":  "Shing Live v1.4.6 - Viewer Name Tag Support \u0026 Clear Hint Text",

@@ -3,13 +3,16 @@
 <head>
 <meta charset="utf-8">
 <title>Cute Stream Chat Overlay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@500;700&family=DynaPuff:wght@500;700&family=Fredoka:wght@500;600;700&family=Itim&family=Nunito:wght@600;700;800&family=Press+Start+2P&family=Quicksand:wght@500;600;700&family=Sniglet:wght@800&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
     width: 100%; height: 100%;
     background: transparent;
     overflow: hidden;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family: var(--chat-font-family, 'Quicksand', 'Nunito', 'Segoe UI', system-ui, sans-serif);
   }
   #chat-container {
     position: absolute;
@@ -607,6 +610,20 @@
     opacity: 0;
     transform: translateY(-10px) scale(0.96);
   }
+
+  /* Font Specific Tweaks */
+  body.font-pixel .username {
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+  body.font-pixel .comment-line {
+    font-size: calc(var(--chat-font-size, 14px) - 2px);
+    line-height: 1.5;
+  }
+  body.font-pixel .badge {
+    font-size: 8px;
+    letter-spacing: 0;
+  }
 </style>
 </head>
 <body class="theme-pastel-purple shape-circle anim-elastic">
@@ -619,6 +636,7 @@ const container = document.getElementById('chat-container');
 let configuredStreamer = 'shimmy_ming';
 let chatSettings = {
   theme: 'pastel-purple',
+  fontFamily: 'quicksand',
   fontSize: 14,
   bubbleRadius: 16,
   autoFadeSec: 15,
@@ -627,6 +645,18 @@ let chatSettings = {
   avatarShape: 'circle', // circle, squircle, hexagon
   avatarAnim: 'elastic', // elastic, slide, halo
   messageGrouping: true
+};
+
+const CHAT_FONT_MAP = {
+  'quicksand': "'Quicksand', 'Nunito', 'Segoe UI', sans-serif",
+  'fredoka': "'Fredoka', 'Quicksand', sans-serif",
+  'nunito': "'Nunito', 'Segoe UI', sans-serif",
+  'itim': "'Itim', 'Comic Sans MS', cursive, sans-serif",
+  'sniglet': "'Sniglet', 'Fredoka', cursive, sans-serif",
+  'dynapuff': "'DynaPuff', 'Fredoka', cursive, sans-serif",
+  'comfortaa': "'Comfortaa', 'Quicksand', sans-serif",
+  'pixel': "'Press Start 2P', 'Courier New', monospace",
+  'system': "'Segoe UI', system-ui, -apple-system, sans-serif"
 };
 
 let lastMsgUser = null;
@@ -648,10 +678,14 @@ function updateChatVisualStyles() {
   const theme = chatSettings.theme || 'pastel-purple';
   const shape = chatSettings.avatarShape || 'circle';
   const anim = chatSettings.avatarAnim || 'elastic';
+  const fontKey = chatSettings.fontFamily || 'quicksand';
   const badgeCls = chatSettings.showBadges === false ? ' hide-badges' : '';
-  document.body.className = `theme-${theme} shape-${shape} anim-${anim}${badgeCls}`;
+  const fontCls = ` font-${fontKey}`;
+  document.body.className = `theme-${theme} shape-${shape} anim-${anim}${fontCls}${badgeCls}`;
   document.documentElement.style.setProperty('--chat-font-size', `${chatSettings.fontSize || 14}px`);
   document.documentElement.style.setProperty('--bubble-radius', `${chatSettings.bubbleRadius || 16}px`);
+  const resolvedFont = CHAT_FONT_MAP[fontKey] || CHAT_FONT_MAP['quicksand'];
+  document.documentElement.style.setProperty('--chat-font-family', resolvedFont);
 }
 
 // SVG Icons for Badges
