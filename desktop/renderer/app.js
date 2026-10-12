@@ -1862,6 +1862,9 @@ async function initSettings() {
   if ($('headpat-on-gift')) {
     $('headpat-on-gift').checked = appSettings.headpat?.triggerOnGift !== false;
   }
+  if ($('headpat-on-command')) {
+    $('headpat-on-command').checked = appSettings.headpat?.triggerOnCommand !== false;
+  }
 
   // Populate Triggers & Events Table
   if (appSettings.triggers) {
@@ -3196,6 +3199,12 @@ document.addEventListener('DOMContentLoaded', () => {
     saveCurrentSettings();
   });
 
+  $('headpat-on-command')?.addEventListener('change', e => {
+    if (!appSettings.headpat) appSettings.headpat = {};
+    appSettings.headpat.triggerOnCommand = e.target.checked;
+    saveCurrentSettings();
+  });
+
   $('test-headpat-btn')?.addEventListener('click', e => {
     e.stopPropagation();
     window.api.simulateEvent('headpat:trigger', {
@@ -3206,6 +3215,18 @@ document.addEventListener('DOMContentLoaded', () => {
       reasonText: 'Good Viewer Headpat! *pat pat*'
     });
     showToast('Triggered Pet-Pet Headpat on overlay!', 'success', 'Pet-Pet Headpat');
+  });
+
+  $('test-headpat-cmd-btn')?.addEventListener('click', e => {
+    e.stopPropagation();
+    window.api.simulateEvent('chat', {
+      comment: '/pet @Gojo',
+      user: 'StarViewer',
+      nickname: 'StarViewer',
+      username: 'starviewer',
+      avatar: '/assets/avatar.png'
+    });
+    showToast('Simulated "/pet @Gojo" chat command!', 'success', 'Pet-Pet Command');
   });
 
   // Trigger Custom Video / Photo / GIF Media Controls

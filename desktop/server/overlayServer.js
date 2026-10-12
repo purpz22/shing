@@ -36,6 +36,9 @@ class OverlayServer {
     if (!this.settings.rankings.viewerRankingTheme) this.settings.rankings.viewerRankingTheme = 'Purple';
     if (this.settings.rankings.viewerRankingScale === undefined) this.settings.rankings.viewerRankingScale = 1.0;
 
+    if (!this.settings.headpat) this.settings.headpat = {};
+    if (this.settings.headpat.triggerOnCommand === undefined) this.settings.headpat.triggerOnCommand = true;
+
     if (!this.settings.timer) this.settings.timer = {};
     if (this.settings.timer.durationMin === undefined) this.settings.timer.durationMin = 30;
     if (this.settings.timer.addSecondsPerGift === undefined) this.settings.timer.addSecondsPerGift = 15;
@@ -323,6 +326,7 @@ class OverlayServer {
       headpat: {
         triggerOnFollow: true,
         triggerOnGift: true,
+        triggerOnCommand: true,
         durationSec: 5,
         speed: 1.0
       },
