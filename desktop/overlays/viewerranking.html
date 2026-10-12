@@ -19,13 +19,155 @@
     top: 16px;
     left: 16px;
     width: 335px;
-    background: linear-gradient(160deg, rgba(24, 20, 40, 0.90) 0%, rgba(16, 14, 28, 0.94) 100%);
-    border: 2px solid rgba(187, 134, 252, 0.45);
+    transform: scale(var(--ranking-scale, 1.0));
+    transform-origin: top left;
+    background: var(--theme-bg, linear-gradient(160deg, rgba(24, 20, 40, 0.92) 0%, rgba(16, 14, 28, 0.96) 100%));
+    border: 2px solid var(--theme-border, rgba(187, 134, 252, 0.45));
     border-radius: 20px;
     padding: 12px 14px 14px;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(187, 134, 252, 0.2);
+    box-shadow: var(--theme-shadow, 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(187, 134, 252, 0.2));
     backdrop-filter: blur(12px);
-    color: #fff;
+    color: var(--theme-text, #fff);
+  }
+
+  /* 6 Plain Color Themes */
+  #viewer-ranking-root,
+  #viewer-ranking-root[data-theme="Purple"] {
+    --theme-bg: linear-gradient(160deg, rgba(24, 20, 40, 0.92) 0%, rgba(16, 14, 28, 0.96) 100%);
+    --theme-border: rgba(187, 134, 252, 0.45);
+    --theme-accent: #c084fc;
+    --theme-accent-glow: rgba(192, 132, 252, 0.55);
+    --theme-title: #d8b4fe;
+    --theme-title-shadow: rgba(187, 134, 252, 0.4);
+    --theme-badge-bg: rgba(187, 134, 252, 0.18);
+    --theme-badge-color: #e9d5ff;
+    --theme-badge-border: rgba(187, 134, 252, 0.35);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(187, 134, 252, 0.2);
+    --theme-avatar-border: rgba(187, 134, 252, 0.6);
+    --theme-best-bg: rgba(187, 134, 252, 0.16);
+    --theme-best-border: rgba(187, 134, 252, 0.35);
+    --theme-best-label: #d8b4fe;
+    --theme-best-val: #fff;
+    --theme-text: #fff;
+    --theme-sub: rgba(255, 255, 255, 0.62);
+    --theme-row-bg: rgba(255, 255, 255, 0.05);
+    --theme-row-border: rgba(255, 255, 255, 0.08);
+    --theme-header-border: rgba(255, 255, 255, 0.1);
+  }
+
+  #viewer-ranking-root[data-theme="Pink"] {
+    --theme-bg: linear-gradient(160deg, rgba(38, 20, 36, 0.92) 0%, rgba(26, 13, 25, 0.96) 100%);
+    --theme-border: rgba(255, 126, 185, 0.45);
+    --theme-accent: #ff7eb9;
+    --theme-accent-glow: rgba(255, 126, 185, 0.55);
+    --theme-title: #ffb3d9;
+    --theme-title-shadow: rgba(255, 126, 185, 0.4);
+    --theme-badge-bg: rgba(255, 126, 185, 0.18);
+    --theme-badge-color: #ffd1e6;
+    --theme-badge-border: rgba(255, 126, 185, 0.35);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(255, 126, 185, 0.2);
+    --theme-avatar-border: rgba(255, 126, 185, 0.6);
+    --theme-best-bg: rgba(255, 126, 185, 0.16);
+    --theme-best-border: rgba(255, 126, 185, 0.35);
+    --theme-best-label: #ffb3d9;
+    --theme-best-val: #fff;
+    --theme-text: #fff;
+    --theme-sub: rgba(255, 255, 255, 0.62);
+    --theme-row-bg: rgba(255, 255, 255, 0.05);
+    --theme-row-border: rgba(255, 255, 255, 0.08);
+    --theme-header-border: rgba(255, 255, 255, 0.1);
+  }
+
+  #viewer-ranking-root[data-theme="Blue"] {
+    --theme-bg: linear-gradient(160deg, rgba(16, 26, 46, 0.92) 0%, rgba(10, 18, 33, 0.96) 100%);
+    --theme-border: rgba(72, 181, 255, 0.45);
+    --theme-accent: #48b5ff;
+    --theme-accent-glow: rgba(72, 181, 255, 0.55);
+    --theme-title: #a5dcff;
+    --theme-title-shadow: rgba(72, 181, 255, 0.4);
+    --theme-badge-bg: rgba(72, 181, 255, 0.18);
+    --theme-badge-color: #cbe9ff;
+    --theme-badge-border: rgba(72, 181, 255, 0.35);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(72, 181, 255, 0.2);
+    --theme-avatar-border: rgba(72, 181, 255, 0.6);
+    --theme-best-bg: rgba(72, 181, 255, 0.16);
+    --theme-best-border: rgba(72, 181, 255, 0.35);
+    --theme-best-label: #a5dcff;
+    --theme-best-val: #fff;
+    --theme-text: #fff;
+    --theme-sub: rgba(255, 255, 255, 0.62);
+    --theme-row-bg: rgba(255, 255, 255, 0.05);
+    --theme-row-border: rgba(255, 255, 255, 0.08);
+    --theme-header-border: rgba(255, 255, 255, 0.1);
+  }
+
+  #viewer-ranking-root[data-theme="Green"] {
+    --theme-bg: linear-gradient(160deg, rgba(16, 36, 30, 0.92) 0%, rgba(10, 25, 21, 0.96) 100%);
+    --theme-border: rgba(56, 211, 159, 0.45);
+    --theme-accent: #38d39f;
+    --theme-accent-glow: rgba(56, 211, 159, 0.55);
+    --theme-title: #99f6d4;
+    --theme-title-shadow: rgba(56, 211, 159, 0.4);
+    --theme-badge-bg: rgba(56, 211, 159, 0.18);
+    --theme-badge-color: #c6f7e5;
+    --theme-badge-border: rgba(56, 211, 159, 0.35);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(56, 211, 159, 0.2);
+    --theme-avatar-border: rgba(56, 211, 159, 0.6);
+    --theme-best-bg: rgba(56, 211, 159, 0.16);
+    --theme-best-border: rgba(56, 211, 159, 0.35);
+    --theme-best-label: #99f6d4;
+    --theme-best-val: #fff;
+    --theme-text: #fff;
+    --theme-sub: rgba(255, 255, 255, 0.62);
+    --theme-row-bg: rgba(255, 255, 255, 0.05);
+    --theme-row-border: rgba(255, 255, 255, 0.08);
+    --theme-header-border: rgba(255, 255, 255, 0.1);
+  }
+
+  #viewer-ranking-root[data-theme="Dark"] {
+    --theme-bg: linear-gradient(160deg, rgba(18, 18, 22, 0.94) 0%, rgba(10, 10, 13, 0.98) 100%);
+    --theme-border: rgba(255, 255, 255, 0.22);
+    --theme-accent: #cbd5e1;
+    --theme-accent-glow: rgba(203, 213, 225, 0.5);
+    --theme-title: #e2e8f0;
+    --theme-title-shadow: rgba(255, 255, 255, 0.25);
+    --theme-badge-bg: rgba(255, 255, 255, 0.12);
+    --theme-badge-color: #f1f5f9;
+    --theme-badge-border: rgba(255, 255, 255, 0.2);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.55), 0 0 18px rgba(255, 255, 255, 0.1);
+    --theme-avatar-border: rgba(203, 213, 225, 0.5);
+    --theme-best-bg: rgba(255, 255, 255, 0.10);
+    --theme-best-border: rgba(255, 255, 255, 0.2);
+    --theme-best-label: #cbd5e1;
+    --theme-best-val: #fff;
+    --theme-text: #fff;
+    --theme-sub: rgba(255, 255, 255, 0.62);
+    --theme-row-bg: rgba(255, 255, 255, 0.05);
+    --theme-row-border: rgba(255, 255, 255, 0.08);
+    --theme-header-border: rgba(255, 255, 255, 0.1);
+  }
+
+  #viewer-ranking-root[data-theme="Light"] {
+    --theme-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 243, 250, 0.96) 100%);
+    --theme-border: rgba(140, 100, 200, 0.35);
+    --theme-accent: #7c3aed;
+    --theme-accent-glow: rgba(124, 58, 237, 0.35);
+    --theme-title: #6d28d9;
+    --theme-title-shadow: rgba(124, 58, 237, 0.2);
+    --theme-badge-bg: rgba(124, 58, 237, 0.12);
+    --theme-badge-color: #5b21b6;
+    --theme-badge-border: rgba(124, 58, 237, 0.25);
+    --theme-shadow: 0 10px 28px rgba(90, 50, 140, 0.18), 0 0 18px rgba(140, 100, 200, 0.15);
+    --theme-avatar-border: rgba(124, 58, 237, 0.45);
+    --theme-best-bg: rgba(124, 58, 237, 0.10);
+    --theme-best-border: rgba(124, 58, 237, 0.25);
+    --theme-best-label: #6d28d9;
+    --theme-best-val: #1e1b4b;
+    --theme-text: #1e1b4b;
+    --theme-sub: rgba(30, 27, 75, 0.65);
+    --theme-row-bg: rgba(124, 58, 237, 0.05);
+    --theme-row-border: rgba(124, 58, 237, 0.12);
+    --theme-header-border: rgba(124, 58, 237, 0.15);
   }
 
   .board-header {
@@ -34,7 +176,7 @@
     justify-content: space-between;
     margin-bottom: 10px;
     padding-bottom: 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--theme-header-border, rgba(255, 255, 255, 0.1));
   }
 
   .board-title {
@@ -45,15 +187,15 @@
     font-weight: 900;
     letter-spacing: 0.9px;
     text-transform: uppercase;
-    color: #d8b4fe;
-    text-shadow: 0 2px 8px rgba(187, 134, 252, 0.4);
+    color: var(--theme-title, #d8b4fe);
+    text-shadow: 0 2px 8px var(--theme-title-shadow, rgba(187, 134, 252, 0.4));
   }
 
   .board-title svg {
     width: 16px;
     height: 16px;
-    fill: #c084fc;
-    filter: drop-shadow(0 0 6px rgba(192, 132, 252, 0.55));
+    fill: var(--theme-accent, #c084fc);
+    filter: drop-shadow(0 0 6px var(--theme-accent-glow, rgba(192, 132, 252, 0.55)));
   }
 
   .board-badge {
@@ -61,9 +203,9 @@
     font-weight: 800;
     padding: 2px 8px;
     border-radius: 999px;
-    background: rgba(187, 134, 252, 0.18);
-    color: #e9d5ff;
-    border: 1px solid rgba(187, 134, 252, 0.35);
+    background: var(--theme-badge-bg, rgba(187, 134, 252, 0.18));
+    color: var(--theme-badge-color, #e9d5ff);
+    border: 1px solid var(--theme-badge-border, rgba(187, 134, 252, 0.35));
   }
 
   .board-list {
@@ -78,8 +220,8 @@
     gap: 10px;
     padding: 7px 10px;
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--theme-row-bg, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--theme-row-border, rgba(255, 255, 255, 0.08));
     transition: all 0.25s ease;
   }
 
@@ -140,7 +282,7 @@
     height: 36px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid rgba(187, 134, 252, 0.6);
+    border: 2px solid var(--theme-avatar-border, rgba(187, 134, 252, 0.6));
     background: #231934;
   }
 
@@ -175,7 +317,7 @@
   .viewer-name {
     font-size: 13px;
     font-weight: 800;
-    color: #fff;
+    color: var(--theme-text, #fff);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -187,7 +329,7 @@
     gap: 5px;
     font-size: 10px;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.62);
+    color: var(--theme-sub, rgba(255, 255, 255, 0.62));
     margin-top: 1px;
   }
 
@@ -207,8 +349,8 @@
     justify-content: center;
     padding: 3px 9px;
     border-radius: 10px;
-    background: rgba(187, 134, 252, 0.16);
-    border: 1px solid rgba(187, 134, 252, 0.35);
+    background: var(--theme-best-bg, rgba(187, 134, 252, 0.16));
+    border: 1px solid var(--theme-best-border, rgba(187, 134, 252, 0.35));
     flex-shrink: 0;
   }
 
@@ -217,14 +359,14 @@
     font-weight: 900;
     letter-spacing: 0.8px;
     text-transform: uppercase;
-    color: #d8b4fe;
+    color: var(--theme-best-label, #d8b4fe);
   }
 
   .best-val {
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     font-weight: 800;
-    color: #fff;
+    color: var(--theme-best-val, #fff);
   }
 
   .empty-state {
@@ -232,13 +374,13 @@
     padding: 14px 8px;
     font-size: 12px;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--theme-sub, rgba(255, 255, 255, 0.5));
   }
 </style>
 </head>
 <body>
 
-<div id="viewer-ranking-root">
+<div id="viewer-ranking-root" data-theme="Purple">
   <div class="board-header">
     <div class="board-title">
       <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
@@ -256,8 +398,24 @@
   let maxCount = 3;
   let viewersData = [];
 
+  const rootEl = document.getElementById('viewer-ranking-root');
   const listEl = document.getElementById('viewers-list');
   const badgeEl = document.getElementById('top-count-badge');
+
+  function applyTheme(theme) {
+    if (theme && typeof theme === 'string') {
+      rootEl.dataset.theme = theme;
+    }
+  }
+
+  function applyScale(scale) {
+    if (scale !== undefined && scale !== null && scale !== '') {
+      const num = Number(scale);
+      if (Number.isFinite(num) && num > 0) {
+        rootEl.style.setProperty('--ranking-scale', String(num));
+      }
+    }
+  }
 
   function formatDuration(sec) {
     const s = Math.max(0, Math.floor(Number(sec) || 0));
@@ -325,9 +483,17 @@
   }
 
   function applySettings(s) {
-    if (s && s.rankings && s.rankings.viewerRankingCount) {
-      maxCount = Math.max(1, Math.min(10, parseInt(s.rankings.viewerRankingCount, 10) || 3));
+    if (!s) return;
+    const r = s.rankings || s;
+    if (r.viewerRankingCount !== undefined) {
+      maxCount = Math.max(1, Math.min(10, parseInt(r.viewerRankingCount, 10) || 3));
       render();
+    }
+    if (r.viewerRankingTheme) {
+      applyTheme(r.viewerRankingTheme);
+    }
+    if (r.viewerRankingScale !== undefined) {
+      applyScale(r.viewerRankingScale);
     }
   }
 
@@ -340,13 +506,27 @@
         const msg = JSON.parse(evt.data);
         if (msg.type === 'init') {
           if (msg.settings) applySettings(msg.settings);
-          if (msg.rankings && Array.isArray(msg.rankings.viewerRanking)) {
-            viewersData = msg.rankings.viewerRanking;
-            render();
+          if (msg.rankings) {
+            if (msg.rankings.viewerRankingTheme) applyTheme(msg.rankings.viewerRankingTheme);
+            if (msg.rankings.viewerRankingScale !== undefined) applyScale(msg.rankings.viewerRankingScale);
+            if (msg.rankings.viewerRankingLimit !== undefined) {
+              maxCount = Math.max(1, Math.min(10, parseInt(msg.rankings.viewerRankingLimit, 10) || 3));
+            }
+            if (Array.isArray(msg.rankings.viewerRanking)) {
+              viewersData = msg.rankings.viewerRanking;
+              render();
+            }
           }
         } else if (msg.type === 'settings:update') {
-          applySettings(msg.settings);
+          if (msg.settings) applySettings(msg.settings);
         } else if (msg.type === 'rankings:update') {
+          const r = msg.rankings || msg;
+          if (r.viewerRankingTheme) applyTheme(r.viewerRankingTheme);
+          if (r.viewerRankingScale !== undefined) applyScale(r.viewerRankingScale);
+          if (r.viewerRankingLimit !== undefined || r.viewerRankingCount !== undefined) {
+            const cnt = r.viewerRankingLimit !== undefined ? r.viewerRankingLimit : r.viewerRankingCount;
+            maxCount = Math.max(1, Math.min(10, parseInt(cnt, 10) || 3));
+          }
           const list = msg.viewerRanking || (msg.rankings && msg.rankings.viewerRanking);
           if (Array.isArray(list)) {
             viewersData = list;

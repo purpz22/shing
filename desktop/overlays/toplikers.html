@@ -19,13 +19,167 @@
     top: 16px;
     left: 16px;
     width: 310px;
-    background: linear-gradient(160deg, rgba(30, 22, 43, 0.88) 0%, rgba(21, 15, 32, 0.92) 100%);
-    border: 2px solid rgba(255, 133, 162, 0.45);
+    transform: scale(var(--ranking-scale, 1.0));
+    transform-origin: top left;
+    background: var(--theme-bg, linear-gradient(160deg, rgba(24, 20, 40, 0.92) 0%, rgba(16, 14, 28, 0.96) 100%));
+    border: 2px solid var(--theme-border, rgba(187, 134, 252, 0.45));
     border-radius: 20px;
     padding: 12px 14px 14px;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(255, 133, 162, 0.2);
+    box-shadow: var(--theme-shadow, 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(187, 134, 252, 0.2));
     backdrop-filter: blur(12px);
-    color: #fff;
+    color: var(--theme-text, #fff);
+  }
+
+  /* 6 Plain Color Themes */
+  #toplikers-root,
+  #toplikers-root[data-theme="Purple"] {
+    --theme-bg: linear-gradient(160deg, rgba(24, 20, 40, 0.92) 0%, rgba(16, 14, 28, 0.96) 100%);
+    --theme-border: rgba(187, 134, 252, 0.45);
+    --theme-accent: #c084fc;
+    --theme-accent-glow: rgba(192, 132, 252, 0.6);
+    --theme-title: #d8b4fe;
+    --theme-title-shadow: rgba(187, 134, 252, 0.4);
+    --theme-badge-bg: rgba(187, 134, 252, 0.18);
+    --theme-badge-color: #e9d5ff;
+    --theme-badge-border: rgba(187, 134, 252, 0.35);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(187, 134, 252, 0.2);
+    --theme-avatar-border: rgba(187, 134, 252, 0.6);
+    --theme-likes-bg: rgba(187, 134, 252, 0.2);
+    --theme-likes-border: rgba(187, 134, 252, 0.4);
+    --theme-likes-color: #f3e8ff;
+    --theme-likes-svg: #c084fc;
+    --theme-bump-border: #c084fc;
+    --theme-bump-bg: rgba(187, 134, 252, 0.22);
+    --theme-text: #fff;
+    --theme-sub: rgba(255, 255, 255, 0.62);
+    --theme-row-bg: rgba(255, 255, 255, 0.05);
+    --theme-row-border: rgba(255, 255, 255, 0.08);
+    --theme-header-border: rgba(255, 255, 255, 0.1);
+  }
+
+  #toplikers-root[data-theme="Pink"] {
+    --theme-bg: linear-gradient(160deg, rgba(38, 20, 36, 0.92) 0%, rgba(26, 13, 25, 0.96) 100%);
+    --theme-border: rgba(255, 126, 185, 0.45);
+    --theme-accent: #ff7eb9;
+    --theme-accent-glow: rgba(255, 126, 185, 0.6);
+    --theme-title: #ffb3c6;
+    --theme-title-shadow: rgba(255, 126, 185, 0.4);
+    --theme-badge-bg: rgba(255, 126, 185, 0.18);
+    --theme-badge-color: #ffd1e6;
+    --theme-badge-border: rgba(255, 126, 185, 0.35);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(255, 126, 185, 0.2);
+    --theme-avatar-border: rgba(255, 126, 185, 0.6);
+    --theme-likes-bg: rgba(255, 93, 143, 0.2);
+    --theme-likes-border: rgba(255, 93, 143, 0.4);
+    --theme-likes-color: #ffd1e6;
+    --theme-likes-svg: #ff7eb9;
+    --theme-bump-border: #ff7eb9;
+    --theme-bump-bg: rgba(255, 126, 185, 0.22);
+    --theme-text: #fff;
+    --theme-sub: rgba(255, 255, 255, 0.62);
+    --theme-row-bg: rgba(255, 255, 255, 0.05);
+    --theme-row-border: rgba(255, 255, 255, 0.08);
+    --theme-header-border: rgba(255, 255, 255, 0.1);
+  }
+
+  #toplikers-root[data-theme="Blue"] {
+    --theme-bg: linear-gradient(160deg, rgba(16, 26, 46, 0.92) 0%, rgba(10, 18, 33, 0.96) 100%);
+    --theme-border: rgba(72, 181, 255, 0.45);
+    --theme-accent: #48b5ff;
+    --theme-accent-glow: rgba(72, 181, 255, 0.6);
+    --theme-title: #a5dcff;
+    --theme-title-shadow: rgba(72, 181, 255, 0.4);
+    --theme-badge-bg: rgba(72, 181, 255, 0.18);
+    --theme-badge-color: #cbe9ff;
+    --theme-badge-border: rgba(72, 181, 255, 0.35);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(72, 181, 255, 0.2);
+    --theme-avatar-border: rgba(72, 181, 255, 0.6);
+    --theme-likes-bg: rgba(72, 181, 255, 0.2);
+    --theme-likes-border: rgba(72, 181, 255, 0.4);
+    --theme-likes-color: #cbe9ff;
+    --theme-likes-svg: #48b5ff;
+    --theme-bump-border: #48b5ff;
+    --theme-bump-bg: rgba(72, 181, 255, 0.22);
+    --theme-text: #fff;
+    --theme-sub: rgba(255, 255, 255, 0.62);
+    --theme-row-bg: rgba(255, 255, 255, 0.05);
+    --theme-row-border: rgba(255, 255, 255, 0.08);
+    --theme-header-border: rgba(255, 255, 255, 0.1);
+  }
+
+  #toplikers-root[data-theme="Green"] {
+    --theme-bg: linear-gradient(160deg, rgba(16, 36, 30, 0.92) 0%, rgba(10, 25, 21, 0.96) 100%);
+    --theme-border: rgba(56, 211, 159, 0.45);
+    --theme-accent: #38d39f;
+    --theme-accent-glow: rgba(56, 211, 159, 0.6);
+    --theme-title: #99f6d4;
+    --theme-title-shadow: rgba(56, 211, 159, 0.4);
+    --theme-badge-bg: rgba(56, 211, 159, 0.18);
+    --theme-badge-color: #c6f7e5;
+    --theme-badge-border: rgba(56, 211, 159, 0.35);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 18px rgba(56, 211, 159, 0.2);
+    --theme-avatar-border: rgba(56, 211, 159, 0.6);
+    --theme-likes-bg: rgba(56, 211, 159, 0.2);
+    --theme-likes-border: rgba(56, 211, 159, 0.4);
+    --theme-likes-color: #c6f7e5;
+    --theme-likes-svg: #38d39f;
+    --theme-bump-border: #38d39f;
+    --theme-bump-bg: rgba(56, 211, 159, 0.22);
+    --theme-text: #fff;
+    --theme-sub: rgba(255, 255, 255, 0.62);
+    --theme-row-bg: rgba(255, 255, 255, 0.05);
+    --theme-row-border: rgba(255, 255, 255, 0.08);
+    --theme-header-border: rgba(255, 255, 255, 0.1);
+  }
+
+  #toplikers-root[data-theme="Dark"] {
+    --theme-bg: linear-gradient(160deg, rgba(18, 18, 22, 0.94) 0%, rgba(10, 10, 13, 0.98) 100%);
+    --theme-border: rgba(255, 255, 255, 0.22);
+    --theme-accent: #cbd5e1;
+    --theme-accent-glow: rgba(203, 213, 225, 0.5);
+    --theme-title: #e2e8f0;
+    --theme-title-shadow: rgba(255, 255, 255, 0.25);
+    --theme-badge-bg: rgba(255, 255, 255, 0.12);
+    --theme-badge-color: #f1f5f9;
+    --theme-badge-border: rgba(255, 255, 255, 0.2);
+    --theme-shadow: 0 10px 28px rgba(0, 0, 0, 0.55), 0 0 18px rgba(255, 255, 255, 0.1);
+    --theme-avatar-border: rgba(203, 213, 225, 0.5);
+    --theme-likes-bg: rgba(255, 255, 255, 0.12);
+    --theme-likes-border: rgba(255, 255, 255, 0.2);
+    --theme-likes-color: #f1f5f9;
+    --theme-likes-svg: #cbd5e1;
+    --theme-bump-border: #cbd5e1;
+    --theme-bump-bg: rgba(255, 255, 255, 0.2);
+    --theme-text: #fff;
+    --theme-sub: rgba(255, 255, 255, 0.62);
+    --theme-row-bg: rgba(255, 255, 255, 0.05);
+    --theme-row-border: rgba(255, 255, 255, 0.08);
+    --theme-header-border: rgba(255, 255, 255, 0.1);
+  }
+
+  #toplikers-root[data-theme="Light"] {
+    --theme-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 243, 250, 0.96) 100%);
+    --theme-border: rgba(140, 100, 200, 0.35);
+    --theme-accent: #7c3aed;
+    --theme-accent-glow: rgba(124, 58, 237, 0.35);
+    --theme-title: #6d28d9;
+    --theme-title-shadow: rgba(124, 58, 237, 0.2);
+    --theme-badge-bg: rgba(124, 58, 237, 0.12);
+    --theme-badge-color: #5b21b6;
+    --theme-badge-border: rgba(124, 58, 237, 0.25);
+    --theme-shadow: 0 10px 28px rgba(90, 50, 140, 0.18), 0 0 18px rgba(140, 100, 200, 0.15);
+    --theme-avatar-border: rgba(124, 58, 237, 0.45);
+    --theme-likes-bg: rgba(124, 58, 237, 0.10);
+    --theme-likes-border: rgba(124, 58, 237, 0.25);
+    --theme-likes-color: #5b21b6;
+    --theme-likes-svg: #7c3aed;
+    --theme-bump-border: #7c3aed;
+    --theme-bump-bg: rgba(124, 58, 237, 0.18);
+    --theme-text: #1e1b4b;
+    --theme-sub: rgba(30, 27, 75, 0.65);
+    --theme-row-bg: rgba(124, 58, 237, 0.05);
+    --theme-row-border: rgba(124, 58, 237, 0.12);
+    --theme-header-border: rgba(124, 58, 237, 0.15);
   }
 
   .board-header {
@@ -34,7 +188,7 @@
     justify-content: space-between;
     margin-bottom: 10px;
     padding-bottom: 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--theme-header-border, rgba(255, 255, 255, 0.1));
   }
 
   .board-title {
@@ -45,15 +199,15 @@
     font-weight: 900;
     letter-spacing: 1px;
     text-transform: uppercase;
-    color: #ffb3c6;
-    text-shadow: 0 2px 8px rgba(255, 133, 162, 0.4);
+    color: var(--theme-title, #d8b4fe);
+    text-shadow: 0 2px 8px var(--theme-title-shadow, rgba(187, 134, 252, 0.4));
   }
 
   .board-title svg {
     width: 16px;
     height: 16px;
-    fill: #ff5d8f;
-    filter: drop-shadow(0 0 6px rgba(255, 93, 143, 0.6));
+    fill: var(--theme-accent, #c084fc);
+    filter: drop-shadow(0 0 6px var(--theme-accent-glow, rgba(192, 132, 252, 0.6)));
     animation: heartPulse 1.6s infinite ease-in-out;
   }
 
@@ -67,9 +221,9 @@
     font-weight: 800;
     padding: 2px 8px;
     border-radius: 999px;
-    background: rgba(255, 133, 162, 0.18);
-    color: #ffc2d1;
-    border: 1px solid rgba(255, 133, 162, 0.35);
+    background: var(--theme-badge-bg, rgba(187, 134, 252, 0.18));
+    color: var(--theme-badge-color, #e9d5ff);
+    border: 1px solid var(--theme-badge-border, rgba(187, 134, 252, 0.35));
   }
 
   .board-list {
@@ -84,8 +238,8 @@
     gap: 10px;
     padding: 7px 10px;
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--theme-row-bg, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--theme-row-border, rgba(255, 255, 255, 0.08));
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease, border-color 0.25s ease;
   }
 
@@ -106,8 +260,8 @@
 
   .liker-row.bump {
     transform: scale(1.04);
-    border-color: #ff85a2;
-    background: rgba(255, 133, 162, 0.22);
+    border-color: var(--theme-bump-border, #c084fc);
+    background: var(--theme-bump-bg, rgba(187, 134, 252, 0.22));
   }
 
   .rank-pill {
@@ -152,7 +306,7 @@
     height: 36px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid rgba(255, 133, 162, 0.6);
+    border: 2px solid var(--theme-avatar-border, rgba(187, 134, 252, 0.6));
     background: #231934;
   }
 
@@ -169,7 +323,7 @@
   .liker-name {
     font-size: 13px;
     font-weight: 800;
-    color: #fff;
+    color: var(--theme-text, #fff);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -181,18 +335,18 @@
     gap: 4px;
     padding: 4px 9px;
     border-radius: 999px;
-    background: rgba(255, 93, 143, 0.2);
-    border: 1px solid rgba(255, 93, 143, 0.4);
+    background: var(--theme-likes-bg, rgba(187, 134, 252, 0.2));
+    border: 1px solid var(--theme-likes-border, rgba(187, 134, 252, 0.4));
     font-size: 12px;
     font-weight: 900;
-    color: #ffccd5;
+    color: var(--theme-likes-color, #f3e8ff);
     flex-shrink: 0;
   }
 
   .likes-pill svg {
     width: 12px;
     height: 12px;
-    fill: #ff5d8f;
+    fill: var(--theme-likes-svg, #c084fc);
   }
 
   .empty-state {
@@ -200,13 +354,13 @@
     padding: 14px 8px;
     font-size: 12px;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--theme-sub, rgba(255, 255, 255, 0.5));
   }
 </style>
 </head>
 <body>
 
-<div id="toplikers-root">
+<div id="toplikers-root" data-theme="Purple">
   <div class="board-header">
     <div class="board-title">
       <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
@@ -225,8 +379,24 @@
   let likersData = [];
   const previousLikes = new Map();
 
+  const rootEl = document.getElementById('toplikers-root');
   const listEl = document.getElementById('likers-list');
   const badgeEl = document.getElementById('top-count-badge');
+
+  function applyTheme(theme) {
+    if (theme && typeof theme === 'string') {
+      rootEl.dataset.theme = theme;
+    }
+  }
+
+  function applyScale(scale) {
+    if (scale !== undefined && scale !== null && scale !== '') {
+      const num = Number(scale);
+      if (Number.isFinite(num) && num > 0) {
+        rootEl.style.setProperty('--ranking-scale', String(num));
+      }
+    }
+  }
 
   function formatLikes(n) {
     const num = Number(n) || 0;
@@ -286,9 +456,17 @@
   }
 
   function applySettings(s) {
-    if (s && s.rankings && s.rankings.topLikersCount) {
-      maxCount = Math.max(1, Math.min(10, parseInt(s.rankings.topLikersCount, 10) || 3));
+    if (!s) return;
+    const r = s.rankings || s;
+    if (r.topLikersCount !== undefined) {
+      maxCount = Math.max(1, Math.min(10, parseInt(r.topLikersCount, 10) || 3));
       render();
+    }
+    if (r.topLikersTheme) {
+      applyTheme(r.topLikersTheme);
+    }
+    if (r.topLikersScale !== undefined) {
+      applyScale(r.topLikersScale);
     }
   }
 
@@ -301,13 +479,27 @@
         const msg = JSON.parse(evt.data);
         if (msg.type === 'init') {
           if (msg.settings) applySettings(msg.settings);
-          if (msg.rankings && Array.isArray(msg.rankings.topLikers)) {
-            likersData = msg.rankings.topLikers;
-            render();
+          if (msg.rankings) {
+            if (msg.rankings.topLikersTheme) applyTheme(msg.rankings.topLikersTheme);
+            if (msg.rankings.topLikersScale !== undefined) applyScale(msg.rankings.topLikersScale);
+            if (msg.rankings.topLikersLimit !== undefined) {
+              maxCount = Math.max(1, Math.min(10, parseInt(msg.rankings.topLikersLimit, 10) || 3));
+            }
+            if (Array.isArray(msg.rankings.topLikers)) {
+              likersData = msg.rankings.topLikers;
+              render();
+            }
           }
         } else if (msg.type === 'settings:update') {
-          applySettings(msg.settings);
+          if (msg.settings) applySettings(msg.settings);
         } else if (msg.type === 'rankings:update') {
+          const r = msg.rankings || msg;
+          if (r.topLikersTheme) applyTheme(r.topLikersTheme);
+          if (r.topLikersScale !== undefined) applyScale(r.topLikersScale);
+          if (r.topLikersLimit !== undefined || r.topLikersCount !== undefined) {
+            const cnt = r.topLikersLimit !== undefined ? r.topLikersLimit : r.topLikersCount;
+            maxCount = Math.max(1, Math.min(10, parseInt(cnt, 10) || 3));
+          }
           const list = msg.topLikers || (msg.rankings && msg.rankings.topLikers);
           if (Array.isArray(list)) {
             likersData = list;
