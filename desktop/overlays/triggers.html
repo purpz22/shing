@@ -436,8 +436,11 @@ let universalVolume = 0.85;
 let universalMuted = false;
 
 let triggerSettings = {
-  followMessage: 'Thank you {user} for following!',
-  giftMessage: '{user} sent {gift} x{count}!',
+  followMessage: 'Thank you {name} for following!',
+  giftMessage: '{name} sent {gift} x{count}!',
+  giftBigMessage: 'LEGENDARY: {name} sent {gift} x{count}!',
+  shareMessage: 'Thank you {name} for sharing the stream!',
+  likeMessage: '{name} tapped {count} likes!',
   alertDuration: 5,
   likeThreshold: 50,
   soundEnabled: true,
@@ -446,13 +449,33 @@ let triggerSettings = {
   followMediaType: '',
   giftMedia: '',
   giftMediaType: '',
+  giftBigMedia: '',
+  giftBigMediaType: '',
+  shareMedia: '',
+  shareMediaType: '',
   sounds: {
     follow: '/assets/sounds/chime.wav',
     gift: '/assets/sounds/coin.wav',
     gift_big: '/assets/sounds/fanfare.wav',
-    like: '/assets/sounds/pop.wav'
+    like: '/assets/sounds/pop.wav',
+    share: '/assets/sounds/chime.wav'
   }
 };
+
+function formatAlertMessage(template, data, fallback) {
+  let text = (template && typeof template === 'string') ? template : fallback;
+  const name = data.nickname || data.user || data.uniqueId || 'Friend';
+  const username = data.username || data.uniqueId || name;
+  const giftName = data.giftName || data.gift || 'Gift';
+  const count = data.count || data.repeatCount || 1;
+
+  return text
+    .replace(/\{name\}/gi, name)
+    .replace(/\{user\}/gi, name)
+    .replace(/\{username\}/gi, username)
+    .replace(/\{gift\}/gi, giftName)
+    .replace(/\{count\}/gi, String(count));
+}
 
 function getEffectiveVolume() {
   if (universalMuted || triggerSettings.soundEnabled === false) return 0;
@@ -685,11 +708,8 @@ function connectWS() {
 
         const msgTemplate = (isBig && triggerSettings.giftBigMessage)
           ? triggerSettings.giftBigMessage
-          : (triggerSettings.giftMessage || '{user} sent {gift} x{count}!');
-        const msg = msgTemplate
-          .replace('{user}', user)
-          .replace('{gift}', giftName)
-          .replace('{count}', count);
+          : (triggerSettings.giftMessage || '{name} sent {gift} x{count}!');
+        const msg = formatAlertMessage(msgTemplate, Object.assign({}, data, { user, nickname: user, giftName, count }), '{name} sent {gift} x{count}!');
 
         showAlert({
           type: 'gift',
@@ -707,8 +727,8 @@ function connectWS() {
           return;
         }
         const user = data.nickname || data.user || data.uniqueId || 'Friend';
-        const msgTemplate = triggerSettings.followMessage || 'Thank you {user} for following!';
-        const msg = msgTemplate.replace('{user}', user);
+        const msgTemplate = triggerSettings.followMessage || 'Thank you {name} for following!';
+        const msg = formatAlertMessage(msgTemplate, Object.assign({}, data, { user, nickname: user }), 'Thank you {name} for following!');
         showAlert({
           type: 'follow',
           title: 'NEW FOLLOWER',
@@ -723,8 +743,8 @@ function connectWS() {
           return;
         }
         const user = data.nickname || data.user || data.uniqueId || 'Viewer';
-        const msgTemplate = triggerSettings.shareMessage || 'Thank you {user} for sharing the stream!';
-        const msg = msgTemplate.replace('{user}', user);
+        const msgTemplate = triggerSettings.shareMessage || 'Thank you {name} for sharing the stream!';
+        const msg = formatAlertMessage(msgTemplate, Object.assign({}, data, { user, nickname: user }), 'Thank you {name} for sharing the stream!');
         showAlert({
           type: 'share',
           title: 'STREAM SHARED',
@@ -739,10 +759,12 @@ function connectWS() {
           return;
         }
         const user = data.nickname || data.user || data.uniqueId || 'Chat';
+        const msgTemplate = triggerSettings.likeMessage || '{name} tapped {count} likes!';
+        const msg = formatAlertMessage(msgTemplate, Object.assign({}, data, { user, nickname: user, count: data.count }), '{name} tapped {count} likes!');
         showAlert({
           type: 'like',
           title: 'LIKES MILESTONE',
-          message: `${user} tapped ${data.count} likes!`,
+          message: msg,
           avatarUrl: data.avatar || '/assets/avatar.png',
           giftIconUrl: '/assets/gifts/heart_me.png',
           tierClass: 'tier-gift-small',

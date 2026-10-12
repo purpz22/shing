@@ -867,9 +867,9 @@ const OverlayDemoManager = {
 
     let subMsg = tpl.sub;
     if (tpl.type === 'follow' && appSettings.triggers?.followMessage) {
-      subMsg = appSettings.triggers.followMessage.replace(/\{user\}|\[user\]/g, 'SparkleFan');
+      subMsg = appSettings.triggers.followMessage.replace(/\{name\}|\{user\}|\[name\]|\[user\]/gi, 'SparkleFan');
     } else if (tpl.type === 'gift' && appSettings.triggers?.giftMessage) {
-      subMsg = appSettings.triggers.giftMessage.replace(/\{user\}|\[user\]/g, 'StarGamer').replace(/\{gift\}|\[gift\]/g, 'Rose');
+      subMsg = appSettings.triggers.giftMessage.replace(/\{name\}|\{user\}|\[name\]|\[user\]/gi, 'StarGamer').replace(/\{gift\}|\[gift\]/gi, 'Rose');
     }
 
     banner.style.transform = 'translateY(-6px) scale(0.96)';
@@ -1378,8 +1378,8 @@ const EVENT_DEFINITIONS = [
     iconSvg: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`,
     title: 'Follow Event',
     desc: 'Customize alert message, sound, and media when viewers follow.',
-    defaultMsg: 'Thank you {user} for following!',
-    hint: 'Use {user} to display the follower username.',
+    defaultMsg: 'Thank you {name} for following!',
+    hint: 'Use {name} (or {user}) to display the follower name.',
     msgKey: 'followMessage',
     soundKey: 'follow',
     defaultSound: '/assets/sounds/chime.wav',
@@ -1394,8 +1394,8 @@ const EVENT_DEFINITIONS = [
     iconSvg: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.65-.5-.65C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76V14h2V8.76L15.38 12 17 10.83 14.92 8H20v6z"/></svg>`,
     title: 'Standard Gift Event',
     desc: 'Customize alert message, sound, and media for standard gifts (1 to 999 coins).',
-    defaultMsg: '{user} sent {gift} x{count}!',
-    hint: 'Use {user} for viewer, {gift} for gift name, and {count} for count.',
+    defaultMsg: '{name} sent {gift} x{count}!',
+    hint: 'Use {name} (or {user}) for viewer name, {gift} for gift name, and {count} for count.',
     msgKey: 'giftMessage',
     soundKey: 'gift',
     defaultSound: '/assets/sounds/coin.wav',
@@ -1410,8 +1410,8 @@ const EVENT_DEFINITIONS = [
     iconSvg: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`,
     title: 'Big Gift Event',
     desc: 'Customize alert message, sound, and media for high-tier gifts (1,000+ coins).',
-    defaultMsg: 'LEGENDARY: {user} sent {gift} x{count}!',
-    hint: 'Use {user} for viewer, {gift} for gift name, and {count} for count.',
+    defaultMsg: 'LEGENDARY: {name} sent {gift} x{count}!',
+    hint: 'Use {name} (or {user}) for viewer name, {gift} for gift name, and {count} for count.',
     msgKey: 'giftBigMessage',
     soundKey: 'gift_big',
     defaultSound: '/assets/sounds/fanfare.wav',
@@ -1426,8 +1426,8 @@ const EVENT_DEFINITIONS = [
     iconSvg: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>`,
     title: 'Likes Milestone Event',
     desc: 'Customize alert message, threshold, and sound when viewers tap likes.',
-    defaultMsg: '{user} tapped {count} likes!',
-    hint: 'Use {user} for viewer and {count} for total tapped likes.',
+    defaultMsg: '{name} tapped {count} likes!',
+    hint: 'Use {name} (or {user}) for viewer name and {count} for total tapped likes.',
     msgKey: 'likeMessage',
     soundKey: 'like',
     defaultSound: '/assets/sounds/pop.wav',
@@ -1442,8 +1442,8 @@ const EVENT_DEFINITIONS = [
     iconSvg: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>`,
     title: 'Share Event',
     desc: 'Customize alert message, sound, and media when viewers share the stream.',
-    defaultMsg: 'Thank you {user} for sharing the stream!',
-    hint: 'Use {user} to display the sharer username.',
+    defaultMsg: 'Thank you {name} for sharing the stream!',
+    hint: 'Use {name} (or {user}) to display the sharer name.',
     msgKey: 'shareMessage',
     soundKey: 'share',
     defaultSound: '/assets/sounds/chime.wav',

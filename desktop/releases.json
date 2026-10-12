@@ -1,6 +1,23 @@
 {
-    "latest":  "1.4.5",
+    "latest":  "1.4.6",
     "releases":  [
+                     {
+                         "version":  "1.4.6",
+                         "releaseName":  "Shing Live v1.4.6 - Viewer Name Tag Support \u0026 Clear Hint Text",
+                         "releaseDate":  "2026-10-12",
+                         "type":  "improvement",
+                         "summary":  "Updated event alert templates to use {name} for viewer display names, improved hint text to clearly say name instead of username, added case-insensitive tag formatting, and preserved full backward compatibility for {user} and {username}.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.4.6.zip",
+                         "highlights":  [
+                                            "Intuitive {name} Tag: Streamers can now use {name} to display the viewer\u0027s actual display name across all stream alerts",
+                                            "Clearer Modal Hints: Replaced confusing username wording with clean viewer name hints across Follow, Gift, Like, and Share alerts",
+                                            "Full Tag Compatibility: Seamlessly supports {name}, {user} (for existing setups), and {username} (for @handle) case-insensitively with global replacement",
+                                            "Custom Likes Milestone Alerts: Stream overlays now properly format and display custom Likes Milestone alert messages"
+                                        ],
+                         "notes":  "Added {name} tag support and clearer viewer name hints.",
+                         "packageSize":  "4.09 MB",
+                         "checksum":  "c34b7a5bfbecf98925b179c430f003dd65f42c41e000ab85782d25721ec3cf23"
+                     },
                      {
                          "version":  "1.4.5",
                          "releaseName":  "Shing Live v1.4.5 - Fix Events Table Edit Modal \u0026 Sound Assignment",

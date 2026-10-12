@@ -67,8 +67,9 @@ class OverlayServer {
     if (!this.settings.triggers.sounds) this.settings.triggers.sounds = {};
     if (!this.settings.triggers.sounds.share) this.settings.triggers.sounds.share = '/assets/sounds/chime.wav';
     if (!this.settings.triggers.sounds.gift_big) this.settings.triggers.sounds.gift_big = '/assets/sounds/fanfare.wav';
-    if (this.settings.triggers.shareMessage === undefined) this.settings.triggers.shareMessage = 'Thank you {user} for sharing the stream!';
-    if (this.settings.triggers.giftBigMessage === undefined) this.settings.triggers.giftBigMessage = 'LEGENDARY: {user} sent {gift} x{count}!';
+    if (this.settings.triggers.shareMessage === undefined) this.settings.triggers.shareMessage = 'Thank you {name} for sharing the stream!';
+    if (this.settings.triggers.giftBigMessage === undefined) this.settings.triggers.giftBigMessage = 'LEGENDARY: {name} sent {gift} x{count}!';
+    if (this.settings.triggers.likeMessage === undefined) this.settings.triggers.likeMessage = '{name} tapped {count} likes!';
     if (this.settings.triggers.shareMedia === undefined) this.settings.triggers.shareMedia = '';
     if (this.settings.triggers.shareMediaType === undefined) this.settings.triggers.shareMediaType = '';
     if (this.settings.triggers.giftBigMedia === undefined) this.settings.triggers.giftBigMedia = '';
@@ -276,10 +277,11 @@ class OverlayServer {
           like: { active: true },
           share: { active: true }
         },
-        followMessage: 'Thank you {user} for following!',
-        giftMessage: '{user} sent {gift} x{count}!',
-        giftBigMessage: 'LEGENDARY: {user} sent {gift} x{count}!',
-        shareMessage: 'Thank you {user} for sharing the stream!',
+        followMessage: 'Thank you {name} for following!',
+        giftMessage: '{name} sent {gift} x{count}!',
+        giftBigMessage: 'LEGENDARY: {name} sent {gift} x{count}!',
+        shareMessage: 'Thank you {name} for sharing the stream!',
+        likeMessage: '{name} tapped {count} likes!',
         likeThreshold: 50,
         alertDuration: 5,
         soundEnabled: true,
