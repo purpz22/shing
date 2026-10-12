@@ -2507,6 +2507,19 @@ function openChangelogModal() {
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
     {
+      version: '1.4.4',
+      releaseName: 'Shing Live v1.4.4 - Events Table UI, Event Editor Modal & Disable Join Alerts',
+      releaseDate: '2026-10-12',
+      summary: 'Redesigned Triggers tab into a TikFinity-style Events Table with per-event active toggles, dedicated Event Editor popup modal for custom messages, sounds, and media, full Share event alerts, and completely eliminated screen-spamming Join alerts.',
+      highlights: [
+        'TikFinity-Style Events Table: Clean overview of all core live events (Follow, Gift 1+ Coins, Big Gift 1,000+ Coins, Likes Milestone, Share) with direct Active toggles, action summary chips, and test buttons',
+        'Dedicated Event Editor Modal: Click Edit on any event to customize alert message template with tag hints, alert sound with preview and search, and custom Video / Photo / GIF uploader',
+        'Disable Join Popup Alerts: Completely removed popup alerts and audio on viewer joins, keeping the stream overlay clean and focused while preserving chat and rankings functionality',
+        'Full Share Event Support: Added native Share event alert triggers with customizable message template, sound, and media support',
+        'General Alert Settings Card: Clean bottom panel for universal Alert Display Duration, Likes Milestone Threshold, Master Volume slider, and Sound FX toggle'
+      ]
+    },
+    {
       version: '1.4.3',
       releaseName: 'Shing Live v1.4.3 - Interactive Stream Timer & Live Reductions',
       releaseDate: '2026-10-12',
