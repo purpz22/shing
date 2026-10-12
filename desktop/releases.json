@@ -1,6 +1,22 @@
 {
-    "latest":  "1.3.0",
+    "latest":  "1.3.1",
     "releases":  [
+                     {
+                         "version":  "1.3.1",
+                         "releaseName":  "Shing Live v1.3.1 - Manual TikTok Live Connect \u0026 Disconnect Controls",
+                         "releaseDate":  "2026-10-12",
+                         "type":  "feature",
+                         "summary":  "Added a dedicated manual Connect button in the top header and Settings tab so streamers can connect, reconnect, or disconnect their TikTok Live stream anytime.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.3.1.zip",
+                         "highlights":  [
+                                            "Header Connect Button: Added a prominent Connect / Connected / Reconnect button and quick Disconnect button in the top navigation bar",
+                                            "Settings Live Connection Card: Added real-time connection status badge, direct username editing, and Connect Live / Disconnect controls in App Settings",
+                                            "Race-Safe Connection Handshake: Added immediate Connecting state feedback, 15-second connection timeout protection, and toast notifications for manual connect results"
+                                        ],
+                         "notes":  "Manual TikTok Live Connect and Disconnect button controls.",
+                         "packageSize":  "4 MB",
+                         "checksum":  "c14a060016062f06770e477ff3abe7a15526629456b112dbcb08194743f6fc36"
+                     },
                      {
                          "version":  "1.3.0",
                          "releaseName":  "Shing Live v1.3.0 - TikTok LIVE Studio Link Source Compatibility Fix",

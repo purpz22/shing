@@ -14,6 +14,9 @@ class OverlayServer {
     this.server = null;
     this.wss = null;
     this.clients = new Set();
+    this.topLikers = new Map();
+    this.viewerStay = new Map();
+    this.rankingTimer = null;
     this.settings = this.loadSettings();
   }
 
@@ -146,6 +149,8 @@ class OverlayServer {
       username: 'shimmy_ming',
       confirmed: false,
       theme: 'Purple',
+      universalVolume: 0.85,
+      universalMuted: false,
       favorites: ['jar', 'companion', 'overlays'],
       companion: {
         hair: 'twintails',
@@ -186,12 +191,27 @@ class OverlayServer {
         alertDuration: 5,
         soundEnabled: true,
         soundVolume: 0.85,
+        followMedia: '',
+        followMediaType: '',
+        giftMedia: '',
+        giftMediaType: '',
         sounds: {
           follow: '/assets/sounds/chime.wav',
           gift: '/assets/sounds/coin.wav',
           gift_big: '/assets/sounds/fanfare.wav',
           like: '/assets/sounds/pop.wav'
         }
+      },
+      rankings: {
+        topLikersCount: 3,
+        viewerRankingCount: 3,
+        leaveTimeoutMin: 5
+      },
+      headpat: {
+        triggerOnFollow: true,
+        triggerOnGift: true,
+        durationSec: 5,
+        speed: 1.0
       },
       timer: {
         durationMin: 30,
@@ -206,14 +226,199 @@ class OverlayServer {
     };
   }
 
+  getRankingsSnapshot() {
+    const topLikersCount = Math.max(1, Math.min(25, Number(this.settings?.rankings?.topLikersCount) || 3));
+    const viewerRankingCount = Math.max(1, Math.min(25, Number(this.settings?.rankings?.viewerRankingCount) || 3));
+
+    const allLikers = Array.from(this.topLikers.values())
+      .sort((a, b) => (b.likes - a.likes) || (b.updatedAt - a.updatedAt));
+    const totalLikes = allLikers.reduce((acc, item) => acc + (item.likes || 0), 0);
+
+    const allViewers = Array.from(this.viewerStay.values())
+      .sort((a, b) => (b.bestTimeSec - a.bestTimeSec) || (b.currentTimeSec - a.currentTimeSec) || (b.lastSeenAt - a.lastSeenAt));
+
+    return {
+      topLikers: allLikers.slice(0, topLikersCount),
+      allLikersCount: allLikers.length,
+      totalLikes,
+      viewerRanking: allViewers.slice(0, viewerRankingCount),
+      allViewersCount: allViewers.length,
+      topLikersLimit: topLikersCount,
+      viewerRankingLimit: viewerRankingCount,
+      timestamp: Date.now()
+    };
+  }
+
+  processRankingEvent(data) {
+    if (!data || typeof data !== 'object' || !data.type) return;
+
+    if (data.type === 'rankings:reset') {
+      const target = data.target || 'all';
+      if (target === 'likers' || target === 'all') {
+        this.topLikers.clear();
+      }
+      if (target === 'stay' || target === 'all') {
+        this.viewerStay.clear();
+      }
+      this.broadcastRaw({ type: 'rankings:update', rankings: this.getRankingsSnapshot() });
+      return;
+    }
+
+    if (data.type === 'viewer:leave' || data.type === 'leave') {
+      const rawUser = data.username || data.user || data.nickname || '';
+      const key = String(rawUser).toLowerCase().trim();
+      if (!key) return;
+      const v = this.viewerStay.get(key) || Array.from(this.viewerStay.values()).find(
+        item => (item.nickname || '').toLowerCase() === key || (item.username || '').toLowerCase() === key
+      );
+      if (v && v.isPresent) {
+        const now = Date.now();
+        v.currentTimeSec = Math.max(v.currentTimeSec, Math.floor((now - v.sessionStartAt) / 1000));
+        if (v.currentTimeSec > v.bestTimeSec) {
+          v.bestTimeSec = v.currentTimeSec;
+        }
+        v.isPresent = false;
+        this.broadcastRaw({ type: 'rankings:update', rankings: this.getRankingsSnapshot() });
+      }
+      return;
+    }
+
+    if (!['join', 'chat', 'like', 'gift', 'follow', 'share'].includes(data.type)) {
+      return;
+    }
+
+    const rawName = (data.nickname || data.user || data.username || 'Viewer').trim();
+    const rawUser = (data.username || data.user || rawName).trim();
+    const key = String(rawUser).toLowerCase();
+    if (!key) return;
+
+    const now = Date.now();
+    const cleanAvatar = (data.avatar && !String(data.avatar).startsWith('..'))
+      ? data.avatar
+      : (data.avatar ? '/assets/avatar.png' : '/assets/avatar.png');
+
+    // 1. Update Viewer Stay-Time Ranking
+    let v = this.viewerStay.get(key);
+    if (!v) {
+      v = {
+        key,
+        username: rawUser,
+        nickname: rawName,
+        avatar: cleanAvatar,
+        isPresent: true,
+        sessionStartAt: now,
+        lastSeenAt: now,
+        currentTimeSec: 0,
+        bestTimeSec: 0
+      };
+      this.viewerStay.set(key, v);
+    } else {
+      if (rawName) v.nickname = rawName;
+      if (cleanAvatar && !cleanAvatar.includes('avatar.png')) {
+        v.avatar = cleanAvatar;
+      }
+      if (!v.isPresent) {
+        // Viewer came back after leaving: reset current time to 0, keep bestTimeSec intact
+        v.isPresent = true;
+        v.sessionStartAt = now;
+        v.currentTimeSec = 0;
+        v.lastSeenAt = now;
+      } else if (data.type === 'join' && (now - v.lastSeenAt > 15000 || data.rejoined === true)) {
+        // Explicit re-join event after leaving room: finalize previous session if needed, then reset current timer to 0
+        if (v.currentTimeSec > v.bestTimeSec) {
+          v.bestTimeSec = v.currentTimeSec;
+        }
+        v.isPresent = true;
+        v.sessionStartAt = now;
+        v.currentTimeSec = 0;
+        v.lastSeenAt = now;
+      } else {
+        v.lastSeenAt = now;
+        v.currentTimeSec = Math.max(0, Math.floor((now - v.sessionStartAt) / 1000));
+        if (v.currentTimeSec > v.bestTimeSec) {
+          v.bestTimeSec = v.currentTimeSec;
+        }
+      }
+    }
+
+    // 2. Update Top Likers Ranking
+    if (data.type === 'like') {
+      const addLikes = Math.max(1, Number(data.count) || 1);
+      let liker = this.topLikers.get(key);
+      if (!liker) {
+        liker = {
+          key,
+          username: rawUser,
+          nickname: rawName,
+          avatar: (cleanAvatar && !cleanAvatar.includes('avatar.png')) ? cleanAvatar : (v ? v.avatar : '/assets/avatar.png'),
+          likes: addLikes,
+          updatedAt: now
+        };
+        this.topLikers.set(key, liker);
+      } else {
+        liker.likes += addLikes;
+        if (rawName) liker.nickname = rawName;
+        if (cleanAvatar && !cleanAvatar.includes('avatar.png')) {
+          liker.avatar = cleanAvatar;
+        }
+        liker.updatedAt = now;
+      }
+    }
+
+    this.broadcastRaw({ type: 'rankings:update', rankings: this.getRankingsSnapshot() });
+  }
+
+  tickViewerRankings() {
+    if (this.viewerStay.size === 0) return;
+    const now = Date.now();
+    const timeoutMin = Math.max(1, Number(this.settings?.rankings?.leaveTimeoutMin) || 5);
+    const timeoutMs = timeoutMin * 60 * 1000;
+    let changed = false;
+
+    for (const v of this.viewerStay.values()) {
+      if (!v.isPresent) continue;
+      if (now - v.lastSeenAt > timeoutMs) {
+        // Viewer left / timed out: stop their timer and preserve bestTimeSec
+        if (v.currentTimeSec > v.bestTimeSec) {
+          v.bestTimeSec = v.currentTimeSec;
+        }
+        v.isPresent = false;
+        changed = true;
+      } else {
+        const elapsed = Math.max(0, Math.floor((now - v.sessionStartAt) / 1000));
+        if (elapsed !== v.currentTimeSec) {
+          v.currentTimeSec = elapsed;
+          if (v.currentTimeSec > v.bestTimeSec) {
+            v.bestTimeSec = v.currentTimeSec;
+          }
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) {
+      this.broadcastRaw({ type: 'rankings:update', rankings: this.getRankingsSnapshot() });
+    }
+  }
+
   start() {
     return new Promise((resolve, reject) => {
       this.server = http.createServer((req, res) => this.handleRequest(req, res));
       this.wss = new WebSocketServer({ server: this.server });
 
+      if (this.rankingTimer) clearInterval(this.rankingTimer);
+      this.rankingTimer = setInterval(() => this.tickViewerRankings(), 1000);
+
       this.wss.on('connection', ws => {
         this.clients.add(ws);
-        ws.send(JSON.stringify({ type: 'init', settings: this.settings }));
+        ws.send(JSON.stringify({
+          type: 'init',
+          settings: this.settings,
+          rankings: this.getRankingsSnapshot()
+        }));
+        if (this.tiktokStatus) {
+          ws.send(JSON.stringify(Object.assign({ type: 'tiktok:status' }, this.tiktokStatus)));
+        }
         ws.on('close', () => this.clients.delete(ws));
         ws.on('error', () => this.clients.delete(ws));
         ws.on('message', raw => {
@@ -223,6 +428,12 @@ class OverlayServer {
               this.saveSettings(data.settings);
             } else if (data.type === 'test:event') {
               this.broadcast(data.event);
+            } else if (data.type === 'rankings:reset' || data.type === 'viewer:leave') {
+              this.processRankingEvent(data);
+            } else if (data.type === 'tiktok:connect' && typeof this.onConnectRequest === 'function') {
+              this.onConnectRequest(data.username, { manual: Boolean(data.manual) });
+            } else if (data.type === 'tiktok:disconnect' && typeof this.onDisconnectRequest === 'function') {
+              this.onDisconnectRequest();
             }
           } catch (e) {
             console.warn('Bad message from client', e);
@@ -252,6 +463,10 @@ class OverlayServer {
   }
 
   stop() {
+    if (this.rankingTimer) {
+      clearInterval(this.rankingTimer);
+      this.rankingTimer = null;
+    }
     for (const ws of this.clients) {
       try { ws.terminate(); } catch (e) {}
     }
@@ -264,11 +479,22 @@ class OverlayServer {
     }
   }
 
-  broadcast(msg) {
+  broadcastRaw(msg) {
     const payload = typeof msg === 'string' ? msg : JSON.stringify(msg);
     for (const ws of this.clients) {
       if (ws.readyState === ws.OPEN) {
         try { ws.send(payload); } catch (e) {}
+      }
+    }
+  }
+
+  broadcast(msg) {
+    const obj = typeof msg === 'string' ? (() => { try { return JSON.parse(msg); } catch (e) { return null; } })() : msg;
+    this.broadcastRaw(msg);
+    if (obj) {
+      this.processRankingEvent(obj);
+      if (obj.type === 'settings:update') {
+        this.broadcastRaw({ type: 'rankings:update', rankings: this.getRankingsSnapshot() });
       }
     }
   }
@@ -375,17 +601,26 @@ class OverlayServer {
 
     // Sound Management APIs
     if (pathname === '/api/sounds') {
-      const soundsDir = path.join(this.baseDir, 'assets', 'sounds');
-      if (!fs.existsSync(soundsDir)) fs.mkdirSync(soundsDir, { recursive: true });
+      const baseSoundsDir = path.join(this.baseDir, 'assets', 'sounds');
+      const userSoundsDir = path.join(this.userDataDir, 'sounds');
       try {
-        const files = fs.readdirSync(soundsDir).filter(f => /\.(mp3|wav|ogg|m4a)$/i.test(f));
-        const sounds = files.map(f => ({
-          filename: f,
-          name: path.basename(f, path.extname(f)).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-          url: `/assets/sounds/${f}`
-        }));
+        if (!fs.existsSync(userSoundsDir)) fs.mkdirSync(userSoundsDir, { recursive: true });
+      } catch (e) {}
+      try {
+        const soundMap = new Map();
+        for (const dir of [baseSoundsDir, userSoundsDir]) {
+          if (!fs.existsSync(dir)) continue;
+          const files = fs.readdirSync(dir).filter(f => /\.(mp3|wav|ogg|m4a)$/i.test(f));
+          for (const f of files) {
+            soundMap.set(f, {
+              filename: f,
+              name: path.basename(f, path.extname(f)).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+              url: `/assets/sounds/${f}`
+            });
+          }
+        }
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify(sounds));
+        return res.end(JSON.stringify(Array.from(soundMap.values())));
       } catch (e) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({ error: e.message }));
@@ -438,7 +673,7 @@ class OverlayServer {
           const cleanTitle = (title || 'sound').replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
           const ext = path.extname(new URL(soundUrl).pathname) || '.mp3';
           const filename = `${cleanTitle}${ext}`;
-          const soundsDir = path.join(this.baseDir, 'assets', 'sounds');
+          const soundsDir = path.join(this.userDataDir, 'sounds');
           if (!fs.existsSync(soundsDir)) fs.mkdirSync(soundsDir, { recursive: true });
           const destPath = path.join(soundsDir, filename);
 
@@ -472,6 +707,68 @@ class OverlayServer {
       return;
     }
 
+    // Rankings API
+    if (pathname === '/api/rankings') {
+      if (req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', () => {
+          try {
+            const parsed = JSON.parse(body || '{}');
+            if (parsed.action === 'reset') {
+              this.processRankingEvent({ type: 'rankings:reset', target: parsed.target || 'all' });
+            } else if (parsed.action === 'leave') {
+              this.processRankingEvent({ type: 'viewer:leave', username: parsed.username || parsed.user });
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(this.getRankingsSnapshot()));
+          } catch (e) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: e.message }));
+          }
+        });
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(this.getRankingsSnapshot()));
+    }
+
+    // Avatar Proxy for CORS-safe Canvas & Overlay Profile Pictures
+    if (pathname === '/api/avatar-proxy') {
+      const targetUrl = (url.searchParams.get('url') || '').trim();
+      const fallbackPath = path.join(this.baseDir, 'assets', 'avatar.png');
+      if (!targetUrl || !/^https?:\/\//i.test(targetUrl)) {
+        return this.serveStatic(fallbackPath, res);
+      }
+      try {
+        const client = targetUrl.startsWith('https') ? https : http;
+        const proxyReq = client.get(targetUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Referer': 'https://www.tiktok.com/'
+          },
+          timeout: 4500
+        }, proxyRes => {
+          if (proxyRes.statusCode !== 200) {
+            return this.serveStatic(fallbackPath, res);
+          }
+          res.writeHead(200, {
+            'Content-Type': proxyRes.headers['content-type'] || 'image/jpeg',
+            'Cache-Control': 'public, max-age=3600',
+            'Access-Control-Allow-Origin': '*'
+          });
+          proxyRes.pipe(res);
+        });
+        proxyReq.on('error', () => this.serveStatic(fallbackPath, res));
+        proxyReq.on('timeout', () => {
+          try { proxyReq.destroy(); } catch (e) {}
+          this.serveStatic(fallbackPath, res);
+        });
+      } catch (e) {
+        return this.serveStatic(fallbackPath, res);
+      }
+      return;
+    }
 
     if (pathname === '/api/gifts') {
       const catalogPath = path.join(this.baseDir, 'assets', 'gifts-catalog.json');
@@ -522,11 +819,25 @@ class OverlayServer {
       return this.serveFile(filePath, 'text/html', res);
     }
 
-    // Serve assets
+    // Serve custom uploaded media from userDataDir/media
+    if (pathname.startsWith('/media/')) {
+      const relPath = path.basename(decodeURIComponent(pathname.replace('/media/', '')));
+      const userMediaPath = path.join(this.userDataDir, 'media', relPath);
+      return this.serveStatic(userMediaPath, res, req);
+    }
+
+    // Serve assets (check userDataDir/sounds fallback for custom sounds)
     if (pathname.startsWith('/assets/')) {
       const relPath = pathname.replace('/assets/', '');
       const filePath = path.join(this.baseDir, 'assets', relPath);
-      return this.serveStatic(filePath, res);
+      if (!fs.existsSync(filePath) && relPath.startsWith('sounds/')) {
+        const soundName = path.basename(relPath);
+        const userSoundPath = path.join(this.userDataDir, 'sounds', soundName);
+        if (fs.existsSync(userSoundPath)) {
+          return this.serveStatic(userSoundPath, res, req);
+        }
+      }
+      return this.serveStatic(filePath, res, req);
     }
 
     // Default 404
@@ -544,7 +855,7 @@ class OverlayServer {
     }
   }
 
-  serveStatic(filePath, res) {
+  serveStatic(filePath, res, req = null) {
     if (!fs.existsSync(filePath)) {
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       return res.end('File Not Found');
@@ -558,13 +869,42 @@ class OverlayServer {
       '.png': 'image/png',
       '.jpg': 'image/jpeg',
       '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
       '.svg': 'image/svg+xml',
       '.ico': 'image/x-icon',
       '.wav': 'audio/wav',
-      '.mp3': 'audio/mpeg'
+      '.mp3': 'audio/mpeg',
+      '.ogg': 'audio/ogg',
+      '.m4a': 'audio/mp4',
+      '.mp4': 'video/mp4',
+      '.webm': 'video/webm',
+      '.mov': 'video/quicktime'
     };
     const mime = mimeMap[ext] || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': mime });
+    const stat = fs.statSync(filePath);
+
+    // Support HTTP Range headers for video streaming
+    if (req && req.headers && req.headers.range && mime.startsWith('video/')) {
+      const range = req.headers.range;
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10) || 0;
+      const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+      const chunksize = (end - start) + 1;
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': mime
+      });
+      return fs.createReadStream(filePath, { start, end }).pipe(res);
+    }
+
+    res.writeHead(200, {
+      'Content-Type': mime,
+      'Content-Length': stat.size,
+      'Accept-Ranges': 'bytes'
+    });
     fs.createReadStream(filePath).pipe(res);
   }
 }

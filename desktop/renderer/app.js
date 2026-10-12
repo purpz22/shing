@@ -60,9 +60,9 @@ if (typeof window.api === 'undefined') {
         isDefault: cleanUser.toLowerCase() === 'shimmy_ming'
       };
     },
-    connectTikTok: async (username) => {
+    connectTikTok: async (username, options = {}) => {
       if (wsClient && wsClient.readyState === WebSocket.OPEN) {
-        wsClient.send(JSON.stringify({ type: 'tiktok:connect', username }));
+        wsClient.send(JSON.stringify({ type: 'tiktok:connect', username, manual: Boolean(options && options.manual) }));
       }
       return { success: true, status: 'connecting', username };
     },
@@ -70,7 +70,10 @@ if (typeof window.api === 'undefined') {
       if (wsClient && wsClient.readyState === WebSocket.OPEN) {
         wsClient.send(JSON.stringify({ type: 'tiktok:disconnect' }));
       }
-      return { success: true };
+      return { success: true, status: 'disconnected' };
+    },
+    getTikTokStatus: async () => {
+      return { status: 'disconnected', username: appSettings.username || 'shimmy_ming' };
     },
     simulateEvent: async (type, payload) => {
       const event = Object.assign({ type }, payload);
@@ -736,29 +739,198 @@ if (typeof window.api !== 'undefined' && window.api.onTikTokEvent) {
   });
 }
 
+const CONNECT_ICONS = {
+  connect: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>`,
+  connecting: `<svg class="spin-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`,
+  connected: `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`
+};
+
+let currentConnectionStatus = 'disconnected';
+
+function updateConnectionUI(statusData = {}) {
+  const state = statusData.status || 'disconnected';
+  const prevState = currentConnectionStatus;
+  currentConnectionStatus = state;
+
+  const uname = (statusData.username || appSettings.username || 'shimmy_ming').replace(/^@/, '');
+  const pill = $('account-pill');
+  const dot = $('header-status-dot') || (pill ? pill.querySelector('.status-dot') : null);
+  const nameEl = $('header-username');
+
+  if (uname && nameEl) {
+    nameEl.textContent = `@${uname}`;
+  }
+
+  const hdrConnectBtn = $('header-connect-btn');
+  const hdrConnectIcon = $('header-connect-icon');
+  const hdrConnectLabel = $('header-connect-label');
+  const hdrDisconnectBtn = $('header-disconnect-btn');
+
+  const setConnBadge = $('settings-conn-badge');
+  const setStatusDot = $('settings-status-dot');
+  const setStatusText = $('settings-status-text');
+  const setConnHint = $('settings-conn-hint');
+  const setConnectBtn = $('settings-connect-btn');
+  const setConnectIcon = $('settings-connect-icon');
+  const setConnectLabel = $('settings-connect-label');
+  const setDisconnectBtn = $('settings-disconnect-btn');
+
+  if (dot) {
+    dot.className = 'status-dot';
+    if (state === 'connected') dot.classList.add('online');
+    else if (state === 'connecting') dot.classList.add('connecting');
+    else if (state === 'waiting') dot.classList.add('waiting');
+    else dot.classList.add('offline');
+  }
+
+  if (setStatusDot) {
+    setStatusDot.className = 'status-dot';
+    if (state === 'connected') setStatusDot.classList.add('online');
+    else if (state === 'connecting') setStatusDot.classList.add('connecting');
+    else if (state === 'waiting') setStatusDot.classList.add('waiting');
+    else setStatusDot.classList.add('offline');
+  }
+
+  if (state === 'connected') {
+    if (pill) pill.title = `Live on TikTok (Room: ${statusData.roomId || 'Active'}) - Click to change account`;
+    if (hdrConnectBtn) {
+      hdrConnectBtn.className = 'header-connect-btn connected';
+      hdrConnectBtn.disabled = false;
+      hdrConnectBtn.title = `Connected to @${uname} (Room: ${statusData.roomId || 'Active'}) - Click to Reconnect`;
+    }
+    if (hdrConnectIcon) hdrConnectIcon.innerHTML = CONNECT_ICONS.connected;
+    if (hdrConnectLabel) hdrConnectLabel.textContent = 'Connected';
+    if (hdrDisconnectBtn) hdrDisconnectBtn.classList.remove('hidden');
+
+    if (setConnBadge) setConnBadge.className = 'conn-status-badge online';
+    if (setStatusText) setStatusText.textContent = 'Connected (Live)';
+    if (setConnHint) setConnHint.textContent = statusData.message || `Actively connected to @${uname}'s TikTok Live stream.`;
+    if (setConnectBtn) setConnectBtn.disabled = false;
+    if (setConnectIcon) setConnectIcon.innerHTML = CONNECT_ICONS.connected;
+    if (setConnectLabel) setConnectLabel.textContent = 'Reconnect Live';
+    if (setDisconnectBtn) setDisconnectBtn.classList.remove('hidden');
+
+    if (!statusData.manual && prevState !== 'connected') {
+      showToast(`Connected to @${uname}'s TikTok Live stream!`, 'success', 'TikTok Live');
+    }
+  } else if (state === 'connecting') {
+    if (pill) pill.title = `Connecting to @${uname}...`;
+    if (hdrConnectBtn) {
+      hdrConnectBtn.className = 'header-connect-btn connecting';
+      hdrConnectBtn.disabled = true;
+      hdrConnectBtn.title = `Connecting to @${uname} on TikTok Live...`;
+    }
+    if (hdrConnectIcon) hdrConnectIcon.innerHTML = CONNECT_ICONS.connecting;
+    if (hdrConnectLabel) hdrConnectLabel.textContent = 'Connecting...';
+    if (hdrDisconnectBtn) hdrDisconnectBtn.classList.remove('hidden');
+
+    if (setConnBadge) setConnBadge.className = 'conn-status-badge connecting';
+    if (setStatusText) setStatusText.textContent = 'Connecting...';
+    if (setConnHint) setConnHint.textContent = statusData.message || `Connecting to @${uname}'s TikTok Live stream...`;
+    if (setConnectBtn) setConnectBtn.disabled = true;
+    if (setConnectIcon) setConnectIcon.innerHTML = CONNECT_ICONS.connecting;
+    if (setConnectLabel) setConnectLabel.textContent = 'Connecting...';
+    if (setDisconnectBtn) setDisconnectBtn.classList.remove('hidden');
+  } else if (state === 'waiting') {
+    if (pill) pill.title = statusData.message || `@${uname} is offline. Click Connect when you go live.`;
+    if (hdrConnectBtn) {
+      hdrConnectBtn.className = 'header-connect-btn';
+      hdrConnectBtn.disabled = false;
+      hdrConnectBtn.title = `Click to manually connect to @${uname}'s TikTok Live`;
+    }
+    if (hdrConnectIcon) hdrConnectIcon.innerHTML = CONNECT_ICONS.connect;
+    if (hdrConnectLabel) hdrConnectLabel.textContent = 'Connect';
+    if (hdrDisconnectBtn) hdrDisconnectBtn.classList.add('hidden');
+
+    if (setConnBadge) setConnBadge.className = 'conn-status-badge waiting';
+    if (setStatusText) setStatusText.textContent = 'Waiting for Live';
+    if (setConnHint) setConnHint.textContent = statusData.message || `@${uname} is not live yet. Click Connect Live once your stream starts.`;
+    if (setConnectBtn) setConnectBtn.disabled = false;
+    if (setConnectIcon) setConnectIcon.innerHTML = CONNECT_ICONS.connect;
+    if (setConnectLabel) setConnectLabel.textContent = 'Connect Live';
+    if (setDisconnectBtn) setDisconnectBtn.classList.remove('hidden');
+  } else {
+    if (pill) pill.title = `Not connected (@${uname}) - Click to change account`;
+    if (hdrConnectBtn) {
+      hdrConnectBtn.className = 'header-connect-btn';
+      hdrConnectBtn.disabled = false;
+      hdrConnectBtn.title = `Click to manually connect to @${uname}'s TikTok Live`;
+    }
+    if (hdrConnectIcon) hdrConnectIcon.innerHTML = CONNECT_ICONS.connect;
+    if (hdrConnectLabel) hdrConnectLabel.textContent = 'Connect';
+    if (hdrDisconnectBtn) hdrDisconnectBtn.classList.add('hidden');
+
+    if (setConnBadge) setConnBadge.className = 'conn-status-badge offline';
+    if (setStatusText) setStatusText.textContent = 'Not Connected';
+    if (setConnHint) setConnHint.textContent = statusData.message || `Click Connect Live when your TikTok stream is active to manually connect.`;
+    if (setConnectBtn) setConnectBtn.disabled = false;
+    if (setConnectIcon) setConnectIcon.innerHTML = CONNECT_ICONS.connect;
+    if (setConnectLabel) setConnectLabel.textContent = 'Connect Live';
+    if (setDisconnectBtn) setDisconnectBtn.classList.add('hidden');
+  }
+}
+
+async function handleManualConnect(rawUsername) {
+  const inputVal = (typeof rawUsername === 'string' && rawUsername.trim())
+    ? rawUsername
+    : (($('setting-username') ? $('setting-username').value : '') || appSettings.username || 'shimmy_ming');
+  const cleanUser = String(inputVal).trim().replace(/^@/, '').replace(/\/.*$/, '').trim() || 'shimmy_ming';
+
+  if (appSettings.username !== cleanUser || !appSettings.confirmed) {
+    appSettings.username = cleanUser;
+    appSettings.confirmed = true;
+    if ($('header-username')) $('header-username').textContent = `@${cleanUser}`;
+    if ($('setting-username')) $('setting-username').value = `@${cleanUser}`;
+    if ($('lt-tiktok')) $('lt-tiktok').value = `@${cleanUser}`;
+    saveCurrentSettings();
+  } else if ($('setting-username')) {
+    $('setting-username').value = `@${cleanUser}`;
+  }
+
+  updateConnectionUI({
+    status: 'connecting',
+    username: cleanUser,
+    manual: true,
+    message: `Connecting to @${cleanUser}'s TikTok Live stream...`
+  });
+
+  try {
+    const res = await window.api.connectTikTok(cleanUser, { manual: true });
+    if (res && res.status === 'connected') {
+      showToast(`Connected to @${res.username || cleanUser}'s TikTok Live stream!`, 'success', 'TikTok Live');
+    } else if (res && res.status === 'waiting') {
+      showToast(`@${res.username || cleanUser} is not live right now. Start your stream and click Connect!`, 'warning', 'TikTok Live', 4200);
+    }
+  } catch (err) {
+    updateConnectionUI({
+      status: 'disconnected',
+      username: cleanUser,
+      manual: true,
+      message: `Connection failed: ${err.message}`
+    });
+    showToast(`Could not connect to @${cleanUser}: ${err.message}`, 'error', 'TikTok Live');
+  }
+}
+
+async function handleManualDisconnect() {
+  try {
+    const res = await window.api.disconnectTikTok();
+    const uname = res?.username || appSettings.username || 'shimmy_ming';
+    updateConnectionUI({
+      status: 'disconnected',
+      username: uname,
+      manual: true,
+      message: 'Disconnected from TikTok Live. Click Connect to manually connect.'
+    });
+    showToast(`Disconnected from @${uname}. Click Connect anytime to reconnect.`, 'info', 'TikTok Live');
+  } catch (err) {
+    showToast(`Disconnect error: ${err.message}`, 'error', 'TikTok Live');
+  }
+}
+
 if (typeof window.api !== 'undefined' && window.api.onTikTokStatus) {
   window.api.onTikTokStatus(statusData => {
-    const pill = $('account-pill');
-    const dot = pill ? pill.querySelector('.status-dot') : null;
-    const nameEl = $('header-username');
-
-    if (statusData.username && nameEl) {
-      nameEl.textContent = `@${statusData.username}`;
-    }
-
-    if (dot) {
-      dot.className = 'status-dot';
-      if (statusData.status === 'connected') {
-        dot.classList.add('online');
-        if (pill) pill.title = `Live on TikTok (Room: ${statusData.roomId || 'Active'}) - Click to change`;
-      } else if (statusData.status === 'waiting') {
-        dot.classList.add('waiting');
-        if (pill) pill.title = statusData.message || `@${statusData.username} is offline. Auto-connecting when you go live...`;
-      } else {
-        dot.classList.add('offline');
-        if (pill) pill.title = `Disconnected - Click to reconnect`;
-      }
-    }
+    updateConnectionUI(statusData);
   });
 }
 
@@ -786,10 +958,11 @@ async function initSettings() {
   // Initial Modal status
   if (!appSettings.confirmed) {
     showAccountModal();
+    updateConnectionUI({ status: 'disconnected', username: appSettings.username || 'shimmy_ming' });
   } else {
     $('modal-account').classList.remove('active');
     $('header-username').textContent = `@${appSettings.username}`;
-    window.api.connectTikTok(appSettings.username);
+    window.api.connectTikTok(appSettings.username, { manual: false });
   }
 
   // Populate Triggers
@@ -1203,7 +1376,7 @@ async function handleSearchUser() {
 
 // App Updater Manager Logic
 const updateState = {
-  currentVersion: '1.3.0',
+  currentVersion: '1.3.1',
   latestVersion: null,
   hasUpdate: false,
   release: null,
@@ -1404,6 +1577,27 @@ function openChangelogModal() {
   container.innerHTML = '';
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
+    {
+      version: '1.3.1',
+      releaseName: 'Shing Live v1.3.1 - Manual TikTok Live Connect & Disconnect Controls',
+      releaseDate: '2026-10-12',
+      summary: 'Added a dedicated manual Connect button in the top header and Settings tab so streamers can connect, reconnect, or disconnect their TikTok Live stream anytime.',
+      highlights: [
+        'Header Connect Button: Added a prominent Connect / Connected / Reconnect button and quick Disconnect button in the top navigation bar',
+        'Settings Live Connection Card: Added real-time connection status badge, direct username editing, and Connect Live / Disconnect controls in App Settings',
+        'Race-Safe Connection Handshake: Added immediate Connecting state feedback, 15-second connection timeout protection, and toast notifications for manual connect results'
+      ]
+    },
+    {
+      version: '1.3.0',
+      releaseName: 'Shing Live v1.3.0 - TikTok LIVE Studio Link Source Compatibility Fix',
+      releaseDate: '2026-10-11',
+      summary: 'Fixed TikTok LIVE Studio Add Link URL validation and File Not Found errors when adding .html overlay URLs.',
+      highlights: [
+        'TikTok LIVE Studio Link Compatibility: Updated Copy URL buttons to include .html extension required by TikTok LIVE Studio URL validator',
+        'Overlay Route Resolution: Updated OverlayServer to serve both /overlays/<name> and /overlays/<name>.html with HTTP 200 OK'
+      ]
+    },
     {
       version: '1.2.9',
       releaseName: 'Shing Live v1.2.9 - Automatic Startup Updates & Persistent Theme Storage',
@@ -1643,29 +1837,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Account modal buttons
+  // Account modal & Manual Connection buttons
   $('modal-search-btn').addEventListener('click', handleSearchUser);
   $('modal-username-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') handleSearchUser();
   });
   $('modal-confirm-yes').addEventListener('click', () => {
-    const username = $('modal-unique-id').textContent.replace('@', '');
-    appSettings.username = username;
-    appSettings.confirmed = true;
-    $('header-username').textContent = `@${username}`;
-    $('setting-username').value = `@${username}`;
-    $('lt-tiktok').value = `@${username}`;
+    const username = $('modal-unique-id').textContent.replace('@', '').trim();
     $('modal-account').classList.remove('active');
-    saveCurrentSettings();
-    window.api.connectTikTok(username);
-    showToast(`Connected to streamer @${username}!`, 'success', 'TikTok Live');
+    handleManualConnect(username);
   });
   $('modal-confirm-no').addEventListener('click', () => {
     $('modal-step-confirm').style.display = 'none';
     $('modal-step-search').style.display = 'block';
   });
+  $('modal-account-close')?.addEventListener('click', () => {
+    $('modal-account').classList.remove('active');
+  });
   $('account-pill').addEventListener('click', showAccountModal);
   $('switch-account-btn').addEventListener('click', showAccountModal);
+
+  $('header-connect-btn')?.addEventListener('click', () => {
+    handleManualConnect(appSettings.username);
+  });
+  $('header-disconnect-btn')?.addEventListener('click', handleManualDisconnect);
+  $('settings-connect-btn')?.addEventListener('click', () => {
+    handleManualConnect($('setting-username')?.value);
+  });
+  $('settings-disconnect-btn')?.addEventListener('click', handleManualDisconnect);
+  $('setting-username')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleManualConnect($('setting-username').value);
+  });
 
   // Live Simulator Buttons
   document.querySelectorAll('.sim-btn').forEach(btn => {

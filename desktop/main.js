@@ -236,7 +236,24 @@ ipcMain.handle('tiktok:search', async (evt, username) => {
 let currentTargetUser = null;
 let reconnectTimer = null;
 let isConnecting = false;
+let connectAttemptId = 0;
 let TikTokConnector = null;
+let lastTikTokStatus = {
+  status: 'disconnected',
+  username: 'shimmy_ming',
+  message: 'Disconnected. Click Connect to connect to your TikTok Live stream.'
+};
+
+function sendTikTokStatus(payload) {
+  lastTikTokStatus = Object.assign({ username: currentTargetUser || overlayServer?.settings?.username || 'shimmy_ming' }, payload);
+  if (overlayServer) {
+    overlayServer.tiktokStatus = lastTikTokStatus;
+    overlayServer.broadcast(Object.assign({ type: 'tiktok:status' }, lastTikTokStatus));
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('tiktok:status', lastTikTokStatus);
+  }
+}
 
 function sanitizeTikTokUsername(input) {
   if (!input) return '';
@@ -256,6 +273,7 @@ async function getTikTokConnector() {
 }
 
 async function stopTikTokConnection() {
+  connectAttemptId++;
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
@@ -401,17 +419,16 @@ function attachTikTokListeners(conn, targetUser, WebcastEvent) {
     isConnected = false;
     isConnecting = false;
     console.log(`Stream disconnected for @${targetUser}. Resuming background auto-reconnect...`);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('tiktok:status', {
-        status: 'waiting',
-        username: targetUser,
-        message: 'Live stream ended or disconnected. Reconnecting automatically...'
-      });
-    }
+    sendTikTokStatus({
+      status: 'waiting',
+      username: targetUser,
+      manual: false,
+      message: 'Live stream ended or disconnected. Click Connect to reconnect manually, or wait for auto-reconnect.'
+    });
     if (!reconnectTimer && currentTargetUser === targetUser) {
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
-        attemptConnect(targetUser);
+        attemptConnect(targetUser, false);
       }, 8000);
     }
   });
@@ -421,17 +438,16 @@ function attachTikTokListeners(conn, targetUser, WebcastEvent) {
     isConnected = false;
     isConnecting = false;
     console.log(`Stream ended for @${targetUser}. Resuming background auto-reconnect...`);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('tiktok:status', {
-        status: 'waiting',
-        username: targetUser,
-        message: `@${targetUser}'s live stream ended. Watching for next stream...`
-      });
-    }
+    sendTikTokStatus({
+      status: 'waiting',
+      username: targetUser,
+      manual: false,
+      message: `@${targetUser}'s live stream ended. Click Connect when you go live again.`
+    });
     if (!reconnectTimer && currentTargetUser === targetUser) {
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
-        attemptConnect(targetUser);
+        attemptConnect(targetUser, false);
       }, 10000);
     }
   });
@@ -441,19 +457,43 @@ function attachTikTokListeners(conn, targetUser, WebcastEvent) {
   });
 }
 
-async function attemptConnect(targetUser) {
-  if (!targetUser || isConnected || isConnecting) return;
+async function attemptConnect(targetUser, isManual = false) {
+  if (!targetUser) {
+    return { success: false, status: 'disconnected' };
+  }
+  if (!isManual && (isConnected || isConnecting)) {
+    return lastTikTokStatus;
+  }
+
+  const attemptId = ++connectAttemptId;
   isConnecting = true;
 
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+
+  sendTikTokStatus({
+    status: 'connecting',
+    username: targetUser,
+    manual: Boolean(isManual),
+    message: `Connecting to @${targetUser}'s TikTok Live stream...`
+  });
+
+  let conn = null;
+  let connectTimeout = null;
   try {
     const { TikTokLiveConnection, WebcastEvent } = await getTikTokConnector();
+    if (attemptId !== connectAttemptId || currentTargetUser !== targetUser) {
+      return { success: false, status: 'aborted', username: targetUser };
+    }
 
     if (tiktokConnection) {
       try { await tiktokConnection.disconnect(); } catch (e) {}
       tiktokConnection = null;
     }
 
-    const conn = new TikTokLiveConnection(targetUser, {
+    conn = new TikTokLiveConnection(targetUser, {
       processInitialData: false,
       fetchRoomInfoOnConnect: false,
       enableExtendedGiftInfo: false
@@ -463,14 +503,22 @@ async function attemptConnect(targetUser) {
     attachTikTokListeners(conn, targetUser, WebcastEvent);
 
     const isRoomIdNumeric = /^\d{10,}$/.test(targetUser);
-    const state = await (isRoomIdNumeric ? conn.connect(targetUser) : conn.connect());
+    const connectPromise = isRoomIdNumeric ? conn.connect(targetUser) : conn.connect();
+    const timeoutPromise = new Promise((_, reject) => {
+      connectTimeout = setTimeout(() => {
+        reject(new Error('Connection timed out after 15 seconds'));
+      }, 15000);
+    });
 
-    isConnecting = false;
-    if (tiktokConnection !== conn || currentTargetUser !== targetUser) {
+    const state = await Promise.race([connectPromise, timeoutPromise]);
+    if (connectTimeout) clearTimeout(connectTimeout);
+
+    if (attemptId !== connectAttemptId || tiktokConnection !== conn || currentTargetUser !== targetUser) {
       try { await conn.disconnect(); } catch (e) {}
-      return;
+      return { success: false, status: 'aborted', username: targetUser };
     }
 
+    isConnecting = false;
     isConnected = true;
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
@@ -478,57 +526,112 @@ async function attemptConnect(targetUser) {
     }
 
     console.log(`Successfully connected to TikTok Live for @${targetUser} (Room: ${state.roomId})`);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('tiktok:status', {
-        status: 'connected',
-        roomId: state.roomId,
-        username: targetUser
-      });
-    }
+    const connectedPayload = {
+      success: true,
+      status: 'connected',
+      roomId: state.roomId,
+      username: targetUser,
+      manual: Boolean(isManual),
+      message: `Connected to @${targetUser}'s TikTok Live (Room: ${state.roomId || 'Active'})`
+    };
+    sendTikTokStatus(connectedPayload);
+    return connectedPayload;
   } catch (err) {
+    if (connectTimeout) clearTimeout(connectTimeout);
+    if (conn && tiktokConnection === conn) {
+      try { await conn.disconnect(); } catch (e) {}
+      tiktokConnection = null;
+    }
+    if (attemptId !== connectAttemptId || currentTargetUser !== targetUser) {
+      return { success: false, status: 'aborted', username: targetUser };
+    }
+
     isConnecting = false;
     isConnected = false;
-    if (currentTargetUser !== targetUser) return;
 
     const errMsg = err.message || 'not live';
     console.log(`@${targetUser} is offline (${errMsg}). Auto-checking again in 10s...`);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('tiktok:status', {
-        status: 'waiting',
-        username: targetUser,
-        message: `@${targetUser} is not live yet. Shing Live will auto-connect when you start streaming.`
-      });
-    }
+    const waitingPayload = {
+      success: false,
+      status: 'waiting',
+      username: targetUser,
+      manual: Boolean(isManual),
+      error: errMsg,
+      message: `@${targetUser} is not live yet. Click Connect when you start streaming, or wait for auto-connect.`
+    };
+    sendTikTokStatus(waitingPayload);
 
     if (!reconnectTimer && currentTargetUser === targetUser) {
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
-        attemptConnect(targetUser);
+        attemptConnect(targetUser, false);
       }, 10000);
     }
+    return waitingPayload;
   }
 }
 
 // TikTok Connect
-ipcMain.handle('tiktok:connect', async (evt, username) => {
-  const cleanUser = sanitizeTikTokUsername(username || 'shimmy_ming');
+ipcMain.handle('tiktok:connect', async (evt, username, options = {}) => {
+  const isManual = Boolean(options && options.manual);
+  const cleanUser = sanitizeTikTokUsername(username || overlayServer?.settings?.username || 'shimmy_ming');
   currentTargetUser = cleanUser;
   await stopTikTokConnection();
   currentTargetUser = cleanUser;
 
-  attemptConnect(cleanUser);
+  if (isManual) {
+    return await attemptConnect(cleanUser, true);
+  }
+  attemptConnect(cleanUser, false);
   return { success: true, status: 'connecting', username: cleanUser };
 });
 
 // TikTok Disconnect
 ipcMain.handle('tiktok:disconnect', async () => {
+  const prevUser = currentTargetUser || overlayServer?.settings?.username || 'shimmy_ming';
   currentTargetUser = null;
   await stopTikTokConnection();
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('tiktok:status', { status: 'disconnected' });
-  }
-  return { success: true };
+  sendTikTokStatus({
+    status: 'disconnected',
+    username: prevUser,
+    manual: true,
+    message: 'Disconnected from TikTok Live. Click Connect to manually connect.'
+  });
+  return { success: true, status: 'disconnected', username: prevUser };
 });
+
+// TikTok Status Query
+ipcMain.handle('tiktok:status:get', () => {
+  return lastTikTokStatus;
+});
+
+if (overlayServer) {
+  overlayServer.tiktokStatus = lastTikTokStatus;
+  overlayServer.onConnectRequest = async (username, options = {}) => {
+    const isManual = Boolean(options && options.manual);
+    const cleanUser = sanitizeTikTokUsername(username || overlayServer?.settings?.username || 'shimmy_ming');
+    currentTargetUser = cleanUser;
+    await stopTikTokConnection();
+    currentTargetUser = cleanUser;
+    if (isManual) {
+      return await attemptConnect(cleanUser, true);
+    }
+    attemptConnect(cleanUser, false);
+    return { success: true, status: 'connecting', username: cleanUser };
+  };
+  overlayServer.onDisconnectRequest = async () => {
+    const prevUser = currentTargetUser || overlayServer?.settings?.username || 'shimmy_ming';
+    currentTargetUser = null;
+    await stopTikTokConnection();
+    sendTikTokStatus({
+      status: 'disconnected',
+      username: prevUser,
+      manual: true,
+      message: 'Disconnected from TikTok Live. Click Connect to manually connect.'
+    });
+    return { success: true, status: 'disconnected', username: prevUser };
+  };
+}
 
 // Event Simulator (fires test follow, gift, like, chat, join)
 ipcMain.handle('tiktok:simulate', (evt, type, payload) => {

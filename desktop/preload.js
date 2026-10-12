@@ -14,8 +14,9 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   searchTikTokUser: (username) => ipcRenderer.invoke('tiktok:search', username),
-  connectTikTok: (username) => ipcRenderer.invoke('tiktok:connect', username),
+  connectTikTok: (username, options) => ipcRenderer.invoke('tiktok:connect', username, options),
   disconnectTikTok: () => ipcRenderer.invoke('tiktok:disconnect'),
+  getTikTokStatus: () => ipcRenderer.invoke('tiktok:status:get'),
   simulateEvent: (type, payload) => ipcRenderer.invoke('tiktok:simulate', type, payload),
 
   controlTimer: (action, seconds) => ipcRenderer.invoke('timer:control', action, seconds),

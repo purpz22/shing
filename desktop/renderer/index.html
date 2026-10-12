@@ -54,10 +54,21 @@
       <span class="ver-text" id="header-version-text">v1.0.0</span>
       <span class="ver-badge-tag" id="header-version-badge">Up to Date</span>
     </div>
-    <button id="account-pill" class="account-pill" title="Click to change account">
-      <span class="status-dot online"></span>
-      <span id="header-username">@shimmy_ming</span>
-    </button>
+    <div class="header-connection-group">
+      <button id="account-pill" class="account-pill" title="Click to change TikTok account">
+        <span class="status-dot offline" id="header-status-dot"></span>
+        <span id="header-username">@shimmy_ming</span>
+      </button>
+      <button id="header-connect-btn" class="header-connect-btn" title="Manually connect to TikTok Live stream">
+        <span class="connect-btn-icon" id="header-connect-icon">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+        </span>
+        <span id="header-connect-label">Connect</span>
+      </button>
+      <button id="header-disconnect-btn" class="header-disconnect-btn hidden" title="Disconnect from TikTok Live">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
   </div>
 </header>
 
@@ -809,12 +820,29 @@
         </div>
 
         <div class="form-card">
-          <h3>TikTok Account</h3>
-          <label>Current Username
-            <input type="text" id="setting-username" value="@shimmy_ming" readonly>
+          <div class="card-header-row" style="margin-bottom: 4px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; align-items: center;">
+            <h3 style="border-bottom: none; padding-bottom: 0; margin: 0;">TikTok Live Connection</h3>
+            <div class="conn-status-badge offline" id="settings-conn-badge">
+              <span class="status-dot offline" id="settings-status-dot"></span>
+              <span id="settings-status-text">Not Connected</span>
+            </div>
+          </div>
+          <label>Streamer TikTok Username
+            <input type="text" id="setting-username" value="@shimmy_ming" placeholder="e.g. @shimmy_ming">
           </label>
-          <div class="btn-row">
-            <button class="btn btn-secondary" id="switch-account-btn">Change TikTok Account</button>
+          <div class="hint-text" id="settings-conn-hint">Click Connect Live when your TikTok stream is active to manually connect.</div>
+          <div class="btn-row" style="margin-top: 6px;">
+            <button class="btn btn-primary" id="settings-connect-btn">
+              <span class="connect-btn-icon" id="settings-connect-icon">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+              </span>
+              <span id="settings-connect-label">Connect Live</span>
+            </button>
+            <button class="btn btn-danger hidden" id="settings-disconnect-btn">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+              <span>Disconnect</span>
+            </button>
+            <button class="btn btn-secondary" id="switch-account-btn">Change Account</button>
           </div>
         </div>
 
@@ -950,8 +978,9 @@
 <!-- Modal: Account Verification -->
 <div id="modal-account" class="modal-backdrop active">
   <div class="modal-card">
-    <div class="modal-header">
+    <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between;">
       <h3>Connect TikTok Live</h3>
+      <button class="modal-close-btn" id="modal-account-close" title="Close" style="color: #fff; opacity: 0.85;">&times;</button>
     </div>
     <div class="modal-body">
       <div class="modal-step" id="modal-step-search">
@@ -975,7 +1004,7 @@
         <p class="confirm-question">Is this the correct account?</p>
 
         <div class="modal-btn-row">
-          <button class="btn btn-primary btn-large" id="modal-confirm-yes">Yes, continue</button>
+          <button class="btn btn-primary btn-large" id="modal-confirm-yes">Yes, Connect</button>
           <button class="btn btn-secondary btn-large" id="modal-confirm-no">No, change</button>
         </div>
       </div>
