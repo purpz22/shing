@@ -476,8 +476,8 @@ function playAlertSound(type, coins = 1) {
     }
   } else if (type === 'like') {
     soundPath = sounds.like || '/assets/sounds/pop.wav';
-  } else if (type === 'join') {
-    soundPath = sounds.join || sounds.like || '/assets/sounds/pop.wav';
+  } else if (type === 'share') {
+    soundPath = sounds.share || sounds.follow || '/assets/sounds/chime.wav';
   }
 
   if (soundPath && soundPath !== 'none') {
@@ -506,9 +506,17 @@ function applyCustomMedia(item) {
   if (item.type === 'follow' && triggerSettings.followMedia) {
     mediaUrl = triggerSettings.followMedia;
     mediaType = triggerSettings.followMediaType || (/\.(mp4|webm|mov)$/i.test(mediaUrl) ? 'video' : 'image');
-  } else if (item.type === 'gift' && triggerSettings.giftMedia) {
-    mediaUrl = triggerSettings.giftMedia;
-    mediaType = triggerSettings.giftMediaType || (/\.(mp4|webm|mov)$/i.test(mediaUrl) ? 'video' : 'image');
+  } else if (item.type === 'gift') {
+    if (item.coins >= 1000 && triggerSettings.giftBigMedia) {
+      mediaUrl = triggerSettings.giftBigMedia;
+      mediaType = triggerSettings.giftBigMediaType || (/\.(mp4|webm|mov)$/i.test(mediaUrl) ? 'video' : 'image');
+    } else if (triggerSettings.giftMedia) {
+      mediaUrl = triggerSettings.giftMedia;
+      mediaType = triggerSettings.giftMediaType || (/\.(mp4|webm|mov)$/i.test(mediaUrl) ? 'video' : 'image');
+    }
+  } else if (item.type === 'share' && triggerSettings.shareMedia) {
+    mediaUrl = triggerSettings.shareMedia;
+    mediaType = triggerSettings.shareMediaType || (/\.(mp4|webm|mov)$/i.test(mediaUrl) ? 'video' : 'image');
   }
 
   if (!mediaUrl) return;
@@ -648,6 +656,12 @@ function connectWS() {
         const coins = (Number(data.coins || data.diamonds || 1) || 1) * count;
         const avatarUrl = data.avatar || '/assets/avatar.png';
 
+        const isBig = coins >= 1000;
+        const eventKey = isBig ? 'gift_big' : 'gift';
+        if (triggerSettings.events && triggerSettings.events[eventKey] && triggerSettings.events[eventKey].active === false) {
+          return;
+        }
+
         const safeKey = (data.giftId || data.giftName || 'rose').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
         const rawName = (data.giftName || '').toLowerCase().trim();
         const rawGiftId = data.rawGiftId ? String(data.rawGiftId) : '';
@@ -669,7 +683,9 @@ function connectWS() {
           duration = Math.max(6, duration + 1);
         }
 
-        const msgTemplate = triggerSettings.giftMessage || '{user} sent {gift} x{count}!';
+        const msgTemplate = (isBig && triggerSettings.giftBigMessage)
+          ? triggerSettings.giftBigMessage
+          : (triggerSettings.giftMessage || '{user} sent {gift} x{count}!');
         const msg = msgTemplate
           .replace('{user}', user)
           .replace('{gift}', giftName)
@@ -687,6 +703,9 @@ function connectWS() {
           duration
         });
       } else if (data.type === 'follow') {
+        if (triggerSettings.events && triggerSettings.events.follow && triggerSettings.events.follow.active === false) {
+          return;
+        }
         const user = data.nickname || data.user || data.uniqueId || 'Friend';
         const msgTemplate = triggerSettings.followMessage || 'Thank you {user} for following!';
         const msg = msgTemplate.replace('{user}', user);
@@ -699,18 +718,26 @@ function connectWS() {
           tierClass: 'tier-follow',
           duration: 4.5
         });
-      } else if (data.type === 'join') {
+      } else if (data.type === 'share') {
+        if (triggerSettings.events && triggerSettings.events.share && triggerSettings.events.share.active === false) {
+          return;
+        }
         const user = data.nickname || data.user || data.uniqueId || 'Viewer';
+        const msgTemplate = triggerSettings.shareMessage || 'Thank you {user} for sharing the stream!';
+        const msg = msgTemplate.replace('{user}', user);
         showAlert({
-          type: 'join',
-          title: 'WELCOME TO STREAM',
-          message: `${user} joined the chat!`,
+          type: 'share',
+          title: 'STREAM SHARED',
+          message: msg,
           avatarUrl: data.avatar || '/assets/avatar.png',
           giftIconUrl: null,
-          tierClass: 'tier-join',
-          duration: 3.8
+          tierClass: 'tier-follow',
+          duration: 4.5
         });
       } else if (data.type === 'like' && (data.count >= (triggerSettings.likeThreshold || 50))) {
+        if (triggerSettings.events && triggerSettings.events.like && triggerSettings.events.like.active === false) {
+          return;
+        }
         const user = data.nickname || data.user || data.uniqueId || 'Chat';
         showAlert({
           type: 'like',
