@@ -1208,6 +1208,7 @@
       <div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg-hover); border-radius: 10px; margin-bottom: 14px; font-size: 13px;">
         <span style="font-weight: 600; color: var(--text-muted);">Assign sound to:</span>
         <select id="modal-target-sound-select" style="padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-main); font-size: 13px;">
+          <option value="event-modal-sound">Currently Editing Event</option>
           <option value="trig-sound-follow">New Follower Alert</option>
           <option value="trig-sound-gift">Gift Alert (Standard)</option>
           <option value="trig-sound-gift-big">Big Gift Alert (1,000+ coins)</option>
@@ -1225,6 +1226,9 @@
         </div>
       </div>
     </div>
+  </div>
+</div>
+
 <!-- Modal: Event Editor -->
 <div id="modal-event-editor" class="modal-backdrop">
   <div class="modal-card event-editor-card">

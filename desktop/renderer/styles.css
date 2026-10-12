@@ -1338,6 +1338,12 @@ input[type="range"] {
 .modal-backdrop.active {
   display: flex;
 }
+#modal-sound-search {
+  z-index: 105;
+}
+#modal-custom-alert {
+  z-index: 120;
+}
 .modal-card {
   width: 440px;
   background: var(--bg-card);
@@ -2716,6 +2722,9 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.15s ease;
+}
+.btn-icon-table svg {
+  pointer-events: none;
 }
 .btn-icon-table:hover {
   background: var(--primary-light);

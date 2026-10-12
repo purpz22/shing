@@ -1,6 +1,23 @@
 {
-    "latest":  "1.4.4",
+    "latest":  "1.4.5",
     "releases":  [
+                     {
+                         "version":  "1.4.5",
+                         "releaseName":  "Shing Live v1.4.5 - Fix Events Table Edit Modal \u0026 Sound Assignment",
+                         "releaseDate":  "2026-10-12",
+                         "type":  "bugfix",
+                         "summary":  "Fixed an issue where clicking the Edit pencil button on event rows did not open the Event Editor modal due to an unclosed backdrop container, added direct backdrop dismissal, and connected sound search and import to the active event modal.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.4.5.zip",
+                         "highlights":  [
+                                            "Fixed Event Editor Modal: Clicking the Edit pencil icon in the Events table now reliably opens the Event Editor modal without being blocked by parent backdrop styles",
+                                            "Isolated Modal DOM Tree: Corrected modal container nesting so each modal resides cleanly in top-level app stacking context with proper z-index priority",
+                                            "Active Event Sound Assignment: Directly assigns downloaded MyInstants or imported local sounds to the currently open Event Editor modal",
+                                            "Backdrop Click to Dismiss: Added outside-click dismissal to the Event Editor modal for quick and natural desktop navigation"
+                                        ],
+                         "notes":  "Fixed Event Editor modal visibility and sound assignment.",
+                         "packageSize":  "4.09 MB",
+                         "checksum":  "6a594c7d3528467369eb40a206d6577d016a48d722429236082d730fdce3d799"
+                     },
                      {
                          "version":  "1.4.4",
                          "releaseName":  "Shing Live v1.4.4 - Events Table UI, Event Editor Modal \u0026 Disable Join Alerts",

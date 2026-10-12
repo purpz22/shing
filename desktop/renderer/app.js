@@ -1370,6 +1370,7 @@ function updateUniversalVolumeUI() {
 }
 
 // Events Table & Event Editor Modal Controller Logic
+let cachedSoundList = [];
 const EVENT_DEFINITIONS = [
   {
     key: 'follow',
@@ -1972,7 +1973,6 @@ async function initSettings() {
 }
 
 let currentPreviewAudio = null;
-let cachedSoundList = [];
 let fullGiftCatalog = [];
 
 function playSoundPreview(url) {
@@ -2064,6 +2064,11 @@ async function refreshSoundDropdowns() {
       sel.value = target.def;
     }
   });
+
+  const eventModalSel = $('event-modal-sound');
+  if (eventModalSel) {
+    populateEventModalSoundSelect(eventModalSel.value);
+  }
 }
 
 async function populateGiftCatalogSelect() {
@@ -2174,7 +2179,9 @@ async function handleSoundSearch(query) {
                 'trig-sound-follow': 'follow',
                 'trig-sound-gift': 'gift',
                 'trig-sound-gift-big': 'gift_big',
-                'trig-sound-like': 'like'
+                'trig-sound-like': 'like',
+                'trig-sound-share': 'share',
+                'event-modal-sound': currentEventModalKey
               };
               const key = keyMap[targetSelectId];
               if (key) {
@@ -2182,6 +2189,9 @@ async function handleSoundSearch(query) {
                 if (!appSettings.triggers.sounds) appSettings.triggers.sounds = {};
                 appSettings.triggers.sounds[key] = downloaded.url;
                 saveCurrentSettings();
+              }
+              if (targetSelectId === 'event-modal-sound') {
+                populateEventModalSoundSelect(downloaded.url);
               }
             }
             useBtn.textContent = 'Assigned!';
@@ -2229,7 +2239,9 @@ async function handleImportLocalSound(targetSelectId) {
           'trig-sound-follow': 'follow',
           'trig-sound-gift': 'gift',
           'trig-sound-gift-big': 'gift_big',
-          'trig-sound-like': 'like'
+          'trig-sound-like': 'like',
+          'trig-sound-share': 'share',
+          'event-modal-sound': currentEventModalKey
         };
         const key = keyMap[targetId];
         if (key) {
@@ -2237,6 +2249,9 @@ async function handleImportLocalSound(targetSelectId) {
           if (!appSettings.triggers.sounds) appSettings.triggers.sounds = {};
           appSettings.triggers.sounds[key] = res.url;
           saveCurrentSettings();
+        }
+        if (targetId === 'event-modal-sound') {
+          populateEventModalSoundSelect(res.url);
         }
       }
       playSoundPreview(res.url);
@@ -3165,6 +3180,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Event Editor Modal Controls
+  $('modal-event-editor')?.addEventListener('click', (e) => {
+    if (e.target === $('modal-event-editor')) closeEventEditorModal();
+  });
   $('event-modal-close')?.addEventListener('click', closeEventEditorModal);
   $('event-modal-cancel-btn')?.addEventListener('click', closeEventEditorModal);
   $('event-modal-save-btn')?.addEventListener('click', saveEventEditorModal);
