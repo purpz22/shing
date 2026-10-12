@@ -636,6 +636,22 @@ const OverlayDemoManager = {
     if (compIframe && !compIframe.src.includes('localhost:3333')) {
       compIframe.src = 'http://localhost:3333/overlays/companion?muted=1';
     }
+
+    // Sync Ranking Cards Theme & Scale
+    const likersCard = $('ov-demo-toplikers-card');
+    if (likersCard) {
+      const lTheme = appSettings.rankings?.topLikersTheme || 'Purple';
+      const lScale = typeof appSettings.rankings?.topLikersScale === 'number' ? appSettings.rankings.topLikersScale : 1.0;
+      likersCard.dataset.theme = lTheme;
+      likersCard.style.setProperty('--demo-scale', lScale);
+    }
+    const stayCard = $('ov-demo-viewerranking-card');
+    if (stayCard) {
+      const sTheme = appSettings.rankings?.viewerRankingTheme || 'Purple';
+      const sScale = typeof appSettings.rankings?.viewerRankingScale === 'number' ? appSettings.rankings.viewerRankingScale : 1.0;
+      stayCard.dataset.theme = sTheme;
+      stayCard.style.setProperty('--demo-scale', sScale);
+    }
   },
 
   spawnChatBubble() {
@@ -1281,6 +1297,66 @@ function renderTriggerMediaUI(kind) {
   }
 }
 
+// Dynamic Demo Ranking Leaderboard State & Renderers
+const demoLikersData = [
+  { name: 'SakuraChan', likes: 4200, avatar: '../assets/avatar.png' },
+  { name: 'MochiVibes', likes: 2800, avatar: '../assets/avatar.png' },
+  { name: 'KawaiiFox', likes: 1500, avatar: '../assets/avatar.png' },
+  { name: 'StarryNeko', likes: 950, avatar: '../assets/avatar.png' }
+];
+
+function formatLikesVal(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+  return String(n);
+}
+
+function renderDemoTopLikersRows() {
+  const el = $('ov-demo-toplikers-rows');
+  if (!el) return;
+  const limit = appSettings.rankings?.topLikersCount || 3;
+  const rows = demoLikersData.slice(0, limit);
+  if (rows.length === 0) {
+    el.innerHTML = '<div class="demo-rank-row" style="justify-content:center;opacity:0.6;"><span>No likers yet</span></div>';
+    return;
+  }
+  const medals = ['gold', 'silver', 'bronze'];
+  el.innerHTML = rows.map((item, idx) => {
+    const medalClass = medals[idx] ? ` ${medals[idx]}` : '';
+    return `<div class="demo-rank-row"><span class="r-num${medalClass}">#${idx + 1}</span><img src="${item.avatar || '../assets/avatar.png'}" alt=""><span class="r-name">${item.name}</span><span class="r-val">${formatLikesVal(item.likes)}</span></div>`;
+  }).join('');
+}
+
+const demoStayData = [
+  { name: 'LunarNeko', timeSec: 2538, isPresent: true, avatar: '../assets/avatar.png' },
+  { name: 'StarryCloud', timeSec: 1865, isPresent: true, avatar: '../assets/avatar.png' },
+  { name: 'PuddingPop', timeSec: 1184, isPresent: true, avatar: '../assets/avatar.png' },
+  { name: 'ChocoBunny', timeSec: 642, isPresent: true, avatar: '../assets/avatar.png' }
+];
+
+function formatStayTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function renderDemoStayRows() {
+  const el = $('ov-demo-viewerranking-rows');
+  if (!el) return;
+  const limit = appSettings.rankings?.viewerRankingCount || 3;
+  const rows = demoStayData.slice(0, limit);
+  if (rows.length === 0) {
+    el.innerHTML = '<div class="demo-rank-row" style="justify-content:center;opacity:0.6;"><span>No active viewers</span></div>';
+    return;
+  }
+  const medals = ['gold', 'silver', 'bronze'];
+  el.innerHTML = rows.map((item, idx) => {
+    const medalClass = medals[idx] ? ` ${medals[idx]}` : '';
+    const statusText = item.isPresent ? '' : ' (Away)';
+    return `<div class="demo-rank-row"><span class="r-num${medalClass}">#${idx + 1}</span><img src="${item.avatar || '../assets/avatar.png'}" alt=""><span class="r-name">${item.name}${statusText}</span><span class="r-val mono">${formatStayTime(item.timeSec)}</span></div>`;
+  }).join('');
+}
+
 // Load & populate settings
 async function initSettings() {
   appSettings = await window.api.getSettings();
@@ -1305,12 +1381,46 @@ async function initSettings() {
   }
 
   // Populate Rankings & Headpat
+  if (!appSettings.rankings) appSettings.rankings = {};
   if ($('ranking-toplikers-count')) {
     $('ranking-toplikers-count').value = String(appSettings.rankings?.topLikersCount || 3);
   }
+  const likersTheme = appSettings.rankings?.topLikersTheme || 'Purple';
+  const likersScale = typeof appSettings.rankings?.topLikersScale === 'number' ? appSettings.rankings.topLikersScale : 1.0;
+  if ($('ranking-toplikers-theme')) {
+    $('ranking-toplikers-theme').value = likersTheme;
+  }
+  if ($('ranking-toplikers-scale')) {
+    $('ranking-toplikers-scale').value = String(likersScale);
+  }
+  if ($('ranking-toplikers-scale-badge')) {
+    $('ranking-toplikers-scale-badge').textContent = `${Math.round(likersScale * 100)}%`;
+  }
+  if ($('ov-demo-toplikers-card')) {
+    $('ov-demo-toplikers-card').dataset.theme = likersTheme;
+    $('ov-demo-toplikers-card').style.setProperty('--demo-scale', likersScale);
+  }
+  renderDemoTopLikersRows();
+
   if ($('ranking-viewers-count')) {
     $('ranking-viewers-count').value = String(appSettings.rankings?.viewerRankingCount || 3);
   }
+  const viewersTheme = appSettings.rankings?.viewerRankingTheme || 'Purple';
+  const viewersScale = typeof appSettings.rankings?.viewerRankingScale === 'number' ? appSettings.rankings.viewerRankingScale : 1.0;
+  if ($('ranking-viewers-theme')) {
+    $('ranking-viewers-theme').value = viewersTheme;
+  }
+  if ($('ranking-viewers-scale')) {
+    $('ranking-viewers-scale').value = String(viewersScale);
+  }
+  if ($('ranking-viewers-scale-badge')) {
+    $('ranking-viewers-scale-badge').textContent = `${Math.round(viewersScale * 100)}%`;
+  }
+  if ($('ov-demo-viewerranking-card')) {
+    $('ov-demo-viewerranking-card').dataset.theme = viewersTheme;
+    $('ov-demo-viewerranking-card').style.setProperty('--demo-scale', viewersScale);
+  }
+  renderDemoStayRows();
   if ($('headpat-on-follow')) {
     $('headpat-on-follow').checked = appSettings.headpat?.triggerOnFollow !== false;
   }
@@ -2388,15 +2498,71 @@ document.addEventListener('DOMContentLoaded', () => {
   $('ranking-toplikers-count')?.addEventListener('change', e => {
     if (!appSettings.rankings) appSettings.rankings = {};
     appSettings.rankings.topLikersCount = Math.max(1, Math.min(10, parseInt(e.target.value, 10) || 3));
+    renderDemoTopLikersRows();
     saveCurrentSettings();
     showToast(`Top Likers overlay set to Top ${appSettings.rankings.topLikersCount}!`, 'info', 'Top Likers');
+  });
+
+  $('ranking-toplikers-theme')?.addEventListener('change', e => {
+    if (!appSettings.rankings) appSettings.rankings = {};
+    const theme = e.target.value;
+    appSettings.rankings.topLikersTheme = theme;
+    if ($('ov-demo-toplikers-card')) {
+      $('ov-demo-toplikers-card').dataset.theme = theme;
+    }
+    saveCurrentSettings();
+    showToast(`Top Likers theme set to ${theme}!`, 'info', 'Top Likers');
+  });
+
+  $('ranking-toplikers-scale')?.addEventListener('input', e => {
+    if (!appSettings.rankings) appSettings.rankings = {};
+    const scale = parseFloat(e.target.value) || 1.0;
+    appSettings.rankings.topLikersScale = scale;
+    if ($('ranking-toplikers-scale-badge')) {
+      $('ranking-toplikers-scale-badge').textContent = `${Math.round(scale * 100)}%`;
+    }
+    if ($('ov-demo-toplikers-card')) {
+      $('ov-demo-toplikers-card').style.setProperty('--demo-scale', scale);
+    }
+  });
+
+  $('ranking-toplikers-scale')?.addEventListener('change', () => {
+    saveCurrentSettings();
   });
 
   $('ranking-viewers-count')?.addEventListener('change', e => {
     if (!appSettings.rankings) appSettings.rankings = {};
     appSettings.rankings.viewerRankingCount = Math.max(1, Math.min(10, parseInt(e.target.value, 10) || 3));
+    renderDemoStayRows();
     saveCurrentSettings();
     showToast(`Viewer Stay Ranking set to Top ${appSettings.rankings.viewerRankingCount}!`, 'info', 'Stay Ranking');
+  });
+
+  $('ranking-viewers-theme')?.addEventListener('change', e => {
+    if (!appSettings.rankings) appSettings.rankings = {};
+    const theme = e.target.value;
+    appSettings.rankings.viewerRankingTheme = theme;
+    if ($('ov-demo-viewerranking-card')) {
+      $('ov-demo-viewerranking-card').dataset.theme = theme;
+    }
+    saveCurrentSettings();
+    showToast(`Viewer Stay Ranking theme set to ${theme}!`, 'info', 'Stay Ranking');
+  });
+
+  $('ranking-viewers-scale')?.addEventListener('input', e => {
+    if (!appSettings.rankings) appSettings.rankings = {};
+    const scale = parseFloat(e.target.value) || 1.0;
+    appSettings.rankings.viewerRankingScale = scale;
+    if ($('ranking-viewers-scale-badge')) {
+      $('ranking-viewers-scale-badge').textContent = `${Math.round(scale * 100)}%`;
+    }
+    if ($('ov-demo-viewerranking-card')) {
+      $('ov-demo-viewerranking-card').style.setProperty('--demo-scale', scale);
+    }
+  });
+
+  $('ranking-viewers-scale')?.addEventListener('change', () => {
+    saveCurrentSettings();
   });
 
   $('test-toplikers-btn')?.addEventListener('click', e => {
@@ -2410,12 +2576,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const pick = samples[Math.floor(Math.random() * samples.length)];
     const count = 15 + Math.floor(Math.random() * 60);
     window.api.simulateEvent('like', { ...pick, count, avatar: '/assets/avatar.png' });
+
+    const existing = demoLikersData.find(x => x.name.toLowerCase() === pick.nickname.toLowerCase());
+    if (existing) {
+      existing.likes += count;
+    } else {
+      demoLikersData.push({ name: pick.nickname, likes: count, avatar: '../assets/avatar.png' });
+    }
+    demoLikersData.sort((a, b) => b.likes - a.likes);
+    renderDemoTopLikersRows();
+
     showToast(`Simulated +${count} likes from ${pick.nickname}!`, 'info', 'Top Likers');
   });
 
   $('reset-toplikers-btn')?.addEventListener('click', async e => {
     e.stopPropagation();
     await window.api.resetRankings('likers');
+    demoLikersData.length = 0;
+    renderDemoTopLikersRows();
     showToast('Top Likers leaderboard reset!', 'success', 'Top Likers');
   });
 
@@ -2427,18 +2605,38 @@ document.addEventListener('DOMContentLoaded', () => {
       username: 'lunarneko',
       avatar: '/assets/avatar.png'
     });
+
+    const existing = demoStayData.find(x => x.name.toLowerCase() === 'lunarneko');
+    if (existing) {
+      existing.isPresent = true;
+      existing.timeSec += 60;
+    } else {
+      demoStayData.push({ name: 'LunarNeko', timeSec: 60, isPresent: true, avatar: '../assets/avatar.png' });
+    }
+    demoStayData.sort((a, b) => b.timeSec - a.timeSec);
+    renderDemoStayRows();
+
     showToast('LunarNeko is active in stream (timer ticking)!', 'info', 'Stay Ranking');
   });
 
   $('test-viewer-leave-btn')?.addEventListener('click', async e => {
     e.stopPropagation();
     await window.api.simulateViewerLeave('lunarneko');
+
+    const existing = demoStayData.find(x => x.name.toLowerCase() === 'lunarneko');
+    if (existing) {
+      existing.isPresent = false;
+    }
+    renderDemoStayRows();
+
     showToast('LunarNeko left stream: timer stopped! Returning will reset current timer to 00:00 while keeping Best Time.', 'warning', 'Stay Ranking', 4200);
   });
 
   $('reset-viewers-btn')?.addEventListener('click', async e => {
     e.stopPropagation();
     await window.api.resetRankings('viewers');
+    demoStayData.length = 0;
+    renderDemoStayRows();
     showToast('Viewer Stay Ranking leaderboard reset!', 'success', 'Stay Ranking');
   });
 
