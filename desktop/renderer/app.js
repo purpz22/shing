@@ -2,22 +2,123 @@
 
 // Shing Studio Renderer Script
 let appSettings = {};
+let wsClient = null;
 
-const $ = id => document.getElementById(id);
+const $ = id => (typeof document !== 'undefined' ? document.getElementById(id) : null);
+
+// Jar Interactive Drag & Transform State
+let jarTransform = { x: 50.0, y: 82.0, scale: 1.0 };
+let isDraggingJar = false;
+let dragRafId = null;
+
+function calculateClampedCoordinates(rawX, rawY, scale = 1.0) {
+  const hPct = 48 * scale;
+  const wPct = hPct * (764 / 1024) * (9 / 16);
+  const marginX = (wPct / 2) + 2;
+  const marginY = (hPct / 2) + 2;
+
+  const minX = Math.max(4, marginX);
+  const maxX = Math.min(96, 100 - marginX);
+  const minY = Math.max(6, marginY);
+  const maxY = Math.min(96, 100 - marginY);
+
+  const x = Math.max(minX, Math.min(maxX, rawX));
+  const y = Math.max(minY, Math.min(maxY, rawY));
+  return { x: +x.toFixed(1), y: +y.toFixed(1) };
+}
+
+function updateJarTransformUI(x, y, scale) {
+  const currentScale = typeof scale === 'number' && !isNaN(scale) ? scale : jarTransform.scale;
+  const currentX = typeof x === 'number' && !isNaN(x) ? x : jarTransform.x;
+  const currentY = typeof y === 'number' && !isNaN(y) ? y : jarTransform.y;
+
+  const slider = $('jar-scale-slider');
+  if (slider) slider.value = currentScale;
+
+  const badge = $('jar-scale-badge');
+  if (badge) badge.textContent = `${Math.round(currentScale * 100)}%`;
+
+  const target = $('jar-drag-target');
+  if (target) {
+    target.style.left = `${currentX}%`;
+    target.style.top = `${currentY}%`;
+    target.style.transform = `translate(-50%, -50%) scale(${currentScale})`;
+  }
+}
+
+function sendJarTransform(x, y, scale) {
+  const payload = { type: 'jar:transform', x, y, scale };
+  if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+    try {
+      wsClient.send(JSON.stringify(payload));
+    } catch (e) {}
+  } else if (typeof window !== 'undefined' && window.api && window.api.simulateEvent) {
+    try {
+      window.api.simulateEvent('jar:transform', { x, y, scale });
+    } catch (e) {}
+  }
+
+  const ifr = $('jar-preview-iframe');
+  if (ifr && ifr.contentWindow) {
+    try {
+      ifr.contentWindow.postMessage(payload, '*');
+    } catch (e) {}
+  }
+
+  if (appSettings) {
+    if (!appSettings.jar) appSettings.jar = {};
+    appSettings.jar.transform = { x, y, scale };
+  }
+}
+
+function initStudioWS() {
+  if (typeof WebSocket === 'undefined') return;
+  if (wsClient && (wsClient.readyState === WebSocket.OPEN || wsClient.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+  try {
+    const proto = (typeof location !== 'undefined' && location.protocol === 'https:') ? 'wss:' : 'ws:';
+    const host = (typeof location !== 'undefined' && location.host) ? location.host : 'localhost:3333';
+    const url = (typeof location !== 'undefined' && location.protocol && location.protocol.startsWith('http'))
+      ? `${proto}//${host}`
+      : 'ws://localhost:3333';
+    wsClient = new WebSocket(url);
+    wsClient.onmessage = evt => {
+      try {
+        const data = JSON.parse(evt.data);
+        if (data.type === 'jar:transform') {
+          if (!isDraggingJar) {
+            jarTransform = { x: data.x, y: data.y, scale: data.scale };
+            updateJarTransformUI(jarTransform.x, jarTransform.y, jarTransform.scale);
+          }
+        }
+      } catch (e) {}
+    };
+    wsClient.onclose = () => {
+      setTimeout(initStudioWS, 2000);
+    };
+    wsClient.onerror = () => {};
+  } catch (e) {}
+}
 
 // Browser Fallback when accessed directly at http://localhost:3333 via web browser
-if (typeof window.api === 'undefined') {
-  let wsClient = null;
+if (typeof window !== 'undefined' && typeof window.api === 'undefined') {
   const statusListeners = [];
   const eventListeners = [];
 
   function initWebWS() {
+    if (typeof WebSocket === 'undefined' || typeof location === 'undefined') return;
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     wsClient = new WebSocket(`${proto}//${location.host}`);
     wsClient.onmessage = evt => {
       try {
         const data = JSON.parse(evt.data);
-        if (data.type === 'tiktok:status') {
+        if (data.type === 'jar:transform') {
+          if (!isDraggingJar) {
+            jarTransform = { x: data.x, y: data.y, scale: data.scale };
+            updateJarTransformUI(jarTransform.x, jarTransform.y, jarTransform.scale);
+          }
+        } else if (data.type === 'tiktok:status') {
           statusListeners.forEach(cb => cb(data));
         } else {
           eventListeners.forEach(cb => cb(data));
@@ -201,6 +302,10 @@ if (typeof window.api === 'undefined') {
     },
     onSettingsLoaded: () => () => {}
   };
+}
+
+if (typeof window !== 'undefined' && typeof window.api !== 'undefined') {
+  initStudioWS();
 }
 
 // In-App Toast & Custom Alert Notification System
@@ -814,6 +919,13 @@ function updateHUD() {
 
 if (typeof window.api !== 'undefined' && window.api.onTikTokEvent) {
   window.api.onTikTokEvent(data => {
+    if (data.type === 'jar:transform') {
+      if (!isDraggingJar) {
+        jarTransform = { x: data.x, y: data.y, scale: data.scale };
+        updateJarTransformUI(jarTransform.x, jarTransform.y, jarTransform.scale);
+      }
+      return;
+    }
     if (data.type === 'chat') {
       sessionStats.chat++;
       updateHUD();
@@ -1260,7 +1372,11 @@ async function initSettings() {
     $('jar-bounciness').value = appSettings.jar.bounciness || 0.4;
     $('jar-bounce-val').textContent = Number($('jar-bounciness').value).toFixed(2);
     $('jar-max').value = appSettings.jar.maxGifts || 500;
+    if (appSettings.jar.transform) {
+      jarTransform = Object.assign({}, appSettings.jar.transform);
+    }
   }
+  updateJarTransformUI(jarTransform.x, jarTransform.y, jarTransform.scale);
 
   // Populate Companion
   if (appSettings.companion) {
@@ -1298,14 +1414,20 @@ async function initSettings() {
   }
   const jarIfr = $('jar-preview-iframe');
   if (jarIfr) {
-    const syncJarPause = () => {
+    const syncJarState = () => {
       const isJarActive = Boolean(document.querySelector('.tab-pane#tab-jar')?.classList.contains('active'));
       try {
         jarIfr.contentWindow?.postMessage({ type: 'jar:set-paused', paused: !isJarActive }, '*');
+        jarIfr.contentWindow?.postMessage({
+          type: 'jar:transform',
+          x: jarTransform.x,
+          y: jarTransform.y,
+          scale: jarTransform.scale
+        }, '*');
       } catch (e) {}
     };
-    jarIfr.addEventListener('load', syncJarPause);
-    syncJarPause();
+    jarIfr.addEventListener('load', syncJarState);
+    syncJarState();
   }
 }
 
@@ -1597,6 +1719,12 @@ function saveCurrentSettings() {
       localStorage.setItem('shing_theme', appSettings.theme);
     }
   } catch (e) {}
+  if (appSettings) {
+    if (!appSettings.jar) appSettings.jar = {};
+    if (!appSettings.jar.transform) {
+      appSettings.jar.transform = Object.assign({}, jarTransform);
+    }
+  }
   window.api.saveSettings(appSettings);
   if (typeof OverlayDemoManager !== 'undefined') {
     OverlayDemoManager.sync();
@@ -2589,18 +2717,88 @@ document.addEventListener('DOMContentLoaded', () => {
     $('jar-bounce-val').textContent = Number($('jar-bounciness').value).toFixed(2);
   });
   $('save-jar-btn').addEventListener('click', () => {
-    appSettings.jar = {
+    appSettings.jar = Object.assign({}, appSettings.jar, {
       gravity: +$('jar-gravity').value,
       giftScale: +$('jar-scale').value,
       bounciness: +$('jar-bounciness').value,
       maxGifts: +$('jar-max').value,
-      overflowAllowed: true
-    };
+      overflowAllowed: true,
+      transform: Object.assign({}, jarTransform)
+    });
     saveCurrentSettings();
     showToast('Jar physics and gift settings saved!', 'success', 'Interactive Jar');
   });
   $('clear-jar-btn').addEventListener('click', () => {
     window.api.clearJar();
+  });
+
+  // Jar Interactive 16:9 Drag Engine & Live Studio Sync
+  function handlePointerMove(e) {
+    if (!isDraggingJar) return;
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    if (dragRafId) cancelAnimationFrame(dragRafId);
+    dragRafId = requestAnimationFrame(() => {
+      const stageEl = $('jar-preview-stage');
+      if (!stageEl) return;
+      const rect = stageEl.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const rawX = ((clientX - rect.left) / rect.width) * 100;
+      const rawY = ((clientY - rect.top) / rect.height) * 100;
+      const clamped = calculateClampedCoordinates(rawX, rawY, jarTransform.scale);
+      jarTransform.x = clamped.x;
+      jarTransform.y = clamped.y;
+      updateJarTransformUI(jarTransform.x, jarTransform.y, jarTransform.scale);
+      sendJarTransform(jarTransform.x, jarTransform.y, jarTransform.scale);
+    });
+  }
+
+  const stopDrag = e => {
+    if (isDraggingJar) {
+      isDraggingJar = false;
+      if (dragRafId) {
+        cancelAnimationFrame(dragRafId);
+        dragRafId = null;
+      }
+      $('jar-drag-target')?.classList.remove('dragging');
+      try {
+        if (e && e.pointerId !== undefined) {
+          $('jar-drag-overlay')?.releasePointerCapture(e.pointerId);
+        }
+      } catch (_) {}
+    }
+  };
+
+  $('jar-drag-overlay')?.addEventListener('pointerdown', e => {
+    isDraggingJar = true;
+    try {
+      $('jar-drag-overlay')?.setPointerCapture(e.pointerId);
+    } catch (_) {}
+    $('jar-drag-target')?.classList.add('dragging');
+    handlePointerMove(e);
+  });
+  $('jar-drag-overlay')?.addEventListener('pointermove', handlePointerMove);
+  $('jar-drag-overlay')?.addEventListener('pointerup', stopDrag);
+  $('jar-drag-overlay')?.addEventListener('pointercancel', stopDrag);
+  window.addEventListener('pointerup', stopDrag);
+  window.addEventListener('pointercancel', stopDrag);
+
+  // Slider input handling on #jar-scale-slider
+  $('jar-scale-slider')?.addEventListener('input', e => {
+    const newScale = Math.max(0.4, Math.min(1.5, Number(e.target.value) || 1.0));
+    jarTransform.scale = +newScale.toFixed(2);
+    const clamped = calculateClampedCoordinates(jarTransform.x, jarTransform.y, jarTransform.scale);
+    jarTransform.x = clamped.x;
+    jarTransform.y = clamped.y;
+    updateJarTransformUI(jarTransform.x, jarTransform.y, jarTransform.scale);
+    sendJarTransform(jarTransform.x, jarTransform.y, jarTransform.scale);
+  });
+
+  // Reset button handling on #jar-reset-transform-btn
+  $('jar-reset-transform-btn')?.addEventListener('click', () => {
+    jarTransform = { x: 50.0, y: 82.0, scale: 1.0 };
+    updateJarTransformUI(jarTransform.x, jarTransform.y, jarTransform.scale);
+    sendJarTransform(jarTransform.x, jarTransform.y, jarTransform.scale);
   });
   $('drop-rose-btn').addEventListener('click', () => {
     window.api.simulateEvent('gift', { user: 'Tester', giftId: 'rose', giftName: 'Rose', count: 1 });
@@ -2801,3 +2999,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    calculateClampedCoordinates,
+    updateJarTransformUI,
+    sendJarTransform
+  };
+}
