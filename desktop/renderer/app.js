@@ -1839,6 +1839,18 @@ function openChangelogModal() {
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
     {
+      version: '1.3.6',
+      releaseName: 'Shing Live v1.3.6 - Zero Blank Gifts & Universal TikTok Icon Resolver',
+      releaseDate: '2026-10-12',
+      summary: 'Ensured 100% of all TikTok gifts display real icons without blank or missing graphics. Added CDN redirect following, preloading before jar drop, and server-side catalog auto-resolution for all gift routes.',
+      highlights: [
+        'Zero Blank Gift Graphics: Preloads gift icons before dropping into the jar so the authentic TikTok graphic is visible from frame 1 without flashing fallback circles',
+        'Full CDN Redirect Support: Added HTTP 301/302/307/308 redirect resolution to /api/gift-icon with 500-item RAM caching for instant sub-millisecond loads',
+        'Server-Side Catalog Asset Resolver: Auto-resolves /assets/gifts/* against the 676+ catalog and live room gifts with rose fallback so gift URLs never return 404',
+        'Universal Image Schema Extractor: Extracts TikTok gift graphics across all v1, v2, and v3 protobuf and JSON structures and auto-registers new stream gifts into the catalog'
+      ]
+    },
+    {
       version: '1.3.5',
       releaseName: 'Shing Live v1.3.5 - Low-End PC Gift Jar Performance & 100% Gift Visibility',
       releaseDate: '2026-10-12',

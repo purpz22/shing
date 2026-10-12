@@ -219,24 +219,49 @@ function toProxiedGiftUrl(url) {
 function loadAndCacheImage(cacheKey, rawUrl) {
   const proxied = toProxiedGiftUrl(rawUrl);
   if (!proxied) return null;
-  if (preloadedImgs[cacheKey]) return preloadedImgs[cacheKey];
+  const effectiveKey = proxied || cacheKey;
+  if (preloadedImgs[effectiveKey]) {
+    if (cacheKey) preloadedImgs[cacheKey] = preloadedImgs[effectiveKey];
+    return preloadedImgs[effectiveKey];
+  }
 
   const img = new Image();
   img.crossOrigin = 'anonymous';
   img.onload = () => {
     const sprite = buildSpriteCanvas(img);
-    if (sprite) spriteCache[cacheKey] = sprite;
+    if (sprite) {
+      spriteCache[effectiveKey] = sprite;
+      if (cacheKey) spriteCache[cacheKey] = sprite;
+    }
     needsRedraw = true;
   };
   img.onerror = () => {
-    if (!img._retriedLocal && rawUrl && !rawUrl.startsWith('/assets/')) {
+    if (!img._retriedLocal) {
       img._retriedLocal = true;
       img.src = '/assets/gifts/rose.png';
     }
   };
   img.src = proxied;
-  preloadedImgs[cacheKey] = img;
+  preloadedImgs[effectiveKey] = img;
+  if (cacheKey) preloadedImgs[cacheKey] = img;
   return img;
+}
+
+function waitForImageReady(img, timeoutMs = 380) {
+  if (!img || (img.complete && img.naturalWidth > 0)) {
+    return Promise.resolve(img);
+  }
+  return new Promise(resolve => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      resolve(img);
+    };
+    img.addEventListener('load', done, { once: true });
+    img.addEventListener('error', done, { once: true });
+    setTimeout(done, timeoutMs);
+  });
 }
 
 Object.entries(GIFT_ICONS).forEach(([k, src]) => {
@@ -275,7 +300,7 @@ function indexGiftCatalog(list) {
   });
 }
 
-fetch('/api/gifts')
+const catalogReadyPromise = fetch('/api/gifts')
   .then(r => r.json())
   .then(indexGiftCatalog)
   .catch(() => {});
@@ -309,7 +334,7 @@ function resolveGiftUrl(key, rawUrl, name, rawGiftId) {
       return `/assets/gifts/${c}.png`;
     }
   }
-  return null;
+  return `/assets/gifts/${cleanKey || 'rose'}.png`;
 }
 
 function getGiftImage(key, url, name, rawGiftId) {
@@ -319,7 +344,7 @@ function getGiftImage(key, url, name, rawGiftId) {
   if (resolvedUrl) {
     return loadAndCacheImage(cacheKey, resolvedUrl);
   }
-  return null;
+  return loadAndCacheImage('rose', '/assets/gifts/rose.png');
 }
 
 function getFallbackSprite(name, coins) {
@@ -720,7 +745,7 @@ function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const ws = new WebSocket(`${proto}//${location.host}`);
 
-  ws.onmessage = evt => {
+  ws.onmessage = async evt => {
     try {
       const data = JSON.parse(evt.data);
       if (data.type === 'init' && data.settings?.jar) {
@@ -732,6 +757,9 @@ function connectWS() {
         engine.gravity.y = jarSettings.gravity;
         needsRedraw = true;
       } else if (data.type === 'gift') {
+        if (catalogList.length === 0) {
+          await catalogReadyPromise;
+        }
         const giftName = data.giftName || 'Gift';
         const rawGiftId = data.rawGiftId ? String(data.rawGiftId) : '';
         const giftKey = (data.giftId || data.giftName || 'rose').toLowerCase().replace(/[^a-z0-9_]+/g, '_');
@@ -762,6 +790,8 @@ function connectWS() {
         if (coinVal >= 1000) {
           triggerScreenShake(coinVal >= 10000 ? 0.85 : 0.55);
         }
+
+        await waitForImageReady(dynamicImg, 380);
 
         enqueueGiftDrops({
           key: giftKey,

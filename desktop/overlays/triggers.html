@@ -342,12 +342,14 @@ fetch('/api/gifts')
   .then(list => {
     if (Array.isArray(list)) {
       list.forEach(g => {
-        const key = (g.name || g.id || '').toLowerCase().replace(/\s+/g, '_');
-        if (g.image) {
-          catalogMap[key] = g.image;
-          catalogMap[String(g.id)] = g.image;
-          catalogMap[(g.name || '').toLowerCase()] = g.image;
-        }
+        if (!g || !g.image) return;
+        const nameLower = (g.name || '').toLowerCase().trim();
+        const snake = nameLower.replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+        const compact = nameLower.replace(/[^a-z0-9]/g, '');
+        catalogMap[String(g.id)] = g.image;
+        if (nameLower) catalogMap[nameLower] = g.image;
+        if (snake) catalogMap[snake] = g.image;
+        if (compact) catalogMap[compact] = g.image;
       });
     }
   })
@@ -646,16 +648,15 @@ function connectWS() {
         const coins = (Number(data.coins || data.diamonds || 1) || 1) * count;
         const avatarUrl = data.avatar || '/assets/avatar.png';
 
-        const safeKey = (data.giftId || data.giftName || 'rose').toLowerCase().replace(/\s+/g, '_');
-        const rawName = (data.giftName || '').toLowerCase();
+        const safeKey = (data.giftId || data.giftName || 'rose').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+        const rawName = (data.giftName || '').toLowerCase().trim();
         const rawGiftId = data.rawGiftId ? String(data.rawGiftId) : '';
         const giftIconUrl = data.giftPictureUrl ||
                             (rawGiftId && catalogMap[rawGiftId]) ||
                             catalogMap[safeKey] ||
                             catalogMap[rawName] ||
                             catalogMap[String(data.giftId)] ||
-                            `/assets/gifts/${safeKey}.png` ||
-                            '/assets/gifts/rose.png';
+                            `/assets/gifts/${safeKey || 'rose'}.png`;
 
         let tierClass = 'tier-gift-small';
         let duration = triggerSettings.alertDuration || 5;

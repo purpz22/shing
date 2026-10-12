@@ -758,67 +758,7 @@ class OverlayServer {
       const targetUrl = (url.searchParams.get('url') || '').trim();
       const isGift = pathname === '/api/gift-icon' || targetUrl.includes('webcast');
       const fallbackPath = path.join(this.baseDir, 'assets', isGift ? path.join('gifts', 'rose.png') : 'avatar.png');
-      if (!targetUrl || !/^https?:\/\//i.test(targetUrl)) {
-        return this.serveStatic(fallbackPath, res);
-      }
-
-      const cached = this.imageCache.get(targetUrl);
-      if (cached && cached.buffer && (Date.now() - cached.ts < 3600000)) {
-        res.writeHead(200, {
-          'Content-Type': cached.contentType || 'image/webp',
-          'Content-Length': cached.buffer.length,
-          'Cache-Control': 'public, max-age=86400',
-          'Access-Control-Allow-Origin': '*'
-        });
-        return res.end(cached.buffer);
-      }
-
-      try {
-        const client = targetUrl.startsWith('https') ? https : http;
-        const proxyReq = client.get(targetUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Referer': 'https://www.tiktok.com/'
-          },
-          timeout: 4500
-        }, proxyRes => {
-          if (proxyRes.statusCode !== 200) {
-            return this.serveStatic(fallbackPath, res);
-          }
-          const contentType = proxyRes.headers['content-type'] || 'image/webp';
-          const chunks = [];
-          let totalLen = 0;
-          proxyRes.on('data', chunk => {
-            chunks.push(chunk);
-            totalLen += chunk.length;
-          });
-          proxyRes.on('end', () => {
-            const buf = Buffer.concat(chunks, totalLen);
-            if (buf.length > 0 && buf.length < 1500000) {
-              if (this.imageCache.size >= 350) {
-                const oldestKey = this.imageCache.keys().next().value;
-                if (oldestKey) this.imageCache.delete(oldestKey);
-              }
-              this.imageCache.set(targetUrl, { buffer: buf, contentType, ts: Date.now() });
-            }
-            res.writeHead(200, {
-              'Content-Type': contentType,
-              'Content-Length': buf.length,
-              'Cache-Control': 'public, max-age=86400',
-              'Access-Control-Allow-Origin': '*'
-            });
-            res.end(buf);
-          });
-        });
-        proxyReq.on('error', () => this.serveStatic(fallbackPath, res));
-        proxyReq.on('timeout', () => {
-          try { proxyReq.destroy(); } catch (e) {}
-          this.serveStatic(fallbackPath, res);
-        });
-      } catch (e) {
-        return this.serveStatic(fallbackPath, res);
-      }
-      return;
+      return this.proxyRemoteImage(targetUrl, fallbackPath, res);
     }
 
     if (pathname === '/api/gifts') {
@@ -895,15 +835,25 @@ class OverlayServer {
       return this.serveStatic(userMediaPath, res, req);
     }
 
-    // Serve assets (check userDataDir/sounds fallback for custom sounds)
+    // Serve assets (check userDataDir/sounds fallback for custom sounds, and catalog fallback for /assets/gifts/*)
     if (pathname.startsWith('/assets/')) {
       const relPath = pathname.replace('/assets/', '');
       const filePath = path.join(this.baseDir, 'assets', relPath);
-      if (!fs.existsSync(filePath) && relPath.startsWith('sounds/')) {
-        const soundName = path.basename(relPath);
-        const userSoundPath = path.join(this.userDataDir, 'sounds', soundName);
-        if (fs.existsSync(userSoundPath)) {
-          return this.serveStatic(userSoundPath, res, req);
+      if (!fs.existsSync(filePath)) {
+        if (relPath.startsWith('sounds/')) {
+          const soundName = path.basename(relPath);
+          const userSoundPath = path.join(this.userDataDir, 'sounds', soundName);
+          if (fs.existsSync(userSoundPath)) {
+            return this.serveStatic(userSoundPath, res, req);
+          }
+        } else if (relPath.startsWith('gifts/')) {
+          const requestedKey = path.basename(relPath, path.extname(relPath)).toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+          const matchedUrl = this.findCatalogGiftImage(requestedKey);
+          const roseFallback = path.join(this.baseDir, 'assets', 'gifts', 'rose.png');
+          if (matchedUrl) {
+            return this.proxyRemoteImage(matchedUrl, roseFallback, res);
+          }
+          return this.serveStatic(roseFallback, res, req);
         }
       }
       return this.serveStatic(filePath, res, req);
@@ -912,6 +862,104 @@ class OverlayServer {
     // Default 404
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Not Found');
+  }
+
+  findCatalogGiftImage(requestedKey) {
+    if (!requestedKey) return null;
+    const catalogPath = path.join(this.baseDir, 'assets', 'gifts-catalog.json');
+    try {
+      if (!this.cachedGiftCatalog && fs.existsSync(catalogPath)) {
+        this.cachedGiftCatalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+      }
+    } catch (e) {}
+
+    const compactReq = requestedKey.replace(/_/g, '');
+    const allGifts = [
+      ...Array.from(this.dynamicGifts.values()),
+      ...(Array.isArray(this.cachedGiftCatalog) ? this.cachedGiftCatalog : [])
+    ];
+
+    for (const g of allGifts) {
+      if (!g || !g.image) continue;
+      if (String(g.id).toLowerCase() === requestedKey) return g.image;
+      const nameSnake = (g.name || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
+      const nameCompact = nameSnake.replace(/_/g, '');
+      if (nameSnake === requestedKey || (compactReq && nameCompact === compactReq)) {
+        return g.image;
+      }
+    }
+    return null;
+  }
+
+  proxyRemoteImage(targetUrl, fallbackPath, res, redirectDepth = 0) {
+    if (!targetUrl || !/^https?:\/\//i.test(targetUrl) || redirectDepth > 3) {
+      return this.serveStatic(fallbackPath, res);
+    }
+
+    const cached = this.imageCache.get(targetUrl);
+    if (cached && cached.buffer && (Date.now() - cached.ts < 3600000)) {
+      res.writeHead(200, {
+        'Content-Type': cached.contentType || 'image/webp',
+        'Content-Length': cached.buffer.length,
+        'Cache-Control': 'public, max-age=86400',
+        'Access-Control-Allow-Origin': '*'
+      });
+      return res.end(cached.buffer);
+    }
+
+    try {
+      const client = targetUrl.startsWith('https') ? https : http;
+      const proxyReq = client.get(targetUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Referer': 'https://www.tiktok.com/'
+        },
+        timeout: 5000
+      }, proxyRes => {
+        if ([301, 302, 307, 308].includes(proxyRes.statusCode) && proxyRes.headers.location) {
+          proxyRes.resume();
+          const nextUrl = proxyRes.headers.location.startsWith('http')
+            ? proxyRes.headers.location
+            : new URL(proxyRes.headers.location, targetUrl).toString();
+          return this.proxyRemoteImage(nextUrl, fallbackPath, res, redirectDepth + 1);
+        }
+        if (proxyRes.statusCode !== 200) {
+          proxyRes.resume();
+          return this.serveStatic(fallbackPath, res);
+        }
+        const contentType = proxyRes.headers['content-type'] || 'image/webp';
+        const chunks = [];
+        let totalLen = 0;
+        proxyRes.on('data', chunk => {
+          chunks.push(chunk);
+          totalLen += chunk.length;
+        });
+        proxyRes.on('end', () => {
+          const buf = Buffer.concat(chunks, totalLen);
+          if (buf.length > 0 && buf.length < 1500000) {
+            if (this.imageCache.size >= 500) {
+              const oldestKey = this.imageCache.keys().next().value;
+              if (oldestKey) this.imageCache.delete(oldestKey);
+            }
+            this.imageCache.set(targetUrl, { buffer: buf, contentType, ts: Date.now() });
+          }
+          res.writeHead(200, {
+            'Content-Type': contentType,
+            'Content-Length': buf.length,
+            'Cache-Control': 'public, max-age=86400',
+            'Access-Control-Allow-Origin': '*'
+          });
+          res.end(buf);
+        });
+      });
+      proxyReq.on('error', () => this.serveStatic(fallbackPath, res));
+      proxyReq.on('timeout', () => {
+        try { proxyReq.destroy(); } catch (e) {}
+        this.serveStatic(fallbackPath, res);
+      });
+    } catch (e) {
+      return this.serveStatic(fallbackPath, res);
+    }
   }
 
   serveFile(filePath, contentType, res) {

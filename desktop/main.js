@@ -570,10 +570,24 @@ function attachTikTokListeners(conn, targetUser, WebcastEvent) {
 
   const giftStreaks = new Map();
 
+  function extractTikTokImageUrl(imgField) {
+    if (!imgField) return null;
+    if (typeof imgField === 'string' && imgField.length > 4) return imgField;
+    const list = imgField.urlList || imgField.url_list || imgField.urls || imgField.url;
+    if (Array.isArray(list) && list.length > 0) {
+      return list.find(u => typeof u === 'string' && u.startsWith('https://')) || list[0] || null;
+    }
+    if (typeof list === 'string' && list.length > 4) return list;
+    return null;
+  }
+
   conn.on(WebcastEvent.GIFT, data => {
     const viewerName = data.user?.nickname || data.nickname || data.user?.displayId || data.uniqueId || 'Viewer';
     const userKey = data.user?.id || data.user?.displayId || data.uniqueId || viewerName;
-    const avatar = data.user?.avatarThumb?.urlList?.[0] || data.profilePictureUrl || '/assets/avatar.png';
+    const avatar = extractTikTokImageUrl(data.user?.avatarThumb) ||
+                   extractTikTokImageUrl(data.user?.avatarMedium) ||
+                   data.profilePictureUrl ||
+                   '/assets/avatar.png';
 
     const rawGiftIdStr = (data.giftId !== undefined && data.giftId !== null && String(data.giftId) !== '0')
       ? String(data.giftId)
@@ -606,15 +620,17 @@ function attachTikTokListeners(conn, targetUser, WebcastEvent) {
 
     const safeKey = rawGiftName.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || 'gift';
 
-    let giftPic = data.gift?.image?.urlList?.[0] ||
-                  data.gift?.icon?.urlList?.[0] ||
+    let giftPic = extractTikTokImageUrl(data.gift?.image) ||
+                  extractTikTokImageUrl(data.gift?.icon) ||
+                  extractTikTokImageUrl(data.gift?.previewImage) ||
+                  extractTikTokImageUrl(data.trayInfo?.trayDynamicImg) ||
                   data.giftPictureUrl ||
-                  data.extendedGiftInfo?.image?.url_list?.[0] ||
-                  data.extendedGiftInfo?.icon?.url_list?.[0] ||
-                  roomGiftMatch?.image?.url_list?.[0] ||
-                  roomGiftMatch?.icon?.url_list?.[0] ||
+                  extractTikTokImageUrl(data.extendedGiftInfo?.image) ||
+                  extractTikTokImageUrl(data.extendedGiftInfo?.icon) ||
+                  extractTikTokImageUrl(roomGiftMatch?.image) ||
+                  extractTikTokImageUrl(roomGiftMatch?.icon) ||
                   catalogMatch?.image ||
-                  data.image?.url_list?.[0] ||
+                  extractTikTokImageUrl(data.image) ||
                   null;
 
     if (!giftPic) {
@@ -626,12 +642,25 @@ function attachTikTokListeners(conn, targetUser, WebcastEvent) {
       data.gift?.diamondCount ||
       data.diamondCount ||
       data.extendedGiftInfo?.diamond_count ||
+      data.extendedGiftInfo?.diamondCount ||
       roomGiftMatch?.diamond_count ||
+      roomGiftMatch?.diamondCount ||
       catalogMatch?.diamonds ||
       data.fanTicketCount ||
       data.coins ||
       1
     ) || 1;
+
+    if (rawGiftIdStr && giftPic) {
+      const dynEntry = {
+        id: Number(rawGiftIdStr) || rawGiftIdStr,
+        name: rawGiftName,
+        diamonds: coinCount,
+        image: giftPic
+      };
+      if (!catalogMatch) giftCatalog.push(dynEntry);
+      if (overlayServer?.dynamicGifts) overlayServer.dynamicGifts.set(rawGiftIdStr, dynEntry);
+    }
 
     const totalRepeatCount = Math.max(1, Number(data.repeatCount || data.comboCount || data.count || 1));
     const isStreakable = (data.gift?.type === 1) || (data.giftType === 1) || Boolean(data.groupId && String(data.groupId) !== '0');
