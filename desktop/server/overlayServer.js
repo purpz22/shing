@@ -41,6 +41,39 @@ class OverlayServer {
     if (!this.settings.timer.theme) this.settings.timer.theme = 'Purple';
     if (this.settings.timer.scale === undefined) this.settings.timer.scale = 1.0;
 
+    if (!this.settings.triggers) this.settings.triggers = {};
+    if (!this.settings.triggers.events) {
+      this.settings.triggers.events = {
+        follow: { active: true },
+        gift: { active: true },
+        gift_big: { active: true },
+        like: { active: true },
+        share: { active: true }
+      };
+    } else {
+      const defaultEvents = {
+        follow: { active: true },
+        gift: { active: true },
+        gift_big: { active: true },
+        like: { active: true },
+        share: { active: true }
+      };
+      for (const [k, v] of Object.entries(defaultEvents)) {
+        if (!this.settings.triggers.events[k]) {
+          this.settings.triggers.events[k] = v;
+        }
+      }
+    }
+    if (!this.settings.triggers.sounds) this.settings.triggers.sounds = {};
+    if (!this.settings.triggers.sounds.share) this.settings.triggers.sounds.share = '/assets/sounds/chime.wav';
+    if (!this.settings.triggers.sounds.gift_big) this.settings.triggers.sounds.gift_big = '/assets/sounds/fanfare.wav';
+    if (this.settings.triggers.shareMessage === undefined) this.settings.triggers.shareMessage = 'Thank you {user} for sharing the stream!';
+    if (this.settings.triggers.giftBigMessage === undefined) this.settings.triggers.giftBigMessage = 'LEGENDARY: {user} sent {gift} x{count}!';
+    if (this.settings.triggers.shareMedia === undefined) this.settings.triggers.shareMedia = '';
+    if (this.settings.triggers.shareMediaType === undefined) this.settings.triggers.shareMediaType = '';
+    if (this.settings.triggers.giftBigMedia === undefined) this.settings.triggers.giftBigMedia = '';
+    if (this.settings.triggers.giftBigMediaType === undefined) this.settings.triggers.giftBigMediaType = '';
+
     const initialSec = Math.max(0, (Number(this.settings.timer.durationMin) || 30) * 60);
     this.timerState = {
       remainingSeconds: initialSec,
@@ -236,8 +269,17 @@ class OverlayServer {
         messageGrouping: true
       },
       triggers: {
+        events: {
+          follow: { active: true },
+          gift: { active: true },
+          gift_big: { active: true },
+          like: { active: true },
+          share: { active: true }
+        },
         followMessage: 'Thank you {user} for following!',
         giftMessage: '{user} sent {gift} x{count}!',
+        giftBigMessage: 'LEGENDARY: {user} sent {gift} x{count}!',
+        shareMessage: 'Thank you {user} for sharing the stream!',
         likeThreshold: 50,
         alertDuration: 5,
         soundEnabled: true,
@@ -246,11 +288,16 @@ class OverlayServer {
         followMediaType: '',
         giftMedia: '',
         giftMediaType: '',
+        giftBigMedia: '',
+        giftBigMediaType: '',
+        shareMedia: '',
+        shareMediaType: '',
         sounds: {
           follow: '/assets/sounds/chime.wav',
           gift: '/assets/sounds/coin.wav',
           gift_big: '/assets/sounds/fanfare.wav',
-          like: '/assets/sounds/pop.wav'
+          like: '/assets/sounds/pop.wav',
+          share: '/assets/sounds/chime.wav'
         }
       },
       rankings: {
