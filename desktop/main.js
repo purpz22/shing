@@ -524,6 +524,68 @@ async function startDirectWebcastPolling(conn, roomId, targetUser, attemptId, We
   scheduleNextPoll(1500);
 }
 
+let lastPetCommandTime = 0;
+const targetAvatarCache = new Map();
+
+async function handlePetCommand(targetRaw, senderName, streamerUsername, senderAvatar) {
+  const now = Date.now();
+  // 3 second cooldown to prevent chat command flooding
+  if (now - lastPetCommandTime < 3000) return;
+  lastPetCommandTime = now;
+
+  let targetUser = (targetRaw || '').trim().replace(/^@/, '');
+  let targetDisplayName = '';
+  let targetAvatar = '/assets/avatar.png';
+
+  if (targetUser) {
+    targetDisplayName = '@' + targetUser;
+    const cached = targetAvatarCache.get(targetUser.toLowerCase());
+    if (cached) {
+      targetAvatar = cached;
+    } else {
+      try {
+        const profile = await fetchTikTokProfile(targetUser);
+        if (profile?.avatar) {
+          targetAvatar = profile.avatar;
+          targetAvatarCache.set(targetUser.toLowerCase(), targetAvatar);
+        }
+      } catch (_) {}
+    }
+  } else {
+    // If no target user is specified (/pet alone), pet the streamer
+    const streamer = (streamerUsername || overlayServer?.settings?.username || 'Streamer').replace(/^@/, '').trim();
+    targetDisplayName = '@' + streamer;
+    const cached = targetAvatarCache.get(streamer.toLowerCase());
+    if (cached) {
+      targetAvatar = cached;
+    } else {
+      try {
+        const profile = await fetchTikTokProfile(streamer);
+        if (profile?.avatar) {
+          targetAvatar = profile.avatar;
+          targetAvatarCache.set(streamer.toLowerCase(), targetAvatar);
+        }
+      } catch (_) {}
+    }
+  }
+
+  const headpatPayload = {
+    type: 'headpat:trigger',
+    user: targetDisplayName,
+    nickname: targetDisplayName,
+    username: targetUser || streamerUsername || '',
+    avatar: targetAvatar,
+    reasonText: `Patted by ${senderName}! *pat pat*`
+  };
+
+  if (overlayServer) {
+    overlayServer.broadcast(headpatPayload);
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('tiktok:event', headpatPayload);
+  }
+}
+
 function attachTikTokListeners(conn, targetUser, WebcastEvent) {
   conn.on(WebcastEvent.CHAT, data => {
     const commentText = String(data.content || data.comment || '').trim();
@@ -566,6 +628,12 @@ function attachTikTokListeners(conn, targetUser, WebcastEvent) {
     };
     overlayServer.broadcast(payload);
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('tiktok:event', payload);
+
+    // Handle /pet chat command
+    const petMatch = commentText.match(/^\/pet(?:\s+@?([\w.-]+))?$/i);
+    if (petMatch && overlayServer?.settings?.headpat?.triggerOnCommand !== false) {
+      handlePetCommand(petMatch[1], viewerName, targetUser, avatar);
+    }
   });
 
   const giftStreaks = new Map();
@@ -1078,6 +1146,16 @@ ipcMain.handle('tiktok:simulate', (evt, type, payload) => {
   });
   overlayServer.broadcast(event);
   if (mainWindow) mainWindow.webContents.send('tiktok:event', event);
+
+  if (type === 'chat' && payload.comment) {
+    const petMatch = String(payload.comment).match(/^\/pet(?:\s+@?([\w.-]+))?$/i);
+    if (petMatch && overlayServer?.settings?.headpat?.triggerOnCommand !== false) {
+      handlePetCommand(petMatch[1], viewerName, currentTargetUser || overlayServer?.settings?.username, payload.avatar);
+    }
+  } else if (type === 'pet') {
+    handlePetCommand(payload.target, viewerName, currentTargetUser || overlayServer?.settings?.username, payload.avatar);
+  }
+
   return { success: true };
 });
 
