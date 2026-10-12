@@ -4,9 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Shing Companion Overlay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&family=Quicksand:wght@600;700&family=VT323&display=swap">
 <style>
+  :root {
+    --bubble-font: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+    --bubble-font-size: 18px;
+  }
   html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
-  body { font-family: ui-monospace, "Courier New", monospace; color: #4b1fa0; }
+  body { font-family: var(--bubble-font); color: #4b1fa0; }
   #scene {
     position: fixed; left: 0; bottom: 0;
     image-rendering: crisp-edges;
@@ -28,8 +35,13 @@
   /* Speech bubble */
   #bubble {
     position: fixed; left: 0; top: 0; z-index: 5; pointer-events: none;
-    max-width: min(240px, 80vw); padding: 5px 9px;
-    font: bold 14px/1.25 ui-monospace, "Courier New", monospace;
+    max-width: min(calc(var(--bubble-font-size) * 16), 84vw);
+    padding: calc(var(--bubble-font-size) * 0.35) calc(var(--bubble-font-size) * 0.55);
+    font-family: var(--bubble-font);
+    font-size: var(--bubble-font-size);
+    font-weight: 700;
+    line-height: 1.28;
+    border-radius: 6px;
     color: #2e1a52; background: #fff; border: 2px solid #2e1a52;
     box-shadow: 3px 3px 0 #7b3fe4; white-space: pre-wrap; word-break: break-word; text-align: center;
     will-change: translate, transform;
@@ -47,8 +59,12 @@
   /* Cat speech bubble */
   #cat-bubble {
     position: fixed; left: 0; top: 0; z-index: 6; pointer-events: none;
-    padding: 3px 7px;
-    font: bold 12px/1.2 ui-monospace, "Courier New", monospace;
+    padding: calc(var(--bubble-font-size) * 0.22) calc(var(--bubble-font-size) * 0.45);
+    font-family: var(--bubble-font);
+    font-size: calc(var(--bubble-font-size) * 0.78);
+    font-weight: 700;
+    line-height: 1.2;
+    border-radius: 4px;
     color: #2e1a52; background: #fff; border: 2px solid #2e1a52;
     box-shadow: 2px 2px 0 #7b3fe4; text-align: center;
     will-change: translate, transform;
@@ -63,8 +79,8 @@
     transform: rotate(45deg);
   }
   body.compact-stage #bubble {
-    max-width: min(175px, 78vw); padding: 3px 8px;
-    font-size: 11px; line-height: 1.2;
+    max-width: min(calc(var(--bubble-font-size) * 12), 80vw);
+    padding: calc(var(--bubble-font-size) * 0.25) calc(var(--bubble-font-size) * 0.45);
     box-shadow: 2px 2px 0 #7b3fe4;
   }
   body.compact-stage #bubble::after {
@@ -72,7 +88,7 @@
     width: 6px; height: 6px;
   }
   body.compact-stage #cat-bubble {
-    padding: 2px 6px; font-size: 10px;
+    padding: 2px 6px; font-size: calc(var(--bubble-font-size) * 0.72);
   }
 
   /* Editor panel */
@@ -1673,6 +1689,15 @@ function connectWS() {
   ws.onerror = () => ws.close();
 }
 
+const BUBBLE_FONT_MAP = {
+  'Nunito': "'Nunito', 'Segoe UI', system-ui, sans-serif",
+  'Quicksand': "'Quicksand', 'Nunito', sans-serif",
+  'Fredoka': "'Fredoka', 'Nunito', sans-serif",
+  'Segoe UI': "'Segoe UI', system-ui, -apple-system, sans-serif",
+  'VT323': "'VT323', monospace",
+  'Courier New': "ui-monospace, 'Courier New', monospace"
+};
+
 function applyCompanionSettings(comp) {
   if (!comp) return;
   if (comp.hair && HAIR_STYLES.includes(comp.hair)) {
@@ -1681,10 +1706,28 @@ function applyCompanionSettings(comp) {
   if (comp.hc) settings.hc = comp.hc;
   if (comp.oc) settings.oc = comp.oc;
   if (Array.isArray(comp.cats)) settings.cats = comp.cats;
+  if (comp.bubbleFont) {
+    const fontStr = BUBBLE_FONT_MAP[comp.bubbleFont] || comp.bubbleFont;
+    document.documentElement.style.setProperty('--bubble-font', fontStr);
+  }
+  if (comp.bubbleFontSize) {
+    const size = Math.max(12, Math.min(32, parseInt(comp.bubbleFontSize, 10) || 18));
+    document.documentElement.style.setProperty('--bubble-font-size', size + 'px');
+  }
   CHAR_CACHE = {};
   applyCustomColors(settings.hc, settings.oc);
   initCats(settings.cats);
 }
+
+window.addEventListener('message', (evt) => {
+  if (evt.data && evt.data.type === 'companion:preview' && evt.data.companion) {
+    applyCompanionSettings(evt.data.companion);
+    if (evt.data.demoMessage) {
+      showMessage(evt.data.demoMessage);
+    }
+  }
+});
+
 connectWS();
 
 requestAnimationFrame(tick);
