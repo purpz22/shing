@@ -7,24 +7,26 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
     width: 100%; height: 100%;
+    margin: 0; padding: 0;
     background: transparent;
     overflow: hidden;
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   }
   #container {
     position: relative;
-    width: 100%; height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
   }
   #jar-stage {
-    position: relative;
-    aspect-ratio: 764 / 1024;
-    height: 100%;
-    width: auto;
-    max-width: 100vw;
-    max-height: 100vh;
+    position: absolute;
+    width: 764px;
+    height: 1024px;
+    transform-origin: center center;
+    left: var(--jar-x, 50%);
+    top: var(--jar-y, 82%);
+    transform: translate(-50%, -50%) scale(calc(var(--jar-scale, 1.0) * (100vh / 1024px) * 0.48));
+    pointer-events: none;
   }
   .layer {
     position: absolute;
@@ -47,6 +49,7 @@
     top: 0; left: 0;
     width: 100%; height: 100%;
     z-index: 3;
+    pointer-events: auto;
   }
   /* Top rim & pink bow stays in front of falling gifts at the jar mouth while keeping all gifts inside the jar 100% visible */
   #jar-neck {
@@ -167,6 +170,7 @@ const comboBadge = document.getElementById('combo-badge');
 const counterEl = document.getElementById('gift-counter');
 const topSenderEl = document.getElementById('top-gift-sender');
 const topDetailEl = document.getElementById('top-gift-detail');
+const jarStage = document.getElementById('jar-stage');
 
 const GIFT_ICONS = {
   rose: '/assets/gifts/rose.png',
@@ -740,6 +744,14 @@ window.addEventListener('message', evt => {
   }
 });
 
+function applyJarTransform(tf) {
+  if (!tf || typeof tf !== 'object') return;
+  if (typeof tf.x === 'number') jarStage.style.setProperty('--jar-x', `${tf.x}%`);
+  if (typeof tf.y === 'number') jarStage.style.setProperty('--jar-y', `${tf.y}%`);
+  if (typeof tf.scale === 'number') jarStage.style.setProperty('--jar-scale', tf.scale);
+  needsRedraw = true;
+}
+
 // WebSocket integration
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -751,11 +763,19 @@ function connectWS() {
       if (data.type === 'init' && data.settings?.jar) {
         jarSettings = Object.assign(jarSettings, data.settings.jar);
         engine.gravity.y = jarSettings.gravity;
+        if (data.settings.jar.transform) {
+          applyJarTransform(data.settings.jar.transform);
+        }
         needsRedraw = true;
       } else if (data.type === 'settings:update' && data.settings?.jar) {
         jarSettings = Object.assign(jarSettings, data.settings.jar);
         engine.gravity.y = jarSettings.gravity;
+        if (data.settings.jar.transform) {
+          applyJarTransform(data.settings.jar.transform);
+        }
         needsRedraw = true;
+      } else if (data.type === 'jar:transform') {
+        applyJarTransform(data);
       } else if (data.type === 'gift') {
         if (catalogList.length === 0) {
           await catalogReadyPromise;
