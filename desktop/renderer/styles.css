@@ -960,20 +960,21 @@ input[type="range"] {
 
 /* Preview Windows */
 .jar-live-preview-card {
-  width: 380px;
+  width: 100%;
+  max-width: 580px;
   background: var(--bg-card);
   border: 1.5px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 16px;
   display: flex;
   flex-direction: column;
+  gap: 14px;
   box-shadow: var(--shadow-sm);
 }
 .preview-title {
   font-size: 13px;
   font-weight: 700;
   color: var(--primary);
-  margin-bottom: 10px;
 }
 .jar-iframe {
   width: 100%;
@@ -982,6 +983,154 @@ input[type="range"] {
   border-radius: var(--radius-md);
   background: #181226 radial-gradient(circle, rgba(123, 63, 228, 0.18) 1.5px, transparent 1.5px);
   background-size: 18px 18px;
+}
+
+/* 16:9 Jar Interactive Preview Stage & Controls */
+.jar-stage-preview-16-9 {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #181226 radial-gradient(circle, rgba(123, 63, 228, 0.18) 1.5px, transparent 1.5px);
+  background-size: 18px 18px;
+  border: 1.5px solid var(--border-color);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.jar-iframe-16-9 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  pointer-events: none;
+}
+
+.jar-drag-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  z-index: 5;
+}
+
+.jar-drag-target {
+  position: absolute;
+  left: 50%;
+  top: 82%;
+  transform: translate(-50%, -50%) scale(1);
+  width: 68px;
+  height: 92px;
+  border: 2px dashed #ff6fae;
+  border-radius: 12px;
+  background: rgba(255, 111, 174, 0.12);
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  pointer-events: auto;
+  z-index: 6;
+}
+
+.jar-drag-target:active,
+.jar-drag-target.dragging {
+  cursor: grabbing;
+  border-color: #7b3fe4;
+  background: rgba(123, 63, 228, 0.22);
+  box-shadow: 0 0 12px rgba(123, 63, 228, 0.5);
+}
+
+.jar-drag-crosshair {
+  width: 14px;
+  height: 14px;
+  position: relative;
+  margin-bottom: 4px;
+  opacity: 0.75;
+}
+
+.jar-drag-crosshair::before,
+.jar-drag-crosshair::after {
+  content: '';
+  position: absolute;
+  background: #ff6fae;
+  border-radius: 1px;
+}
+
+.jar-drag-crosshair::before {
+  top: 6px;
+  left: 0;
+  width: 14px;
+  height: 2px;
+}
+
+.jar-drag-crosshair::after {
+  top: 0;
+  left: 6px;
+  width: 2px;
+  height: 14px;
+}
+
+.jar-drag-target:active .jar-drag-crosshair::before,
+.jar-drag-target:active .jar-drag-crosshair::after,
+.jar-drag-target.dragging .jar-drag-crosshair::before,
+.jar-drag-target.dragging .jar-drag-crosshair::after {
+  background: #7b3fe4;
+}
+
+.jar-drag-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.jar-transform-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.jar-transform-controls .control-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jar-transform-controls .control-label {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.jar-transform-controls .form-range {
+  width: 100%;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.scale-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 12px;
+  background: var(--primary-light);
+  color: var(--primary);
+  margin-left: 6px;
 }
 .companion-layout {
   display: flex;

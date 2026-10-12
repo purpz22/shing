@@ -789,8 +789,28 @@
         </div>
 
         <div class="jar-live-preview-card">
-          <div class="preview-title">Jar Live Stream Preview</div>
-          <iframe id="jar-preview-iframe" src="http://localhost:3333/overlays/jar" class="jar-iframe" allowtransparency="true"></iframe>
+          <div class="stage-header">
+            <span class="preview-title">Jar 16:9 Live Stream Preview</span>
+            <span class="stage-tag">Drag to Position</span>
+          </div>
+
+          <div class="jar-stage-preview-16-9" id="jar-preview-stage">
+            <iframe id="jar-preview-iframe" src="http://localhost:3333/overlays/jar" class="jar-iframe-16-9" allowtransparency="true"></iframe>
+            <div class="jar-drag-overlay" id="jar-drag-overlay">
+              <div class="jar-drag-target" id="jar-drag-target" title="Click and drag to position jar">
+                <div class="jar-drag-crosshair"></div>
+                <span class="jar-drag-label">Jar</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="jar-transform-controls">
+            <div class="control-row">
+              <label for="jar-scale-slider" class="control-label">Jar Size: <span id="jar-scale-badge" class="scale-badge">100%</span></label>
+              <input type="range" id="jar-scale-slider" min="0.4" max="1.5" step="0.05" value="1.0" class="form-range">
+            </div>
+            <button class="btn btn-secondary btn-sm" id="jar-reset-transform-btn">Reset Position & Size</button>
+          </div>
         </div>
       </div>
     </section>
