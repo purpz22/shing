@@ -963,10 +963,16 @@ async function handleManualConnect(rawUsername) {
 
   try {
     const res = await window.api.connectTikTok(cleanUser, { manual: true });
+    if (res && res.status) {
+      updateConnectionUI(res);
+    }
     if (res && res.status === 'connected') {
       showToast(`Connected to @${res.username || cleanUser}'s TikTok Live stream!`, 'success', 'TikTok Live');
     } else if (res && res.status === 'waiting') {
-      showToast(`@${res.username || cleanUser} is not live right now. Start your stream and click Connect!`, 'warning', 'TikTok Live', 4200);
+      const toastMsg = res.error && res.error !== 'offline'
+        ? (res.message || `Could not connect to @${res.username || cleanUser}. Retrying automatically...`)
+        : `@${res.username || cleanUser} is not live right now. Start your stream and click Connect!`;
+      showToast(toastMsg, 'warning', 'TikTok Live', 4500);
     }
   } catch (err) {
     updateConnectionUI({

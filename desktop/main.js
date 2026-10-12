@@ -235,6 +235,7 @@ ipcMain.handle('tiktok:search', async (evt, username) => {
 
 let currentTargetUser = null;
 let reconnectTimer = null;
+let directPollTimer = null;
 let isConnecting = false;
 let connectAttemptId = 0;
 let TikTokConnector = null;
@@ -268,12 +269,46 @@ function sanitizeTikTokUsername(input) {
 async function getTikTokConnector() {
   if (!TikTokConnector) {
     TikTokConnector = await import('tiktok-live-connector');
+    const { RouteConfig, IsLiveRouteConfig, RoomIdRouteConfig } = TikTokConnector;
+    if (IsLiveRouteConfig) {
+      IsLiveRouteConfig.skipFetchRoomIdFromEulerRoute = true;
+    }
+    if (RoomIdRouteConfig) {
+      RoomIdRouteConfig.skipFetchRoomIdFromEulerRoute = true;
+    }
+    if (RouteConfig) {
+      RouteConfig.fetchRoomInfo = async ({ webClient, roomId = webClient.roomId }) => {
+        if (!roomId) throw new Error('Missing roomId for fetchRoomInfo');
+        return await webClient.getJsonObjectFromWebcastApi('room/info/', {
+          ...webClient.clientParams,
+          room_id: roomId,
+          aid: '8311'
+        }, false);
+      };
+      RouteConfig.fetchRoomGifts = async ({ webClient, roomId = webClient.roomId }) => {
+        if (!roomId) throw new Error('Missing roomId for fetchRoomGifts');
+        const res = await webClient.getJsonObjectFromWebcastApi('gift/list/', {
+          ...webClient.clientParams,
+          room_id: roomId,
+          aid: '8311'
+        }, false);
+        return res?.data?.gifts || [];
+      };
+    }
   }
   return TikTokConnector;
 }
 
+function stopDirectWebcastPolling() {
+  if (directPollTimer) {
+    clearTimeout(directPollTimer);
+    directPollTimer = null;
+  }
+}
+
 async function stopTikTokConnection() {
   connectAttemptId++;
+  stopDirectWebcastPolling();
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
@@ -287,6 +322,166 @@ async function stopTikTokConnection() {
       await oldConn.disconnect();
     } catch (e) {}
   }
+}
+
+async function registerDirectTtwidCookie(conn) {
+  try {
+    const res = await fetch('https://ttwid.bytedance.com/ttwid/union/register/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        region: 'US',
+        aid: 1768,
+        needFid: false,
+        service: 'www.ixigua.com',
+        migrate_info: { ticket: '', source: 'node' },
+        cbUrlProtocol: 'https',
+        union: true
+      })
+    });
+    const setCookies = typeof res.headers?.getSetCookie === 'function'
+      ? res.headers.getSetCookie()
+      : [res.headers?.get?.('set-cookie')].filter(Boolean);
+    for (const sc of setCookies) {
+      const cookiePair = String(sc).split(';')[0];
+      if (cookiePair && conn?.webClient?.cookieJar) {
+        await conn.webClient.cookieJar.processSetCookieHeader(cookiePair);
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to register direct ttwid cookie:', err.message);
+  }
+}
+
+async function startDirectWebcastPolling(conn, roomId, targetUser, attemptId, WebcastEvent, deserializeMessage) {
+  stopDirectWebcastPolling();
+  if (conn?.webClient) {
+    conn.webClient.roomId = roomId;
+  }
+  await registerDirectTtwidCookie(conn);
+
+  try {
+    conn._availableGifts = await conn.fetchAvailableGifts();
+  } catch (e) {}
+
+  const seenMsgIds = new Set();
+  const seenMsgQueue = [];
+  const rememberMsgId = (id) => {
+    if (!id || seenMsgIds.has(id)) return false;
+    seenMsgIds.add(id);
+    seenMsgQueue.push(id);
+    if (seenMsgQueue.length > 1500) {
+      const oldest = seenMsgQueue.shift();
+      seenMsgIds.delete(oldest);
+    }
+    return true;
+  };
+
+  const fetchBatch = async (cursor, internalExt) => {
+    const res = await conn.webClient.request({
+      host: 'webcast.tiktok.com',
+      path: 'webcast/im/fetch/',
+      searchParams: {
+        room_id: roomId,
+        aid: '1233',
+        resp_content_type: 'protobuf',
+        version_code: '180800',
+        did_rule: '3',
+        cursor: cursor || '',
+        internal_ext: internalExt || '',
+        identity: 'audience',
+        live_id: '12',
+        fetch_rule: '1'
+      },
+      signRequest: false,
+      responseType: 'buffer'
+    });
+    if (!res?.body || res.body.length === 0) {
+      return null;
+    }
+    return deserializeMessage('ProtoMessageFetchResult', res.body);
+  };
+
+  let initialFetch = await fetchBatch('', '');
+  if (!initialFetch) {
+    await registerDirectTtwidCookie(conn);
+    initialFetch = await fetchBatch('', '');
+  }
+  if (!initialFetch) {
+    throw new Error('Direct TikTok Webcast handshake returned empty payload');
+  }
+
+  for (const msg of initialFetch.messages || []) {
+    if (msg?.msgId) rememberMsgId(msg.msgId);
+  }
+
+  let cursor = initialFetch.cursor || '';
+  let internalExt = initialFetch.internalExt || '';
+  let pollCount = 0;
+  let emptyStreak = 0;
+  conn._connectState = 'CONNECTED';
+
+  const scheduleNextPoll = (delayMs = 1500) => {
+    if (attemptId !== connectAttemptId || tiktokConnection !== conn || currentTargetUser !== targetUser) {
+      return;
+    }
+    directPollTimer = setTimeout(runPoll, delayMs);
+  };
+
+  const runPoll = async () => {
+    if (attemptId !== connectAttemptId || tiktokConnection !== conn || currentTargetUser !== targetUser) {
+      return;
+    }
+    pollCount++;
+    let nextInterval = 1500;
+    try {
+      const fetched = await fetchBatch(cursor, internalExt);
+      if (attemptId !== connectAttemptId || tiktokConnection !== conn || currentTargetUser !== targetUser) {
+        return;
+      }
+      if (fetched) {
+        emptyStreak = 0;
+        if (fetched.cursor) cursor = fetched.cursor;
+        if (fetched.internalExt) internalExt = fetched.internalExt;
+        const parsedInterval = Number(fetched.fetchInterval);
+        if (Number.isFinite(parsedInterval) && parsedInterval >= 1000 && parsedInterval <= 3000) {
+          nextInterval = parsedInterval;
+        }
+        const freshMessages = (fetched.messages || []).filter(m => !m?.msgId || rememberMsgId(m.msgId));
+        if (freshMessages.length > 0) {
+          await conn.processProtoMessageFetchResult({
+            ...fetched,
+            messages: freshMessages
+          });
+        }
+      } else {
+        emptyStreak++;
+        if (emptyStreak >= 3) {
+          await registerDirectTtwidCookie(conn);
+          emptyStreak = 0;
+        }
+      }
+
+      if (pollCount % 10 === 0 && tiktokConnection === conn && isConnected) {
+        try {
+          const info = await conn.fetchRoomInfo(roomId);
+          if (info?.data?.status === 4) {
+            stopDirectWebcastPolling();
+            conn.emit(WebcastEvent.STREAM_END, { action: 3 });
+            return;
+          }
+        } catch (e) {}
+      }
+    } catch (err) {
+      console.warn(`Direct webcast poll note for @${targetUser}:`, err.message || err);
+    }
+
+    if (tiktokConnection === conn && isConnected) {
+      scheduleNextPoll(nextInterval);
+    }
+  };
+
+  scheduleNextPoll(1500);
 }
 
 function attachTikTokListeners(conn, targetUser, WebcastEvent) {
@@ -420,6 +615,7 @@ function attachTikTokListeners(conn, targetUser, WebcastEvent) {
 
   conn.on(WebcastEvent.DISCONNECTED, () => {
     if (tiktokConnection !== conn) return;
+    stopDirectWebcastPolling();
     isConnected = false;
     isConnecting = false;
     console.log(`Stream disconnected for @${targetUser}. Resuming background auto-reconnect...`);
@@ -433,12 +629,13 @@ function attachTikTokListeners(conn, targetUser, WebcastEvent) {
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
         attemptConnect(targetUser, false);
-      }, 8000);
+      }, 12000);
     }
   });
 
   conn.on(WebcastEvent.STREAM_END, () => {
     if (tiktokConnection !== conn) return;
+    stopDirectWebcastPolling();
     isConnected = false;
     isConnecting = false;
     console.log(`Stream ended for @${targetUser}. Resuming background auto-reconnect...`);
@@ -452,12 +649,12 @@ function attachTikTokListeners(conn, targetUser, WebcastEvent) {
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
         attemptConnect(targetUser, false);
-      }, 10000);
+      }, 15000);
     }
   });
 
   conn.on(WebcastEvent.ERROR, err => {
-    console.warn(`Connection note for @${targetUser}:`, err.message || err);
+    console.warn(`Connection note for @${targetUser}:`, err?.info || err?.message || err);
   });
 }
 
@@ -471,6 +668,7 @@ async function attemptConnect(targetUser, isManual = false) {
 
   const attemptId = ++connectAttemptId;
   isConnecting = true;
+  stopDirectWebcastPolling();
 
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
@@ -487,7 +685,7 @@ async function attemptConnect(targetUser, isManual = false) {
   let conn = null;
   let connectTimeout = null;
   try {
-    const { TikTokLiveConnection, WebcastEvent } = await getTikTokConnector();
+    const { TikTokLiveConnection, WebcastEvent, deserializeMessage } = await getTikTokConnector();
     if (attemptId !== connectAttemptId || currentTargetUser !== targetUser) {
       return { success: false, status: 'aborted', username: targetUser };
     }
@@ -499,25 +697,71 @@ async function attemptConnect(targetUser, isManual = false) {
 
     conn = new TikTokLiveConnection(targetUser, {
       processInitialData: false,
-      fetchRoomInfoOnConnect: false,
-      enableExtendedGiftInfo: false
+      fetchRoomInfoOnConnect: true,
+      enableExtendedGiftInfo: true
     });
     tiktokConnection = conn;
 
     attachTikTokListeners(conn, targetUser, WebcastEvent);
 
     const isRoomIdNumeric = /^\d{10,}$/.test(targetUser);
-    const connectPromise = isRoomIdNumeric ? conn.connect(targetUser) : conn.connect();
-    const timeoutPromise = new Promise((_, reject) => {
-      connectTimeout = setTimeout(() => {
-        reject(new Error('Connection timed out after 15 seconds'));
-      }, 15000);
-    });
+    const resolvedRoomId = isRoomIdNumeric ? targetUser : await conn.fetchRoomId();
+    if (attemptId !== connectAttemptId || tiktokConnection !== conn || currentTargetUser !== targetUser) {
+      return { success: false, status: 'aborted', username: targetUser };
+    }
 
-    const state = await Promise.race([connectPromise, timeoutPromise]);
-    if (connectTimeout) clearTimeout(connectTimeout);
+    let roomInfo = null;
+    try {
+      roomInfo = await conn.fetchRoomInfo(resolvedRoomId);
+    } catch (e) {}
+
+    const roomStatus = roomInfo?.data?.status;
+    if (roomStatus === 4) {
+      throw new Error('USER_OFFLINE');
+    }
+    if (roomStatus === undefined && !isRoomIdNumeric) {
+      const liveCheck = await conn.fetchIsLive().catch(() => false);
+      if (!liveCheck) {
+        throw new Error('USER_OFFLINE');
+      }
+    }
+
+    let connectedRoomId = resolvedRoomId;
+    let connectionMode = 'websocket';
+
+    try {
+      const connectPromise = conn.connect(resolvedRoomId);
+      const timeoutPromise = new Promise((_, reject) => {
+        connectTimeout = setTimeout(() => {
+          reject(new Error('Connection timed out after 12 seconds'));
+        }, 12000);
+      });
+
+      const state = await Promise.race([connectPromise, timeoutPromise]);
+      if (connectTimeout) {
+        clearTimeout(connectTimeout);
+        connectTimeout = null;
+      }
+      connectedRoomId = state?.roomId || resolvedRoomId;
+    } catch (wsErr) {
+      if (connectTimeout) {
+        clearTimeout(connectTimeout);
+        connectTimeout = null;
+      }
+      if (attemptId !== connectAttemptId || tiktokConnection !== conn || currentTargetUser !== targetUser) {
+        return { success: false, status: 'aborted', username: targetUser };
+      }
+      const wsErrText = String(wsErr?.message || wsErr || '');
+      if (/isn't online|USER_OFFLINE/i.test(wsErrText)) {
+        throw new Error('USER_OFFLINE');
+      }
+      console.log(`Sign server note for @${targetUser} (${wsErrText.split('\n')[0]}). Switching to Direct TikTok Webcast mode (Room: ${resolvedRoomId})...`);
+      await startDirectWebcastPolling(conn, resolvedRoomId, targetUser, attemptId, WebcastEvent, deserializeMessage);
+      connectionMode = 'direct';
+    }
 
     if (attemptId !== connectAttemptId || tiktokConnection !== conn || currentTargetUser !== targetUser) {
+      stopDirectWebcastPolling();
       try { await conn.disconnect(); } catch (e) {}
       return { success: false, status: 'aborted', username: targetUser };
     }
@@ -529,19 +773,21 @@ async function attemptConnect(targetUser, isManual = false) {
       reconnectTimer = null;
     }
 
-    console.log(`Successfully connected to TikTok Live for @${targetUser} (Room: ${state.roomId})`);
+    console.log(`Successfully connected to TikTok Live for @${targetUser} (Room: ${connectedRoomId}, Mode: ${connectionMode})`);
     const connectedPayload = {
       success: true,
       status: 'connected',
-      roomId: state.roomId,
+      mode: connectionMode,
+      roomId: connectedRoomId,
       username: targetUser,
       manual: Boolean(isManual),
-      message: `Connected to @${targetUser}'s TikTok Live (Room: ${state.roomId || 'Active'})`
+      message: `Connected to @${targetUser}'s TikTok Live (Room: ${connectedRoomId || 'Active'})`
     };
     sendTikTokStatus(connectedPayload);
     return connectedPayload;
   } catch (err) {
     if (connectTimeout) clearTimeout(connectTimeout);
+    stopDirectWebcastPolling();
     if (conn && tiktokConnection === conn) {
       try { await conn.disconnect(); } catch (e) {}
       tiktokConnection = null;
@@ -554,14 +800,19 @@ async function attemptConnect(targetUser, isManual = false) {
     isConnected = false;
 
     const errMsg = err.message || 'not live';
-    console.log(`@${targetUser} is offline (${errMsg}). Auto-checking again in 10s...`);
+    const isOfflineErr = errMsg === 'USER_OFFLINE' || /not online|offline|not live/i.test(errMsg);
+    console.log(`@${targetUser} is ${isOfflineErr ? 'offline' : 'waiting'} (${errMsg.split('\n')[0]}). Auto-checking again in 15s...`);
     const waitingPayload = {
       success: false,
       status: 'waiting',
       username: targetUser,
       manual: Boolean(isManual),
-      error: errMsg,
-      message: `@${targetUser} is not live yet. Click Connect when you start streaming, or wait for auto-connect.`
+      error: isOfflineErr ? 'offline' : errMsg.split('\n')[0],
+      message: isOfflineErr
+        ? (isManual
+          ? `@${targetUser} is currently offline on TikTok Live. Start your live stream first, then click Connect.`
+          : `@${targetUser} is not live yet. Click Connect when you start streaming, or wait for auto-connect.`)
+        : `Could not connect to @${targetUser} (${errMsg.split('\n')[0]}). Retrying in 15s...`
     };
     sendTikTokStatus(waitingPayload);
 
@@ -569,7 +820,7 @@ async function attemptConnect(targetUser, isManual = false) {
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
         attemptConnect(targetUser, false);
-      }, 10000);
+      }, 15000);
     }
     return waitingPayload;
   }
