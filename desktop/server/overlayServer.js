@@ -20,7 +20,12 @@ class OverlayServer {
     this.dynamicGifts = new Map();
     this.cachedGiftCatalog = null;
     this.rankingTimer = null;
+    this.settingsSaveTimer = null;
     this.settings = this.loadSettings();
+    if (!this.settings.jar) this.settings.jar = {};
+    if (!this.settings.jar.transform) {
+      this.settings.jar.transform = { x: 50.0, y: 82.0, scale: 1.0 };
+    }
   }
 
   resolveUserDataDir() {
@@ -119,8 +124,24 @@ class OverlayServer {
     return defaults;
   }
 
+  scheduleSettingsSave(delay = 300) {
+    if (this.settingsSaveTimer) {
+      clearTimeout(this.settingsSaveTimer);
+    }
+    this.settingsSaveTimer = setTimeout(() => {
+      this.settingsSaveTimer = null;
+      this.saveSettings();
+    }, delay);
+  }
+
   saveSettings(newSettings) {
-    this.settings = this.deepMerge(this.settings, newSettings);
+    if (this.settingsSaveTimer) {
+      clearTimeout(this.settingsSaveTimer);
+      this.settingsSaveTimer = null;
+    }
+    if (newSettings) {
+      this.settings = this.deepMerge(this.settings, newSettings);
+    }
     const p = this.getSettingsPath();
     const bak = this.getBackupPath();
     const serialized = JSON.stringify(this.settings, null, 2);
@@ -166,7 +187,12 @@ class OverlayServer {
         giftScale: 0.85,
         bounciness: 0.4,
         maxGifts: 500,
-        overflowAllowed: true
+        overflowAllowed: true,
+        transform: {
+          x: 50.0,
+          y: 82.0,
+          scale: 1.0
+        }
       },
       lowerThird: {
         tiktok: '@shimmy_ming',
@@ -444,17 +470,7 @@ class OverlayServer {
         ws.on('message', raw => {
           try {
             const data = JSON.parse(raw);
-            if (data.type === 'settings:save') {
-              this.saveSettings(data.settings);
-            } else if (data.type === 'test:event') {
-              this.broadcast(data.event);
-            } else if (data.type === 'rankings:reset' || data.type === 'viewer:leave') {
-              this.processRankingEvent(data);
-            } else if (data.type === 'tiktok:connect' && typeof this.onConnectRequest === 'function') {
-              this.onConnectRequest(data.username, { manual: Boolean(data.manual) });
-            } else if (data.type === 'tiktok:disconnect' && typeof this.onDisconnectRequest === 'function') {
-              this.onDisconnectRequest();
-            }
+            this.handleWsMessage(ws, data);
           } catch (e) {
             console.warn('Bad message from client', e);
           }
@@ -482,10 +498,41 @@ class OverlayServer {
     });
   }
 
+  handleWsMessage(ws, data) {
+    if (!data || typeof data !== 'object') return;
+
+    if (data.type === 'jar:transform') {
+      const x = Math.max(5, Math.min(95, Number(data.x) || 50));
+      const y = Math.max(8, Math.min(96, Number(data.y) || 82));
+      const scale = Math.max(0.4, Math.min(1.5, Number(data.scale) || 1.0));
+      if (!this.settings.jar) this.settings.jar = {};
+      this.settings.jar.transform = { x, y, scale };
+      this.broadcast({ type: 'jar:transform', x, y, scale });
+      this.scheduleSettingsSave();
+      return;
+    }
+
+    if (data.type === 'settings:save') {
+      this.saveSettings(data.settings);
+    } else if (data.type === 'test:event') {
+      this.broadcast(data.event);
+    } else if (data.type === 'rankings:reset' || data.type === 'viewer:leave') {
+      this.processRankingEvent(data);
+    } else if (data.type === 'tiktok:connect' && typeof this.onConnectRequest === 'function') {
+      this.onConnectRequest(data.username, { manual: Boolean(data.manual) });
+    } else if (data.type === 'tiktok:disconnect' && typeof this.onDisconnectRequest === 'function') {
+      this.onDisconnectRequest();
+    }
+  }
+
   stop() {
     if (this.rankingTimer) {
       clearInterval(this.rankingTimer);
       this.rankingTimer = null;
+    }
+    if (this.settingsSaveTimer) {
+      clearTimeout(this.settingsSaveTimer);
+      this.settingsSaveTimer = null;
     }
     for (const ws of this.clients) {
       try { ws.terminate(); } catch (e) {}
