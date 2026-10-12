@@ -1,6 +1,24 @@
 {
-    "latest":  "1.4.7",
+    "latest":  "1.4.8",
     "releases":  [
+                     {
+                         "version":  "1.4.8",
+                         "releaseName":  "Shing Live v1.4.8 - Companion Speech Bubble Font \u0026 Size Customization",
+                         "releaseDate":  "2026-10-12",
+                         "type":  "feature",
+                         "summary":  "Customizable stream companion speech bubble font family with Nunito default and 6 curated streamer fonts, live font size slider (14px to 28px, default 18px), dynamic auto-fitting bubble layout, and real-time OBS / TikTok LIVE Studio sync.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.4.8.zip",
+                         "highlights":  [
+                                            "Curated Streamer Fonts: Select between Nunito (Default Soft Rounded), Quicksand, Fredoka, Segoe UI, Retro Pixel (VT323), and Classic Monospace in the Companion tab",
+                                            "Live Bubble Font Size Slider: Easily enlarge speech bubbles from 14px to 28px (defaulting to clean, readable 18px) with instant live indicator badge",
+                                            "Dynamic Bubble Auto-Fit: Speech bubble padding and max-width automatically adapt to larger font sizes to prevent cramped or clipped text",
+                                            "Zero-Latency Stream Sync: Live WebSocket updates sync changes to TikTok LIVE Studio and OBS browser sources with 0ms delay without refreshing browser sources",
+                                            "Synchronized Dashboard Preview: Moving the slider or choosing a font updates the dashboard stage preview with an instant greeting demo"
+                                        ],
+                         "notes":  "Companion speech bubble font selector (Nunito default) and live size slider (14px-28px).",
+                         "packageSize":  "4.09 MB",
+                         "checksum":  "da8795777a4adcd5a7d79471865482a46f770940db4daa5edf801904c7c75319"
+                     },
                      {
                          "version":  "1.4.7",
                          "releaseName":  "Shing Live v1.4.7 - Cute Chat Font Changer \u0026 Real-Time Sync",

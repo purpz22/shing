@@ -2556,6 +2556,19 @@ function openChangelogModal() {
 
   const list = updateState.allReleases.length > 0 ? updateState.allReleases : [
     {
+      version: '1.4.8',
+      releaseName: 'Shing Live v1.4.8 - Companion Speech Bubble Font & Size Customization',
+      releaseDate: '2026-10-12',
+      summary: 'Customizable stream companion speech bubble font family with Nunito default and 6 curated streamer fonts, live font size slider (14px to 28px, default 18px), dynamic auto-fitting bubble layout, and real-time OBS / TikTok LIVE Studio sync.',
+      highlights: [
+        'Curated Streamer Fonts: Select between Nunito (Default Soft Rounded), Quicksand, Fredoka, Segoe UI, Retro Pixel (VT323), and Classic Monospace in the Companion tab',
+        'Live Bubble Font Size Slider: Easily enlarge speech bubbles from 14px to 28px (defaulting to clean, readable 18px) with instant live indicator badge',
+        'Dynamic Bubble Auto-Fit: Speech bubble padding and max-width automatically adapt to larger font sizes to prevent cramped or clipped text',
+        'Zero-Latency Stream Sync: Live WebSocket updates sync changes to TikTok LIVE Studio and OBS browser sources with 0ms delay without refreshing browser sources',
+        'Synchronized Dashboard Preview: Moving the slider or choosing a font updates the dashboard stage preview with an instant greeting demo'
+      ]
+    },
+    {
       version: '1.4.4',
       releaseName: 'Shing Live v1.4.4 - Events Table UI, Event Editor Modal & Disable Join Alerts',
       releaseDate: '2026-10-12',
