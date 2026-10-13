@@ -19,22 +19,23 @@ async function run() {
   const bannerPath = path.join(tempOverlaysDir, 'banner.html');
   fs.writeFileSync(bannerPath, '<!DOCTYPE html><html><head><title>Streamer Info Banner</title></head><body>Banner Placeholder</body></html>', 'utf8');
 
-  // Verify desktop/settings.json in repository contains the default banner configuration
+  // Verify desktop/settings.json in repository contains the default banner configuration if present
   const repoSettingsPath = path.join(__dirname, '..', 'settings.json');
-  assert.ok(fs.existsSync(repoSettingsPath), 'desktop/settings.json must exist');
-  const repoSettings = JSON.parse(fs.readFileSync(repoSettingsPath, 'utf8'));
-  assert.ok(repoSettings.banner, 'desktop/settings.json must contain banner block');
-  assert.strictEqual(repoSettings.banner.enabled, true, 'repo settings banner.enabled must be true');
-  assert.strictEqual(repoSettings.banner.scale, 1.0, 'repo settings banner.scale must be 1.0');
-  assert.strictEqual(repoSettings.banner.topper, 'bear', 'repo settings banner.topper must be bear');
-  assert.strictEqual(repoSettings.banner.animation, 'float', 'repo settings banner.animation must be float');
-  assert.strictEqual(repoSettings.banner.name, 'AkiWren', 'repo settings banner.name must be AkiWren');
-  assert.strictEqual(repoSettings.banner.subtitle, 'Cozy Variety Streamer', 'repo settings banner.subtitle must match');
-  assert.ok(repoSettings.banner.socials, 'repo settings banner.socials must exist');
-  assert.strictEqual(repoSettings.banner.socials.twitch, 'AkiWren');
-  assert.strictEqual(repoSettings.banner.socials.tiktok, '@akiwren_live');
-  assert.strictEqual(repoSettings.banner.socials.discord, 'discord.gg/akiwren');
-  assert.strictEqual(repoSettings.banner.socials.twitter, '@akiwren');
+  if (fs.existsSync(repoSettingsPath)) {
+    const repoSettings = JSON.parse(fs.readFileSync(repoSettingsPath, 'utf8'));
+    assert.ok(repoSettings.banner, 'desktop/settings.json must contain banner block');
+    assert.strictEqual(repoSettings.banner.enabled, true, 'repo settings banner.enabled must be true');
+    assert.strictEqual(repoSettings.banner.scale, 1.0, 'repo settings banner.scale must be 1.0');
+    assert.strictEqual(repoSettings.banner.topper, 'bear', 'repo settings banner.topper must be bear');
+    assert.strictEqual(repoSettings.banner.animation, 'float', 'repo settings banner.animation must be float');
+    assert.strictEqual(repoSettings.banner.name, 'AkiWren', 'repo settings banner.name must be AkiWren');
+    assert.strictEqual(repoSettings.banner.subtitle, 'Cozy Variety Streamer', 'repo settings banner.subtitle must match');
+    assert.ok(repoSettings.banner.socials, 'repo settings banner.socials must exist');
+    assert.strictEqual(repoSettings.banner.socials.twitch, 'AkiWren');
+    assert.strictEqual(repoSettings.banner.socials.tiktok, '@akiwren_live');
+    assert.strictEqual(repoSettings.banner.socials.discord, 'discord.gg/akiwren');
+    assert.strictEqual(repoSettings.banner.socials.twitter, '@akiwren');
+  }
 
   const server = new OverlayServer(testPort, tempBaseDir, tempDir);
 

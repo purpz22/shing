@@ -24,6 +24,17 @@ if (Test-Path $IndexFile) {
     }
 }
 
+# Keep root banner.html synced with desktop/overlays/banner.html for remote web hosting (purpleeez.site/shing/banner.html)
+$OverlayBannerFile = Join-Path $RootDir 'desktop\overlays\banner.html'
+$RootBannerFile = Join-Path $RootDir 'banner.html'
+if (Test-Path $OverlayBannerFile) {
+    $OverlayBannerHash = (Get-FileHash -Path $OverlayBannerFile -Algorithm SHA256).Hash
+    $RootBannerHash = if (Test-Path $RootBannerFile) { (Get-FileHash -Path $RootBannerFile -Algorithm SHA256).Hash } else { '' }
+    if ($OverlayBannerHash -ne $RootBannerHash) {
+        Copy-Item -Path $OverlayBannerFile -Destination $RootBannerFile -Force
+    }
+}
+
 $AllowedExtensions = @(
     '.html', '.htm', '.css', '.js', '.mjs', '.json',
     '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico',

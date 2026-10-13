@@ -161,6 +161,11 @@
     max-width: 96%;
     word-break: break-word;
     font-weight: 600;
+    max-height: 52px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   #banner-socials-grid {
@@ -386,7 +391,14 @@ let currentBanner = {
   name: 'AkiWren',
   subtitle: 'Cozy Variety Streamer',
   bio: 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.',
-  socials: {}
+  socials: {
+    twitch: 'AkiWren',
+    tiktok: '@akiwren_live',
+    discord: 'discord.gg/akiwren',
+    twitter: '@akiwren',
+    instagram: '',
+    youtube: ''
+  }
 };
 
 let currentCompanion = {
@@ -420,8 +432,9 @@ function applyBannerSettings(banner) {
   }
 
   // Scale application
-  const scaleVal = typeof currentBanner.scale === 'number' && !isNaN(currentBanner.scale)
-    ? currentBanner.scale
+  const parsedScale = Number(currentBanner.scale);
+  const scaleVal = Number.isFinite(parsedScale)
+    ? Math.max(0.5, Math.min(1.5, parsedScale))
     : 1.0;
   if (containerEl) {
     containerEl.style.setProperty('--banner-scale', String(scaleVal));
@@ -456,6 +469,9 @@ function applyBannerSettings(banner) {
 
   // Social handles rendering (cleanly hides empty/omitted handles)
   if (socialsGridEl) {
+    if (Array.isArray(socialsGridEl.children)) {
+      socialsGridEl.children.length = 0;
+    }
     socialsGridEl.innerHTML = '';
     const socials = currentBanner.socials || {};
     const platforms = ['twitch', 'tiktok', 'discord', 'twitter', 'instagram', 'youtube'];
@@ -897,8 +913,10 @@ function fetchInitialSettings() {
 
 /* WebSocket real-time connection with resilient auto-reconnect */
 function connectWS() {
+  if (typeof location === 'undefined' || !location.host || location.protocol === 'file:') return;
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const ws = new WebSocket(proto + '//' + location.host + '/ws');
+  try {
+    const ws = new WebSocket(proto + '//' + location.host + '/ws');
 
   ws.onopen = () => {
     console.log('Streamer Info Banner connected to WebSocket');
@@ -920,6 +938,7 @@ function connectWS() {
   ws.onerror = () => {
     try { ws.close(); } catch (_) {}
   };
+  } catch (err) {}
 }
 
 /* Initialization */

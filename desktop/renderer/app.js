@@ -2357,7 +2357,7 @@ function saveCurrentSettings() {
       target.banner.scale = clampBannerScale(target.banner.scale);
     }
   }
-  if (window.api && typeof window.api.saveSettings === 'function') {
+  if (typeof window !== 'undefined' && window.api && typeof window.api.saveSettings === 'function') {
     window.api.saveSettings(target);
   }
   if (typeof OverlayDemoManager !== 'undefined') {
