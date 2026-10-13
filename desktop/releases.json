@@ -6,37 +6,19 @@
                          "releaseName":  "Shing Live v1.5.1 - Streamer Info Banner \u0026 Profile Updates",
                          "releaseDate":  "2026-10-13",
                          "type":  "feature",
-                         "summary":  "1:1 centered Streamer Info Banner browser source overlay with selectable toppers (Little Bear, Satin Ribbon, Cozy Cat, None), continuous motion animations, live size slider, animated chibi avatar with shimmy_ming streamer defaults, and real-time WebSocket sync.",
+                         "summary":  "1:1 centered Streamer Info Banner browser source overlay with selectable toppers (Little Bear, Satin Ribbon, Cozy Cat, None), continuous motion animations, live size slider, animated chibi avatar, and real-time WebSocket sync.",
                          "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.5.1.zip",
                          "highlights":  [
                                             "1:1 Center Browser Source: Clean standalone overlay at /overlays/banner.html perfectly framed for OBS Studio and TikTok LIVE Studio",
                                             "Decorative Upper Toppers: Choose between Little Bear, Satin Ribbon bow, Cozy Cat, or clean top border",
                                             "5 Continuous Motion Styles: Smooth animations including Gentle Float, Cozy Sway, Heartbeat Pulse, Calm Breathe, and Playful Bounce",
                                             "Live Size Slider: Adjust scale smoothly from 50% to 150% in the Companion tab with real-time percentage badge",
-                                            "Default Streamer Profile: Clean shimmy_ming defaults and @shimmy_ming handle integration across banner overlays"
+                                            "Streamer Profile Integration: Seamless streamer name, bio, and social handle customization across banner overlays",
+                                            "Animated Chibi Avatar: 64x64 pixel-art avatar canvas with idle breathing loop synchronized with configured hair and outfit colors"
                                         ],
-                         "notes":  "Streamer Info Banner overlay and profile defaults.",
-                         "packageSize":  "4.11 MB",
-                         "checksum":  "bec5ea92ed6b24ae1a0037fdb2514a2e1051c1ef8360369dcfddd8180f5543b1"
-                     },
-                     {
-                         "version":  "1.5.0",
-                         "releaseName":  "Shing Live v1.5.0 - Streamer Info Banner Overlay (1:1 Center)",
-                         "releaseDate":  "2026-10-13",
-                         "type":  "feature",
-                         "summary":  "Added a dedicated 1:1 centered Streamer Info Banner browser source overlay with selectable toppers (Little Bear, Satin Ribbon, Cozy Cat, None), 5 continuous motion animation styles, live size slider, animated chibi avatar, and real-time WebSocket sync.",
-                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.5.0.zip",
-                         "highlights":  [
-                                            "1:1 Center Browser Source: Clean standalone overlay at /overlays/banner.html perfectly framed for OBS Studio and TikTok LIVE Studio",
-                                            "Decorative Upper Toppers: Choose between Little Bear, Satin Ribbon bow, Cozy Cat, or clean top border",
-                                            "5 Continuous Motion Styles: Smooth animations including Gentle Float, Cozy Sway, Heartbeat Pulse, Calm Breathe, and Playful Bounce",
-                                            "Live Size Slider: Adjust scale smoothly from 50% to 150% in the Companion tab with real-time percentage badge",
-                                            "Animated Chibi Avatar: 64x64 pixel-art avatar canvas with idle breathing loop synchronized with configured hair and outfit colors",
-                                            "Clean Socials Grid: Display icons and handles for Twitch, TikTok, Discord, Twitter/X, Instagram, and YouTube"
-                                        ],
-                         "notes":  "Standalone 1:1 Streamer Info Banner overlay with toppers, animations, and companion tab controls.",
-                         "packageSize":  "4.11 MB",
-                         "checksum":  "b9d5fdb2bad489d25c09518666b8abe1db64d977d396822374213c06356dacbd"
+                         "notes":  "Streamer Info Banner overlay and profile customization.",
+                         "packageSize":  "4.1 MB",
+                         "checksum":  "d089815dd491cc35b491b3469105f5fa138b3abdfcbabcb3d8723c949f766918"
                      },
                      {
                          "version":  "1.4.9",
