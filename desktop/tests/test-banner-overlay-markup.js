@@ -219,12 +219,12 @@ function runBannerScript(html) {
           scale: 1.25,
           topper: 'cat',
           animation: 'sway',
-          name: 'AkiWren Live',
+          name: 'shimmy_ming Live',
           subtitle: 'Cozy Gamer',
           bio: 'Daily cozy streams and pixel art!',
           socials: {
-            twitch: 'AkiWren',
-            tiktok: '@akiwren_live',
+            twitch: 'shimmy_ming',
+            tiktok: '@shimmy_ming',
             discord: '',
             twitter: ''
           }
@@ -351,3 +351,4 @@ const reconnectTimeout = sim.timeoutCallbacks[sim.timeoutCallbacks.length - 1];
 assert.ok(reconnectTimeout.ms <= 2000, `Reconnect timeout must be <= 2000ms (got ${reconnectTimeout.ms})`);
 
 console.log('All Streamer Info Banner Overlay markup and behavior tests passed successfully!');
+

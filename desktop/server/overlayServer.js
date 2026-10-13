@@ -372,14 +372,14 @@ class OverlayServer {
         scale: 1.0,
         topper: 'bear',
         animation: 'float',
-        name: 'AkiWren',
+        name: 'shimmy_ming',
         subtitle: 'Cozy Variety Streamer',
         bio: 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.',
         socials: {
-          twitch: 'AkiWren',
-          tiktok: '@akiwren_live',
-          discord: 'discord.gg/akiwren',
-          twitter: '@akiwren',
+          twitch: 'shimmy_ming',
+          tiktok: '@shimmy_ming',
+          discord: '',
+          twitter: '',
           instagram: '',
           youtube: ''
         }

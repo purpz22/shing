@@ -59,7 +59,7 @@ assert.ok(
 );
 
 // Verify standalone fallback data
-assert.ok(rootBannerHtml.includes('AkiWren'), 'Root banner must contain default streamer name');
+assert.ok(rootBannerHtml.includes('shimmy_ming'), 'Root banner must contain default streamer name');
 assert.ok(rootBannerHtml.includes('Cozy Variety Streamer'), 'Root banner must contain default subtitle');
 
 // =========================================================================
@@ -190,3 +190,4 @@ for (const suiteRel of suitesToRun) {
 }
 
 console.log('PASS: test-banner-e2e-sync.js - All deployment sync and end-to-end verification checks passed successfully.');
+

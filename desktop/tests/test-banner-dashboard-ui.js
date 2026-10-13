@@ -129,14 +129,14 @@ assert(js.includes('banner-name-input'), 'app.js missing banner-name-input bindi
       scale: 1.0,
       topper: 'bear',
       animation: 'float',
-      name: 'AkiWren',
+      name: 'shimmy_ming',
       subtitle: 'Cozy Variety Streamer',
       bio: 'Welcome to the cozy corner!',
       socials: {
-        twitch: 'AkiWren',
-        tiktok: '@akiwren_live',
-        discord: 'discord.gg/akiwren',
-        twitter: '@akiwren',
+        twitch: 'shimmy_ming',
+        tiktok: '@shimmy_ming',
+        discord: '',
+        twitter: '',
         instagram: '',
         youtube: ''
       }
@@ -290,7 +290,7 @@ assert(js.includes('banner-name-input'), 'app.js missing banner-name-input bindi
       scale: 1.2,
       topper: 'cat',
       animation: 'sway',
-      name: 'AkiWren Live',
+      name: 'shimmy_ming Live',
       subtitle: 'Chill Streams',
       bio: 'Daily cozy gaming',
       socials: {
@@ -311,7 +311,7 @@ assert(js.includes('banner-name-input'), 'app.js missing banner-name-input bindi
   assert.strictEqual(mockDOMElements['banner-scale-badge'].textContent, '120%');
   assert.strictEqual(mockDOMElements['banner-topper-select'].value, 'cat');
   assert.strictEqual(mockDOMElements['banner-anim-select'].value, 'sway');
-  assert.strictEqual(mockDOMElements['banner-name-input'].value, 'AkiWren Live');
+  assert.strictEqual(mockDOMElements['banner-name-input'].value, 'shimmy_ming Live');
   assert.strictEqual(mockDOMElements['banner-subtitle-input'].value, 'Chill Streams');
   assert.strictEqual(mockDOMElements['banner-bio-input'].value, 'Daily cozy gaming');
   assert.strictEqual(mockDOMElements['banner-twitch-input'].value, 'AkiLive');
@@ -345,3 +345,4 @@ if (bannerCompanionIndex !== -1) {
 }
 
 console.log('PASS: test-banner-dashboard-ui.js - All Streamer Info Banner dashboard UI tests passed successfully.');
+

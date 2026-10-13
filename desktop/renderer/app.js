@@ -3911,14 +3911,14 @@ document.addEventListener('DOMContentLoaded', () => {
         scale: 1.0,
         topper: 'bear',
         animation: 'float',
-        name: 'AkiWren',
+        name: appSettings.username || 'shimmy_ming',
         subtitle: 'Cozy Variety Streamer',
         bio: 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.',
         socials: {
-          twitch: 'AkiWren',
-          tiktok: '@akiwren_live',
-          discord: 'discord.gg/akiwren',
-          twitter: '@akiwren',
+          twitch: appSettings.username || 'shimmy_ming',
+          tiktok: appSettings.lowerThird?.tiktok || '@shimmy_ming',
+          discord: '',
+          twitter: '',
           instagram: '',
           youtube: ''
         }

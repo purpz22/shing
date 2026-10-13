@@ -28,13 +28,13 @@ async function run() {
     assert.strictEqual(repoSettings.banner.scale, 1.0, 'repo settings banner.scale must be 1.0');
     assert.strictEqual(repoSettings.banner.topper, 'bear', 'repo settings banner.topper must be bear');
     assert.strictEqual(repoSettings.banner.animation, 'float', 'repo settings banner.animation must be float');
-    assert.strictEqual(repoSettings.banner.name, 'AkiWren', 'repo settings banner.name must be AkiWren');
+    assert.strictEqual(repoSettings.banner.name, 'shimmy_ming', 'repo settings banner.name must be shimmy_ming');
     assert.strictEqual(repoSettings.banner.subtitle, 'Cozy Variety Streamer', 'repo settings banner.subtitle must match');
     assert.ok(repoSettings.banner.socials, 'repo settings banner.socials must exist');
-    assert.strictEqual(repoSettings.banner.socials.twitch, 'AkiWren');
-    assert.strictEqual(repoSettings.banner.socials.tiktok, '@akiwren_live');
-    assert.strictEqual(repoSettings.banner.socials.discord, 'discord.gg/akiwren');
-    assert.strictEqual(repoSettings.banner.socials.twitter, '@akiwren');
+    assert.strictEqual(repoSettings.banner.socials.twitch, 'shimmy_ming');
+    assert.strictEqual(repoSettings.banner.socials.tiktok, '@shimmy_ming');
+    assert.strictEqual(repoSettings.banner.socials.discord, '');
+    assert.strictEqual(repoSettings.banner.socials.twitter, '');
   }
 
   const server = new OverlayServer(testPort, tempBaseDir, tempDir);
@@ -48,14 +48,14 @@ async function run() {
     assert.strictEqual(defaults.banner.scale, 1.0, 'banner.scale default must be 1.0');
     assert.strictEqual(defaults.banner.topper, 'bear', 'banner.topper default must be bear');
     assert.strictEqual(defaults.banner.animation, 'float', 'banner.animation default must be float');
-    assert.strictEqual(defaults.banner.name, 'AkiWren', 'banner.name default must be AkiWren');
+    assert.strictEqual(defaults.banner.name, 'shimmy_ming', 'banner.name default must be shimmy_ming');
     assert.strictEqual(defaults.banner.subtitle, 'Cozy Variety Streamer', 'banner.subtitle default must be Cozy Variety Streamer');
     assert.strictEqual(defaults.banner.bio, 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.', 'banner.bio default matches spec');
     assert.ok(defaults.banner.socials, 'banner.socials must exist');
-    assert.strictEqual(defaults.banner.socials.twitch, 'AkiWren', 'socials.twitch must be AkiWren');
-    assert.strictEqual(defaults.banner.socials.tiktok, '@akiwren_live', 'socials.tiktok must be @akiwren_live');
-    assert.strictEqual(defaults.banner.socials.discord, 'discord.gg/akiwren', 'socials.discord must be discord.gg/akiwren');
-    assert.strictEqual(defaults.banner.socials.twitter, '@akiwren', 'socials.twitter must be @akiwren');
+    assert.strictEqual(defaults.banner.socials.twitch, 'shimmy_ming', 'socials.twitch must be shimmy_ming');
+    assert.strictEqual(defaults.banner.socials.tiktok, '@shimmy_ming', 'socials.tiktok must be @shimmy_ming');
+    assert.strictEqual(defaults.banner.socials.discord, '', 'socials.discord must be ');
+    assert.strictEqual(defaults.banner.socials.twitter, '', 'socials.twitter must be ');
     assert.strictEqual(defaults.banner.socials.instagram, '', 'socials.instagram default must be empty string');
     assert.strictEqual(defaults.banner.socials.youtube, '', 'socials.youtube default must be empty string');
 
@@ -93,9 +93,9 @@ async function run() {
     assert.strictEqual(partialServer.settings.banner.enabled, true, 'Partial settings must populate enabled default');
     assert.strictEqual(partialServer.settings.banner.topper, 'bear', 'Partial settings must populate topper default');
     assert.strictEqual(partialServer.settings.banner.animation, 'float', 'Partial settings must populate animation default');
-    assert.strictEqual(partialServer.settings.banner.name, 'AkiWren', 'Partial settings must populate name default');
+    assert.strictEqual(partialServer.settings.banner.name, 'shimmy_ming', 'Partial settings must populate name default');
     assert.ok(partialServer.settings.banner.socials, 'Partial settings must populate socials');
-    assert.strictEqual(partialServer.settings.banner.socials.twitch, 'AkiWren', 'Partial settings must populate twitch');
+    assert.strictEqual(partialServer.settings.banner.socials.twitch, 'shimmy_ming', 'Partial settings must populate twitch');
 
     // 4. Start overlay server to test HTTP routes and WebSocket events
     await server.start();
@@ -121,7 +121,7 @@ async function run() {
     assert.strictEqual(apiSettingsRes.statusCode, 200, 'GET /api/settings must respond with 200');
     const apiSettingsJson = JSON.parse(apiSettingsRes.body);
     assert.ok(apiSettingsJson.banner, 'GET /api/settings response must contain banner');
-    assert.strictEqual(apiSettingsJson.banner.name, 'AkiWren');
+    assert.strictEqual(apiSettingsJson.banner.name, 'shimmy_ming');
     assert.strictEqual(apiSettingsJson.banner.scale, 1.0);
 
     // 7. Test WebSocket connection receives banner in init and in settings:update
@@ -144,7 +144,7 @@ async function run() {
     const initMsg = wsMessages.find(m => m.type === 'init');
     assert.ok(initMsg, 'Client must receive init message');
     assert.ok(initMsg.settings.banner, 'init message settings must include banner');
-    assert.strictEqual(initMsg.settings.banner.name, 'AkiWren');
+    assert.strictEqual(initMsg.settings.banner.name, 'shimmy_ming');
 
     // Test saveSettings triggers settings:update with clamped banner scale
     server.saveSettings({
@@ -172,3 +172,4 @@ run().catch(err => {
   console.error('Test failed:', err);
   process.exit(1);
 });
+
