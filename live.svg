@@ -4,9 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Purple Chibi - Walking Pixel Art</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&family=Quicksand:wght@600;700&family=VT323&display=swap">
 <style>
+  :root {
+    --bubble-font: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+    --bubble-font-size: 18px;
+  }
   html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
-  body { font-family: ui-monospace, "Courier New", monospace; color: #4b1fa0; }
+  body { font-family: var(--bubble-font); color: #4b1fa0; }
   #scene {
     position: fixed; left: 0; bottom: 0;
     image-rendering: crisp-edges;
