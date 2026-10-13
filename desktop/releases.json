@@ -1,6 +1,25 @@
 {
-    "latest":  "1.5.1",
+    "latest":  "1.5.2",
     "releases":  [
+                     {
+                         "version":  "1.5.2",
+                         "releaseName":  "Shing Live v1.5.2 - Streamer Info Banner \u0026 Profile Updates",
+                         "releaseDate":  "2026-10-13",
+                         "type":  "feature",
+                         "summary":  "1:1 centered Streamer Info Banner browser source overlay with selectable toppers (Little Bear, Satin Ribbon, Cozy Cat, None), continuous motion animations, live size slider, animated chibi avatar, and real-time WebSocket sync.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.5.2.zip",
+                         "highlights":  [
+                                            "1:1 Center Browser Source: Clean standalone overlay at /overlays/banner.html perfectly framed for OBS Studio and TikTok LIVE Studio",
+                                            "Decorative Upper Toppers: Choose between Little Bear, Satin Ribbon bow, Cozy Cat, or clean top border",
+                                            "5 Continuous Motion Styles: Smooth animations including Gentle Float, Cozy Sway, Heartbeat Pulse, Calm Breathe, and Playful Bounce",
+                                            "Live Size Slider: Adjust scale smoothly from 50% to 150% in the Companion tab with real-time percentage badge",
+                                            "Streamer Profile Integration: Seamless streamer name, bio, and social handle customization across banner overlays",
+                                            "Animated Chibi Avatar: 64x64 pixel-art avatar canvas with idle breathing loop synchronized with configured hair and outfit colors"
+                                        ],
+                         "notes":  "Streamer Info Banner overlay and profile customization.",
+                         "packageSize":  "4.1 MB",
+                         "checksum":  "b4fc024623e770c52f34459400aa06440b5abc1621a2bed5b729422669310f64"
+                     },
                      {
                          "version":  "1.5.1",
                          "releaseName":  "Shing Live v1.5.1 - Streamer Info Banner \u0026 Profile Updates",
