@@ -2380,15 +2380,35 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
   text-align: right;
 }
 
-/* Ranking & Headpat Overlay Previews */
+/* Ranking, Headpat & Banner Overlay Previews */
 .ranking-preview-box,
-.headpat-preview-box {
+.headpat-preview-box,
+.banner-preview-box {
   background: radial-gradient(circle at 50% 30%, #2b1d42 0%, #150f24 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 10px;
   position: relative;
+}
+.demo-banner-widget {
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid #ffb6c1;
+  border-radius: 12px;
+  padding: 10px 16px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.demo-banner-name {
+  font-family: 'Fredoka', 'Quicksand', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: #5c3d2e;
+}
+.demo-banner-sub {
+  font-family: 'Nunito', sans-serif;
+  font-size: 10px;
+  color: #8b6b58;
 }
 .demo-ranking-card {
   width: 92%;

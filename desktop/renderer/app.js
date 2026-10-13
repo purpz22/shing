@@ -2,6 +2,11 @@
 
 // Shing Studio Renderer Script
 let appSettings = {};
+let currentSettings = appSettings;
+if (typeof window !== 'undefined') {
+  window.appSettings = appSettings;
+  window.currentSettings = appSettings;
+}
 let wsClient = null;
 
 const $ = id => (typeof document !== 'undefined' ? document.getElementById(id) : null);
@@ -1795,6 +1800,11 @@ function renderDemoStayRows() {
 // Load & populate settings
 async function initSettings() {
   appSettings = await window.api.getSettings();
+  currentSettings = appSettings;
+  if (typeof window !== 'undefined') {
+    window.appSettings = appSettings;
+    window.currentSettings = appSettings;
+  }
   try {
     const savedTheme = localStorage.getItem('shing_theme');
     if (savedTheme && savedTheme !== appSettings.theme) {
@@ -1947,6 +1957,9 @@ async function initSettings() {
       cb.checked = cats.includes(cb.value);
     });
   }
+
+  // Populate Streamer Info Banner
+  populateBannerSettings();
 
   // Populate Settings
   if (appSettings.theme) {
@@ -2305,22 +2318,94 @@ function syncPresetSelect(selectId, hex) {
   sel.value = match ? hex.toLowerCase() : 'custom';
 }
 
+function clampBannerScale(val) {
+  if (val === null || val === undefined || val === '') return 1.0;
+  const num = parseFloat(val);
+  if (!Number.isFinite(num)) return 1.0;
+  return Math.max(0.5, Math.min(1.5, num));
+}
+
+let saveSettingsDebounceTimer = null;
+function saveSettingsDebounced(delay = 250) {
+  if (saveSettingsDebounceTimer) {
+    clearTimeout(saveSettingsDebounceTimer);
+  }
+  if (delay === 0) {
+    saveCurrentSettings();
+    saveSettingsDebounceTimer = null;
+    return;
+  }
+  saveSettingsDebounceTimer = setTimeout(() => {
+    saveCurrentSettings();
+    saveSettingsDebounceTimer = null;
+  }, delay);
+}
+
 function saveCurrentSettings() {
+  const target = (typeof window !== 'undefined' && window.appSettings) || appSettings;
   try {
-    if (appSettings.theme) {
-      localStorage.setItem('shing_theme', appSettings.theme);
+    if (target.theme) {
+      localStorage.setItem('shing_theme', target.theme);
     }
   } catch (e) {}
-  if (appSettings) {
-    if (!appSettings.jar) appSettings.jar = {};
-    if (!appSettings.jar.transform) {
-      appSettings.jar.transform = Object.assign({}, jarTransform);
+  if (target) {
+    if (!target.jar) target.jar = {};
+    if (!target.jar.transform) {
+      target.jar.transform = Object.assign({}, jarTransform);
+    }
+    if (target.banner && target.banner.scale !== undefined) {
+      target.banner.scale = clampBannerScale(target.banner.scale);
     }
   }
-  window.api.saveSettings(appSettings);
+  if (window.api && typeof window.api.saveSettings === 'function') {
+    window.api.saveSettings(target);
+  }
   if (typeof OverlayDemoManager !== 'undefined') {
     OverlayDemoManager.sync();
   }
+}
+
+function populateBannerSettings(customSettings = null) {
+  const src = customSettings
+    || (typeof window !== 'undefined' && window.currentSettings)
+    || (typeof window !== 'undefined' && window.appSettings)
+    || currentSettings
+    || appSettings;
+  const banner = src ? src.banner : null;
+  if (!banner) return;
+  if ($('banner-enable-toggle')) {
+    $('banner-enable-toggle').checked = banner.enabled !== false;
+  }
+  const bScale = clampBannerScale(banner.scale);
+  if ($('banner-scale-slider')) {
+    $('banner-scale-slider').value = String(bScale);
+  }
+  if ($('banner-scale-badge')) {
+    $('banner-scale-badge').textContent = `${Math.round(bScale * 100)}%`;
+    $('banner-scale-badge').style.setProperty('--banner-scale', bScale);
+  }
+  if ($('banner-topper-select')) {
+    $('banner-topper-select').value = banner.topper || 'bear';
+  }
+  if ($('banner-anim-select')) {
+    $('banner-anim-select').value = banner.animation || 'float';
+  }
+  if ($('banner-name-input')) {
+    $('banner-name-input').value = banner.name || '';
+  }
+  if ($('banner-subtitle-input')) {
+    $('banner-subtitle-input').value = banner.subtitle || '';
+  }
+  if ($('banner-bio-input')) {
+    $('banner-bio-input').value = banner.bio || '';
+  }
+  const socials = banner.socials || {};
+  if ($('banner-twitch-input')) $('banner-twitch-input').value = socials.twitch || '';
+  if ($('banner-tiktok-input')) $('banner-tiktok-input').value = socials.tiktok || '';
+  if ($('banner-discord-input')) $('banner-discord-input').value = socials.discord || '';
+  if ($('banner-twitter-input')) $('banner-twitter-input').value = socials.twitter || '';
+  if ($('banner-instagram-input')) $('banner-instagram-input').value = socials.instagram || '';
+  if ($('banner-youtube-input')) $('banner-youtube-input').value = socials.youtube || '';
 }
 
 // Account Modal Workflow
@@ -3818,6 +3903,103 @@ document.addEventListener('DOMContentLoaded', () => {
     window.api.simulateEvent('cat:meow', {});
   });
 
+  // Streamer Info Banner Controls
+  function ensureBannerSettings() {
+    if (!appSettings.banner) {
+      appSettings.banner = {
+        enabled: true,
+        scale: 1.0,
+        topper: 'bear',
+        animation: 'float',
+        name: 'AkiWren',
+        subtitle: 'Cozy Variety Streamer',
+        bio: 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.',
+        socials: {
+          twitch: 'AkiWren',
+          tiktok: '@akiwren_live',
+          discord: 'discord.gg/akiwren',
+          twitter: '@akiwren',
+          instagram: '',
+          youtube: ''
+        }
+      };
+    }
+    if (!appSettings.banner.socials) {
+      appSettings.banner.socials = {};
+    }
+    return appSettings.banner;
+  }
+
+  $('banner-enable-toggle')?.addEventListener('change', e => {
+    const banner = ensureBannerSettings();
+    banner.enabled = e.target.checked;
+    saveSettingsDebounced();
+  });
+
+  $('banner-scale-slider')?.addEventListener('input', e => {
+    const banner = ensureBannerSettings();
+    const clamped = clampBannerScale(e.target.value);
+    banner.scale = clamped;
+    if ($('banner-scale-badge')) {
+      $('banner-scale-badge').textContent = `${Math.round(clamped * 100)}%`;
+      $('banner-scale-badge').style.setProperty('--banner-scale', clamped);
+    }
+    saveSettingsDebounced();
+  });
+
+  $('banner-scale-slider')?.addEventListener('change', () => {
+    saveSettingsDebounced(0);
+  });
+
+  $('banner-topper-select')?.addEventListener('change', e => {
+    const banner = ensureBannerSettings();
+    const allowed = ['bear', 'ribbon', 'cat', 'none'];
+    banner.topper = allowed.includes(e.target.value) ? e.target.value : 'bear';
+    saveSettingsDebounced();
+  });
+
+  $('banner-anim-select')?.addEventListener('change', e => {
+    const banner = ensureBannerSettings();
+    const allowed = ['float', 'sway', 'pulse', 'breathe', 'bounce'];
+    banner.animation = allowed.includes(e.target.value) ? e.target.value : 'float';
+    saveSettingsDebounced();
+  });
+
+  $('banner-name-input')?.addEventListener('input', e => {
+    const banner = ensureBannerSettings();
+    banner.name = e.target.value;
+    saveSettingsDebounced();
+  });
+
+  $('banner-subtitle-input')?.addEventListener('input', e => {
+    const banner = ensureBannerSettings();
+    banner.subtitle = e.target.value;
+    saveSettingsDebounced();
+  });
+
+  $('banner-bio-input')?.addEventListener('input', e => {
+    const banner = ensureBannerSettings();
+    banner.bio = e.target.value;
+    saveSettingsDebounced();
+  });
+
+  const bannerSocialFields = [
+    { id: 'banner-twitch-input', key: 'twitch' },
+    { id: 'banner-tiktok-input', key: 'tiktok' },
+    { id: 'banner-discord-input', key: 'discord' },
+    { id: 'banner-twitter-input', key: 'twitter' },
+    { id: 'banner-instagram-input', key: 'instagram' },
+    { id: 'banner-youtube-input', key: 'youtube' }
+  ];
+
+  bannerSocialFields.forEach(({ id, key }) => {
+    $(id)?.addEventListener('input', e => {
+      const banner = ensureBannerSettings();
+      banner.socials[key] = e.target.value;
+      saveSettingsDebounced();
+    });
+  });
+
   // Settings: Theme
   $('setting-theme').addEventListener('change', () => {
     appSettings.theme = $('setting-theme').value;
@@ -3897,6 +4079,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof window.api !== 'undefined' && window.api.onSettingsLoaded) {
     window.api.onSettingsLoaded(async newSettings => {
       appSettings = newSettings;
+      currentSettings = appSettings;
+      if (typeof window !== 'undefined') {
+        window.appSettings = appSettings;
+        window.currentSettings = appSettings;
+      }
       await initSettings();
     });
   }
@@ -3911,6 +4098,10 @@ if (typeof module !== 'undefined' && module.exports) {
     renderEventsTable,
     openEventEditorModal,
     closeEventEditorModal,
-    saveEventEditorModal
+    saveEventEditorModal,
+    saveSettingsDebounced,
+    saveCurrentSettings,
+    clampBannerScale,
+    populateBannerSettings
   };
 }
