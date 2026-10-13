@@ -1,6 +1,25 @@
 {
-    "latest":  "1.4.9",
+    "latest":  "1.5.0",
     "releases":  [
+                     {
+                         "version":  "1.5.0",
+                         "releaseName":  "Shing Live v1.5.0 - Streamer Info Banner Overlay (1:1 Center)",
+                         "releaseDate":  "2026-10-13",
+                         "type":  "feature",
+                         "summary":  "Added a dedicated 1:1 centered Streamer Info Banner browser source overlay with selectable toppers (Little Bear, Satin Ribbon, Cozy Cat, None), 5 continuous motion animation styles, live size slider, animated chibi avatar, and real-time WebSocket sync.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.5.0.zip",
+                         "highlights":  [
+                                            "1:1 Center Browser Source: Clean standalone overlay at /overlays/banner.html perfectly framed for OBS Studio and TikTok LIVE Studio",
+                                            "Decorative Upper Toppers: Choose between Little Bear, Satin Ribbon bow, Cozy Cat, or clean top border",
+                                            "5 Continuous Motion Styles: Smooth animations including Gentle Float, Cozy Sway, Heartbeat Pulse, Calm Breathe, and Playful Bounce",
+                                            "Live Size Slider: Adjust scale smoothly from 50% to 150% in the Companion tab with real-time percentage badge",
+                                            "Animated Chibi Avatar: 64x64 pixel-art avatar canvas with idle breathing loop synchronized with configured hair and outfit colors",
+                                            "Clean Socials Grid: Display icons and handles for Twitch, TikTok, Discord, Twitter/X, Instagram, and YouTube"
+                                        ],
+                         "notes":  "Standalone 1:1 Streamer Info Banner overlay with toppers, animations, and companion tab controls.",
+                         "packageSize":  "4.1 MB",
+                         "checksum":  "54477dc12e9c6b76dbe11fa8caf0135375291b9bfc2673319958b71ae1607ddd"
+                     },
                      {
                          "version":  "1.4.9",
                          "releaseName":  "Shing Live v1.4.9 - /pet @username Live Chat Command",
