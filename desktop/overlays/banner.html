@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shing Live - Streamer Info Banner Overlay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Fredoka:wght@600;700&display=swap">
+<style>
+  :root {
+    --banner-scale: 1.0;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+    font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+    user-select: none;
+  }
+
+  #banner-stage {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  #streamer-banner-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 360px;
+    height: 360px;
+    aspect-ratio: 1 / 1;
+    transform: translate(-50%, -50%) scale(var(--banner-scale, 1));
+    transform-origin: center center;
+    will-change: transform;
+  }
+
+  /* Decorative upper topper container */
+  #banner-topper {
+    position: absolute;
+    top: -44px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    transition: opacity 0.2s ease;
+  }
+
+  #banner-topper[data-topper="none"],
+  #banner-topper.hidden {
+    display: none !important;
+  }
+
+  .topper-svg {
+    display: none;
+  }
+
+  #banner-topper[data-topper="bear"] #topper-bear {
+    display: block;
+  }
+
+  #banner-topper[data-topper="ribbon"] #topper-ribbon {
+    display: block;
+  }
+
+  #banner-topper[data-topper="cat"] #topper-cat {
+    display: block;
+  }
+
+  /* 1:1 Glassmorphic card body */
+  #banner-card {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    border-radius: 24px;
+    background: linear-gradient(160deg, rgba(24, 20, 40, 0.94) 0%, rgba(16, 14, 28, 0.98) 100%);
+    border: 2px solid rgba(192, 132, 252, 0.45);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), 0 0 20px rgba(192, 132, 252, 0.25);
+    backdrop-filter: blur(14px);
+    padding: 22px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    text-align: center;
+    color: #ffffff;
+    overflow: hidden;
+  }
+
+  .banner-avatar-wrap {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(192, 132, 252, 0.25) 0%, rgba(38, 28, 59, 0.6) 100%);
+    border: 2px solid rgba(192, 132, 252, 0.6);
+    box-shadow: 0 0 14px rgba(192, 132, 252, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 4px;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  #banner-avatar-canvas {
+    width: 64px;
+    height: 64px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  .banner-header {
+    margin-top: 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: center;
+  }
+
+  #banner-name-text {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+    text-shadow: 0 2px 10px rgba(192, 132, 252, 0.5);
+    line-height: 1.2;
+  }
+
+  #banner-subtitle-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: #d8b4fe;
+    line-height: 1.2;
+  }
+
+  .banner-divider {
+    width: 82%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(192, 132, 252, 0.5), transparent);
+    margin: 4px 0;
+  }
+
+  #banner-bio-text {
+    font-size: 12px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.84);
+    padding: 0 8px;
+    max-width: 96%;
+    word-break: break-word;
+    font-weight: 600;
+  }
+
+  #banner-socials-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    margin-top: 2px;
+  }
+
+  .banner-social-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(192, 132, 252, 0.32);
+    color: #f5f3ff;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    max-width: 155px;
+  }
+
+  .banner-social-badge svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+    color: #c084fc;
+  }
+
+  .banner-social-handle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 5 Continuous motion animation keyframes */
+  @keyframes float {
+    0%, 100% {
+      transform: translate(-50%, -50%) scale(var(--banner-scale, 1)) translateY(0px);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(var(--banner-scale, 1)) translateY(-8px);
+    }
+  }
+
+  @keyframes sway {
+    0%, 100% {
+      transform: translate(-50%, -50%) scale(var(--banner-scale, 1)) rotate(-1.5deg);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(var(--banner-scale, 1)) rotate(1.5deg);
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      transform: translate(-50%, -50%) scale(var(--banner-scale, 1));
+      filter: drop-shadow(0 0 10px rgba(192, 132, 252, 0.3));
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(calc(var(--banner-scale, 1) * 1.025));
+      filter: drop-shadow(0 0 20px rgba(192, 132, 252, 0.6));
+    }
+  }
+
+  @keyframes breathe {
+    0%, 100% {
+      transform: translate(-50%, -50%) scale(var(--banner-scale, 1)) translateY(0px);
+      opacity: 0.95;
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(calc(var(--banner-scale, 1) * 1.012)) translateY(-3px);
+      opacity: 1;
+    }
+  }
+
+  @keyframes bounce {
+    0%, 100% {
+      transform: translate(-50%, -50%) scale(var(--banner-scale, 1)) translateY(0px);
+    }
+    40% {
+      transform: translate(-50%, -50%) scale(var(--banner-scale, 1)) translateY(-10px);
+    }
+    60% {
+      transform: translate(-50%, -50%) scale(var(--banner-scale, 1)) translateY(2px);
+    }
+  }
+
+  .anim-float {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  .anim-sway {
+    animation: sway 5s ease-in-out infinite;
+  }
+
+  .anim-pulse {
+    animation: pulse 3s ease-in-out infinite;
+  }
+
+  .anim-breathe {
+    animation: breathe 4.5s ease-in-out infinite;
+  }
+
+  .anim-bounce {
+    animation: bounce 2.8s ease-in-out infinite;
+  }
+</style>
+</head>
+<body>
+<div id="banner-stage">
+  <div id="streamer-banner-container" class="anim-float" data-animation="float" data-topper="bear">
+    <div id="banner-topper" data-topper="bear">
+      <!-- Bear Topper -->
+      <svg id="topper-bear" class="topper-svg" viewBox="0 0 120 60" width="120" height="60" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="28" cy="22" r="14" fill="#a78bfa" stroke="#2e1a52" stroke-width="3"/>
+        <circle cx="28" cy="22" r="7" fill="#fbcfe8"/>
+        <circle cx="92" cy="22" r="14" fill="#a78bfa" stroke="#2e1a52" stroke-width="3"/>
+        <circle cx="92" cy="22" r="7" fill="#fbcfe8"/>
+        <ellipse cx="60" cy="34" rx="38" ry="24" fill="#c4b5fd" stroke="#2e1a52" stroke-width="3"/>
+        <ellipse cx="60" cy="39" rx="14" ry="10" fill="#ffffff" stroke="#2e1a52" stroke-width="2"/>
+        <ellipse cx="60" cy="35" rx="4" ry="2.5" fill="#4c1d95"/>
+        <path d="M58 38 Q60 41 62 38" stroke="#4c1d95" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <circle cx="46" cy="32" r="3" fill="#2e1a52"/>
+        <circle cx="47" cy="31" r="1" fill="#ffffff"/>
+        <circle cx="74" cy="32" r="3" fill="#2e1a52"/>
+        <circle cx="75" cy="31" r="1" fill="#ffffff"/>
+        <ellipse cx="38" cy="36" rx="4" ry="2.5" fill="#f472b6" opacity="0.7"/>
+        <ellipse cx="82" cy="36" rx="4" ry="2.5" fill="#f472b6" opacity="0.7"/>
+        <ellipse cx="36" cy="54" rx="10" ry="7" fill="#ddd6fe" stroke="#2e1a52" stroke-width="2.5"/>
+        <line x1="33" y1="52" x2="33" y2="56" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="39" y1="52" x2="39" y2="56" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round"/>
+        <ellipse cx="84" cy="54" rx="10" ry="7" fill="#ddd6fe" stroke="#2e1a52" stroke-width="2.5"/>
+        <line x1="81" y1="52" x2="81" y2="56" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="87" y1="52" x2="87" y2="56" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+
+      <!-- Ribbon Topper -->
+      <svg id="topper-ribbon" class="topper-svg" viewBox="0 0 120 60" width="120" height="60" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M60 30 C45 10 15 15 20 32 C23 44 45 38 60 32 Z" fill="#f472b6" stroke="#831843" stroke-width="2.5"/>
+        <path d="M28 26 C26 22 40 20 52 28" stroke="#fbcfe8" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M60 30 C75 10 105 15 100 32 C97 44 75 38 60 32 Z" fill="#f472b6" stroke="#831843" stroke-width="2.5"/>
+        <path d="M92 26 C94 22 80 20 68 28" stroke="#fbcfe8" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M54 34 Q40 46 32 58 L46 54 Q52 46 58 35 Z" fill="#ec4899" stroke="#831843" stroke-width="2"/>
+        <path d="M66 34 Q80 46 88 58 L74 54 Q68 46 62 35 Z" fill="#ec4899" stroke="#831843" stroke-width="2"/>
+        <ellipse cx="60" cy="31" rx="9" ry="8" fill="#db2777" stroke="#831843" stroke-width="2.5"/>
+        <ellipse cx="58" cy="29" rx="3" ry="2" fill="#fdf2f8"/>
+      </svg>
+
+      <!-- Cat Topper -->
+      <svg id="topper-cat" class="topper-svg" viewBox="0 0 120 60" width="120" height="60" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="26,32 36,12 48,28" fill="#c084fc" stroke="#2e1a52" stroke-width="3"/>
+        <polygon points="30,30 36,18 44,28" fill="#ff80ab"/>
+        <polygon points="94,32 84,12 72,28" fill="#c084fc" stroke="#2e1a52" stroke-width="3"/>
+        <polygon points="90,30 84,18 76,28" fill="#ff80ab"/>
+        <ellipse cx="60" cy="34" rx="38" ry="22" fill="#7c3aed" stroke="#2e1a52" stroke-width="3"/>
+        <path d="M42 33 Q47 38 52 33" stroke="#ffd13b" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M68 33 Q73 38 78 33" stroke="#ffd13b" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <polygon points="58,37 62,37 60,40" fill="#ff80ab"/>
+        <line x1="28" y1="36" x2="16" y2="34" stroke="#e9d5ff" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="28" y1="39" x2="18" y2="42" stroke="#e9d5ff" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="92" y1="36" x2="104" y2="34" stroke="#e9d5ff" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="92" y1="39" x2="102" y2="42" stroke="#e9d5ff" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="38" cy="38" r="3" fill="#ff80ab" opacity="0.6"/>
+        <circle cx="82" cy="38" r="3" fill="#ff80ab" opacity="0.6"/>
+        <ellipse cx="38" cy="54" rx="9" ry="6" fill="#c084fc" stroke="#2e1a52" stroke-width="2"/>
+        <circle cx="38" cy="54" r="2.5" fill="#ffffff"/>
+        <ellipse cx="82" cy="54" rx="9" ry="6" fill="#c084fc" stroke="#2e1a52" stroke-width="2"/>
+        <circle cx="82" cy="54" r="2.5" fill="#ffffff"/>
+      </svg>
+    </div>
+
+    <div id="banner-card">
+      <div class="banner-avatar-wrap">
+        <canvas id="banner-avatar-canvas" width="64" height="64" role="img" aria-label="Animated Chibi Avatar"></canvas>
+      </div>
+      <div class="banner-header">
+        <div id="banner-name-text">AkiWren</div>
+        <div id="banner-subtitle-text">Cozy Variety Streamer</div>
+      </div>
+      <div class="banner-divider"></div>
+      <div id="banner-bio-text">Welcome to the cozy corner! Streaming daily games, art, and chill chats.</div>
+      <div id="banner-socials-grid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* Clean vector SVG icons for social handles */
+const SOCIAL_ICONS = {
+  twitch: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>',
+  tiktok: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 0 0-1-.08A6.34 6.34 0 0 0 3 15.66a6.34 6.34 0 0 0 10.82 4.48 6.3 6.3 0 0 0 1.86-4.47V8.71a8.18 8.18 0 0 0 4.91 1.62v-3.64z"/></svg>',
+  discord: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>',
+  twitter: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>',
+  instagram: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>',
+  youtube: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>'
+};
+
+/* DOM elements */
+const containerEl = document.getElementById('streamer-banner-container');
+const topperEl = document.getElementById('banner-topper');
+const nameEl = document.getElementById('banner-name-text');
+const subtitleEl = document.getElementById('banner-subtitle-text');
+const bioEl = document.getElementById('banner-bio-text');
+const socialsGridEl = document.getElementById('banner-socials-grid');
+const avatarCanvas = document.getElementById('banner-avatar-canvas');
+const avatarCtx = avatarCanvas ? avatarCanvas.getContext('2d') : null;
+
+/* Current settings */
+let currentBanner = {
+  enabled: true,
+  scale: 1.0,
+  topper: 'bear',
+  animation: 'float',
+  name: 'AkiWren',
+  subtitle: 'Cozy Variety Streamer',
+  bio: 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.',
+  socials: {}
+};
+
+let currentCompanion = {
+  hair: 'twintails',
+  hc: '#7b3fe4',
+  oc: '#9b5cf0'
+};
+
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/* Update banner DOM from settings */
+function applyBannerSettings(banner) {
+  if (!banner || typeof banner !== 'object') return;
+  Object.assign(currentBanner, banner);
+
+  if (typeof currentBanner.name === 'string' && nameEl) {
+    nameEl.textContent = currentBanner.name;
+  }
+  if (typeof currentBanner.subtitle === 'string' && subtitleEl) {
+    subtitleEl.textContent = currentBanner.subtitle;
+  }
+  if (typeof currentBanner.bio === 'string' && bioEl) {
+    bioEl.textContent = currentBanner.bio;
+  }
+
+  // Scale application
+  const scaleVal = typeof currentBanner.scale === 'number' && !isNaN(currentBanner.scale)
+    ? currentBanner.scale
+    : 1.0;
+  if (containerEl) {
+    containerEl.style.setProperty('--banner-scale', String(scaleVal));
+  }
+
+  // Animation application
+  const validAnims = ['float', 'sway', 'pulse', 'breathe', 'bounce'];
+  const anim = validAnims.includes(currentBanner.animation) ? currentBanner.animation : 'float';
+  if (containerEl) {
+    containerEl.setAttribute('data-animation', anim);
+    for (const a of validAnims) {
+      containerEl.classList.remove('anim-' + a);
+    }
+    containerEl.classList.add('anim-' + anim);
+  }
+
+  // Topper application
+  const topper = (currentBanner.topper || 'bear').toLowerCase();
+  if (containerEl) {
+    containerEl.setAttribute('data-topper', topper);
+  }
+  if (topperEl) {
+    topperEl.setAttribute('data-topper', topper);
+    if (topper === 'none') {
+      topperEl.style.display = 'none';
+      topperEl.classList.add('hidden');
+    } else {
+      topperEl.style.display = '';
+      topperEl.classList.remove('hidden');
+    }
+  }
+
+  // Social handles rendering (cleanly hides empty/omitted handles)
+  if (socialsGridEl) {
+    socialsGridEl.innerHTML = '';
+    const socials = currentBanner.socials || {};
+    const platforms = ['twitch', 'tiktok', 'discord', 'twitter', 'instagram', 'youtube'];
+    for (const plat of platforms) {
+      const handle = socials[plat];
+      if (typeof handle === 'string' && handle.trim().length > 0) {
+        const badge = document.createElement('div');
+        badge.className = 'banner-social-badge';
+        badge.setAttribute('data-platform', plat);
+        badge.innerHTML = (SOCIAL_ICONS[plat] || '') + '<span class="banner-social-handle">' + escapeHtml(handle.trim()) + '</span>';
+        socialsGridEl.appendChild(badge);
+      }
+    }
+  }
+
+  // Visibility toggle
+  if (containerEl && typeof currentBanner.enabled === 'boolean') {
+    containerEl.style.display = currentBanner.enabled ? '' : 'none';
+  }
+}
+
+/* Companion color derivation & synchronization */
+const BASE_PAL = {
+  o: '#1a0f2e', s: '#ffe3d6', b: '#ff9fbf', e: '#ffffff', m: '#7a2a4a', t: '#2e1a52'
+};
+const VARIANTS = [
+  { name: 'Amethyst', H: '#7b3fe4', h: '#b48cff', d: '#4b1fa0', E: '#4a148c', L: '#9c6bff', C: '#9b5cf0', c: '#d9c2ff', k: '#6a35c2', r: '#e6a8ff' },
+  { name: 'Lavender', H: '#a98be8', h: '#ddd0ff', d: '#7c63c4', E: '#6a4fb0', L: '#bfa8ff', C: '#c4aef5', c: '#f3ecff', k: '#9a84d8', r: '#ffc6ec', o: '#3b2a5c' },
+  { name: 'Midnight', H: '#4a1d9e', h: '#7d4fe0', d: '#2a0f63', E: '#2b0a5c', L: '#6e3fd6', C: '#5b2aa8', c: '#a98be8', k: '#3a1878', r: '#b06cff', o: '#0a0614' },
+  { name: 'Neon',     H: '#b03cff', h: '#ff8cf0', d: '#6d1fb8', E: '#5b00a8', L: '#ff4fd8', C: '#c25cff', c: '#7ffcff', k: '#8a2be2', r: '#ff4fd8', e: '#bffcff' }
+];
+
+let activePalette = Object.assign({}, BASE_PAL, VARIANTS[0]);
+let RGB = {};
+let CHAR_CACHE = {};
+
+function hexToRgb(h) {
+  const n = parseInt(h.slice(1), 16);
+  return [n >> 16 & 255, n >> 8 & 255, n & 255];
+}
+
+function normalizeHex(hex, fallback) {
+  const s = String(hex || '').trim().toLowerCase();
+  return /^#[0-9a-f]{6}$/.test(s) ? s : fallback;
+}
+
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+  }
+  return [h, s * 100, l * 100];
+}
+
+function hslToHex(h, s, l) {
+  h = ((h % 360) + 360) % 360;
+  s = Math.max(0, Math.min(100, s)) / 100;
+  l = Math.max(0, Math.min(100, l)) / 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) { r = c; g = x; }
+  else if (h < 120) { r = x; g = c; }
+  else if (h < 180) { g = c; b = x; }
+  else if (h < 240) { g = x; b = c; }
+  else if (h < 300) { r = x; b = c; }
+  else { r = c; b = x; }
+  const toHex = v => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+
+function deriveHairPalette(hex) {
+  const H = normalizeHex(hex, VARIANTS[0].H);
+  const preset = VARIANTS.find(v => v.H.toLowerCase() === H);
+  if (preset) {
+    return {
+      H: preset.H, h: preset.h, d: preset.d, E: preset.E, L: preset.L,
+      o: preset.o || BASE_PAL.o, e: preset.e || BASE_PAL.e
+    };
+  }
+  const [hue, sat, lit] = rgbToHsl(...hexToRgb(H));
+  const lowSat = sat < 10;
+  return {
+    H,
+    h: hslToHex(hue - 4, lowSat ? sat : Math.min(100, sat + 18), Math.max(30, Math.min(96, lit + Math.max(10, (98 - lit) * 0.45)))),
+    d: hslToHex(hue + 3, lowSat ? sat : Math.min(100, Math.max(24, sat - 6)), Math.max(8, lit - 19)),
+    E: hslToHex(hue + 5, lowSat ? 18 : Math.min(100, sat + 8), Math.max(12, Math.min(52, lit - 24))),
+    L: hslToHex(hue - 2, lowSat ? 24 : Math.min(100, sat + 20), Math.max(48, Math.min(86, lit + 14))),
+    o: BASE_PAL.o,
+    e: BASE_PAL.e
+  };
+}
+
+function deriveOutfitPalette(hex) {
+  const C = normalizeHex(hex, VARIANTS[0].C);
+  const preset = VARIANTS.find(v => v.C.toLowerCase() === C);
+  if (preset) {
+    return { C: preset.C, c: preset.c, k: preset.k, r: preset.r };
+  }
+  const [hue, sat, lit] = rgbToHsl(...hexToRgb(C));
+  const lowSat = sat < 10;
+  return {
+    C,
+    c: hslToHex(hue - 3, lowSat ? sat : Math.min(100, sat + 16), Math.max(68, Math.min(96, lit + 23))),
+    k: hslToHex(hue - 3, lowSat ? sat : Math.max(20, sat - 16), Math.max(12, lit - 17)),
+    r: hslToHex(hue + 20, lowSat ? 65 : Math.min(100, Math.max(75, sat + 18)), Math.max(66, Math.min(88, lit + 16)))
+  };
+}
+
+function applyCustomColors(hairHex, outfitHex) {
+  const hp = deriveHairPalette(hairHex);
+  const op = deriveOutfitPalette(outfitHex);
+  activePalette = Object.assign({}, BASE_PAL, hp, op);
+  RGB = {};
+  for (const k in activePalette) {
+    if (k !== 'name') RGB[k] = hexToRgb(activePalette[k]);
+  }
+  CHAR_CACHE = {};
+}
+
+function applyCompanionSettings(companion) {
+  if (!companion || typeof companion !== 'object') return;
+  let changed = false;
+  if (companion.hair && companion.hair !== currentCompanion.hair) {
+    currentCompanion.hair = companion.hair;
+    changed = true;
+  }
+  if (companion.hc && companion.hc !== currentCompanion.hc) {
+    currentCompanion.hc = companion.hc;
+    changed = true;
+  }
+  if (companion.oc && companion.oc !== currentCompanion.oc) {
+    currentCompanion.oc = companion.oc;
+    changed = true;
+  }
+  if (changed) {
+    applyCustomColors(currentCompanion.hc, currentCompanion.oc);
+  }
+}
+
+/* Chibi character sprite generation (34x42 grid) */
+const SW = 34, SH = 42;
+function newGrid() { return Array.from({ length: SH }, () => new Array(SW).fill('.')); }
+function painter(g) {
+  const set = (x, y, k) => {
+    x = Math.round(x) + 1; y = Math.round(y) + 1;
+    if (x >= 0 && y >= 0 && x < SW && y < SH) g[y][x] = k;
+  };
+  const ellipse = (cx, cy, rx, ry, k, test) => {
+    for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) {
+      for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+        const dx = (x - cx) / rx, dy = (y - cy) / ry;
+        if (dx * dx + dy * dy <= 1 && (!test || test(x, y))) set(x, y, k);
+      }
+    }
+  };
+  const rect = (x0, y0, w, h, k) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) set(x, y, k); };
+  const get = (x, y) => { x += 1; y += 1; return (x >= 0 && y >= 0 && x < SW && y < SH) ? g[y][x] : '.'; };
+  const line = (x0, y0, x1, y1, r, k) => {
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2));
+    for (let i = 0; i <= n; i++) { const t = i / n; ellipse(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, r, r, k); }
+  };
+  return { set, ellipse, rect, get, line };
+}
+
+function layer(main, draw) {
+  const g = newGrid();
+  draw(painter(g));
+  const out = g.map(r => r.slice());
+  for (let y = 0; y < SH; y++) {
+    for (let x = 0; x < SW; x++) {
+      if (g[y][x] !== '.') continue;
+      if ((y > 0 && g[y - 1][x] !== '.') || (y < SH - 1 && g[y + 1][x] !== '.') ||
+          (x > 0 && g[y][x - 1] !== '.') || (x < SW - 1 && g[y][x + 1] !== '.')) out[y][x] = 'o';
+    }
+  }
+  for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) if (out[y][x] !== '.') main[y][x] = out[y][x];
+}
+
+const CX = 15.5;
+
+function buildSprite(bob, eyes, mouth) {
+  const hair = currentCompanion.hair || 'twintails';
+  const b = bob || 0;
+  const hb = b;
+  const g = newGrid();
+
+  // 1. Back hair layer
+  if (hair === 'twintails') {
+    layer(g, p => {
+      for (let i = 0; i <= 24; i++) {
+        const t = i / 24, y = 8 + b + t * 21, r = 2.7 - t * 1.4;
+        const k = y > 22 + b ? 'd' : 'H';
+        p.ellipse(3.5 - t, y, r, r, k);
+        p.ellipse(27.5 + t, y, r, r, k);
+      }
+    });
+  } else if (hair === 'lowpigtails') {
+    layer(g, p => {
+      for (let i = 0; i <= 18; i++) {
+        const t = i / 18, y = 16 + b + t * 15;
+        const r = 1.6 + Math.sin(t * Math.PI * 0.85) * 1.1;
+        const k = y > 25 + b ? 'd' : 'H';
+        p.ellipse(4.2 - t * 1.1, y, r, r, k);
+        p.ellipse(26.8 + t * 1.1, y, r, r, k);
+      }
+    });
+  } else if (hair === 'long') {
+    layer(g, p => {
+      for (let i = 0; i <= 24; i++) {
+        const t = i / 24, y = Math.round(8 + b + i), half = 8.0 + Math.sin(t * Math.PI * 0.82) * 4.6;
+        for (let x = Math.ceil(CX - half); x <= Math.floor(CX + half); x++) {
+          const dist = Math.abs(x - CX);
+          if (i >= 23 && Math.round(dist) % 4 === 2) continue;
+          p.set(x, y, (y > 24 + b || dist < 7.5) ? 'd' : 'H');
+        }
+      }
+    });
+  } else if (hair === 'wavy') {
+    layer(g, p => {
+      for (let i = 0; i <= 25; i++) {
+        const t = i / 25, y = Math.round(8 + b + i), wave = Math.sin(i * 0.65) * 1.4, half = 8.4 + Math.sin(t * Math.PI * 0.85) * 4.8;
+        for (let x = Math.ceil(CX + wave - half); x <= Math.floor(CX + wave + half); x++) {
+          const dist = Math.abs(x - (CX + wave));
+          p.set(x, y, (y > 24 + b || dist < 7.4) ? 'd' : 'H');
+        }
+      }
+    });
+  } else if (hair === 'ponytail') {
+    layer(g, p => {
+      for (let i = 0; i <= 20; i++) {
+        const t = i / 20, y = 5 + hb + t * 20, x = 25.0 + Math.sin(t * Math.PI * 0.95) * 3.0, r = 2.6 - t * 1.3;
+        p.ellipse(x, y, r, r, y > 18 + hb ? 'd' : 'H');
+      }
+    });
+  } else if (hair === 'halfup') {
+    layer(g, p => {
+      for (let i = 0; i <= 19; i++) {
+        const t = i / 19, y = Math.round(10 + b + i), half = 8.2 + Math.sin(t * Math.PI * 0.82) * 3.8;
+        for (let x = Math.ceil(CX - half); x <= Math.floor(CX + half); x++) {
+          p.set(x, y, (y > 23 + b || Math.abs(x - CX) < 7.2) ? 'd' : 'H');
+        }
+      }
+    });
+  }
+
+  // 2. Legs and shoes
+  layer(g, p => {
+    p.rect(11, 30, 3, 7, 't');
+    p.rect(11, 37, 3, 2, 'c');
+    p.rect(18, 30, 3, 7, 't');
+    p.rect(18, 37, 3, 2, 'c');
+  });
+
+  // 3. Hoodie body
+  layer(g, p => {
+    for (let y = 23; y <= 31; y++) {
+      const half = 4.5 + (y - 23) * 0.3;
+      for (let x = 0; x < 32; x++) if (Math.abs(x - CX) <= half) p.set(x, y + b, y === 31 ? 'c' : 'C');
+    }
+    for (let x = 13; x <= 18; x++) p.set(x, 23 + b, 'c');
+    for (let y = 24; y <= 30; y++) p.set(16, y + b, 'k');
+    p.set(14, 24 + b, 'c'); p.set(14, 25 + b, 'c'); p.set(18, 24 + b, 'c'); p.set(18, 25 + b, 'c');
+  });
+
+  // 4. Arms
+  layer(g, p => {
+    p.line(10.5, 24 + b, 8, 28.5 + b, 1.3, 'C');
+    p.line(20.5, 24 + b, 23, 28.5 + b, 1.3, 'C');
+    p.ellipse(8, 29 + b, 1.2, 1.1, 'c');
+    p.ellipse(23, 29 + b, 1.2, 1.1, 'c');
+  });
+
+  // 5. Head & hair mass
+  layer(g, p => {
+    p.ellipse(CX, 12 + b, 11.5, 10, 'H');
+    for (let y = 18; y <= 22; y++) for (let x = 0; x < 32; x++) if (p.get(x, y + b) === 'H') p.set(x, y + b, 'd');
+    p.ellipse(CX, 15.5 + b, 7.6, 6.3, 's');
+    const fringe = [0, 1, 2, 1];
+    for (let x = 7; x <= 24; x++) {
+      const bottom = 10 + fringe[x % 4];
+      for (let y = 3; y <= bottom; y++) if (p.get(x, y + b) === 's') p.set(x, y + b, 'H');
+    }
+    for (let y = 11; y <= 19; y++) { p.set(8, y + b, 'H'); p.set(23, y + b, 'H'); }
+    p.set(8, 20 + b, 'd'); p.set(23, 20 + b, 'd');
+    [[10,5],[11,5],[12,5],[13,5],[9,6],[10,6],[14,4],[15,4]].forEach(([x, y]) => p.set(x, y + b, 'h'));
+    p.set(16, 1 + hb, 'H'); p.set(17, 0 + hb, 'H'); p.set(15, 2 + b, 'H');
+  });
+
+  // 6. Hair ribbons
+  if (hair === 'twintails') {
+    layer(g, p => {
+      for (const x0 of [2, 27]) { p.rect(x0, 6 + hb, 3, 3, 'r'); p.set(x0 + 1, 7 + hb, 'c'); }
+    });
+  } else if (hair === 'lowpigtails') {
+    layer(g, p => {
+      for (const x0 of [3, 26]) { p.rect(x0, 15 + hb, 3, 2, 'r'); p.set(x0 + 1, 15 + hb, 'c'); }
+    });
+  }
+
+  // 7. Face features
+  const p = painter(g), dx = 1;
+  const eyeRows = {
+    open:   ['ooo', 'eEE', 'EEL', 'LLL'],
+    half:   ['...', 'ooo', 'EEL', 'LLL'],
+    closed: ['...', '...', 'ooo', '...']
+  }[eyes || 'open'];
+  for (const ex of [10, 19]) {
+    eyeRows.forEach((row, ry) => [...row].forEach((k, rx) => {
+      if (k !== '.') p.set(ex + rx + dx, 14 + ry + b, k);
+    }));
+  }
+  p.set(9 + dx, 18 + b, 'b'); p.set(10 + dx, 18 + b, 'b');
+  p.set(21 + dx, 18 + b, 'b'); p.set(22 + dx, 18 + b, 'b');
+  p.set(16 + dx, 19 + b, 'm');
+
+  return g;
+}
+
+function getCharSprite(bob, eyes, mouth) {
+  const hair = currentCompanion.hair || 'twintails';
+  const key = hair + '_' + bob + '_' + eyes + '_' + mouth;
+  let entry = CHAR_CACHE[key];
+  if (!entry) {
+    const grid = buildSprite(bob, eyes, mouth);
+    let c = null;
+    if (typeof document !== 'undefined' && document.createElement) {
+      c = document.createElement('canvas');
+      c.width = SW; c.height = SH;
+      const cx = c.getContext('2d');
+      if (cx && cx.createImageData) {
+        const img = cx.createImageData(SW, SH);
+        for (let y = 0; y < SH; y++) {
+          for (let x = 0; x < SW; x++) {
+            const k = grid[y][x];
+            if (k === '.') continue;
+            const rgb = RGB[k] || [255, 255, 255];
+            const i = (y * SW + x) * 4;
+            img.data[i] = rgb[0];
+            img.data[i + 1] = rgb[1];
+            img.data[i + 2] = rgb[2];
+            img.data[i + 3] = 255;
+          }
+        }
+        cx.putImageData(img, 0, 0);
+      }
+    }
+    entry = { canvas: c, grid };
+    CHAR_CACHE[key] = entry;
+  }
+  return entry;
+}
+
+/* Avatar animation loop */
+let avatarState = {
+  bob: 0,
+  bobTimer: 0,
+  blinkTimer: 3000,
+  blinkPhase: -1,
+  eyes: 'open'
+};
+
+function updateAvatar(dt) {
+  // Gentle breathing bob (1px cycle every ~1400ms)
+  avatarState.bobTimer += dt;
+  avatarState.bob = Math.floor((Math.sin(avatarState.bobTimer / 380) + 1) * 0.5);
+
+  // Blinking cycle
+  if (avatarState.blinkPhase < 0) {
+    avatarState.blinkTimer -= dt;
+    if (avatarState.blinkTimer <= 0) {
+      avatarState.blinkPhase = 0;
+      avatarState.blinkTimer = 0;
+    }
+  } else {
+    avatarState.blinkTimer += dt;
+    avatarState.blinkPhase = Math.floor(avatarState.blinkTimer / 45);
+    if (avatarState.blinkPhase > 3) {
+      avatarState.blinkPhase = -1;
+      avatarState.blinkTimer = 2600 + Math.random() * 2400;
+    }
+  }
+
+  avatarState.eyes = avatarState.blinkPhase < 0
+    ? 'open'
+    : ['half', 'closed', 'closed', 'half'][avatarState.blinkPhase];
+}
+
+function renderAvatar() {
+  if (!avatarCtx) return;
+  avatarCtx.clearRect(0, 0, 64, 64);
+  const sprite = getCharSprite(avatarState.bob, avatarState.eyes, 'neutral');
+  if (sprite && sprite.canvas) {
+    const ox = Math.floor((64 - SW) / 2);
+    const oy = Math.floor((64 - SH) / 2);
+    avatarCtx.drawImage(sprite.canvas, ox, oy);
+  }
+}
+
+let lastFrameTime = performance.now();
+function animateAvatar(now) {
+  const dt = Math.min(now - lastFrameTime, 100);
+  lastFrameTime = now;
+  updateAvatar(dt);
+  renderAvatar();
+  requestAnimationFrame(animateAvatar);
+}
+
+/* Master settings application */
+function applyAllSettings(settings) {
+  if (!settings || typeof settings !== 'object') return;
+  if (settings.banner) {
+    applyBannerSettings(settings.banner);
+  }
+  if (settings.companion) {
+    applyCompanionSettings(settings.companion);
+  }
+}
+
+/* Fallback HTTP fetch */
+function fetchInitialSettings() {
+  fetch('/api/settings')
+    .then(res => res.json())
+    .then(data => {
+      if (data) applyAllSettings(data);
+    })
+    .catch(() => {});
+}
+
+/* WebSocket real-time connection with resilient auto-reconnect */
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(proto + '//' + location.host + '/ws');
+
+  ws.onopen = () => {
+    console.log('Streamer Info Banner connected to WebSocket');
+  };
+
+  ws.onmessage = evt => {
+    try {
+      const msg = JSON.parse(evt.data);
+      if (msg.type === 'init' || msg.type === 'settings:update') {
+        if (msg.settings) applyAllSettings(msg.settings);
+      }
+    } catch (err) {}
+  };
+
+  ws.onclose = () => {
+    setTimeout(connectWS, 2000);
+  };
+
+  ws.onerror = () => {
+    try { ws.close(); } catch (_) {}
+  };
+}
+
+/* Initialization */
+applyCustomColors(currentCompanion.hc, currentCompanion.oc);
+applyBannerSettings(currentBanner);
+fetchInitialSettings();
+connectWS();
+requestAnimationFrame(animateAvatar);
+</script>
+</body>
+</html>
