@@ -8,6 +8,16 @@ const { WebSocketServer } = require('ws');
 
 class OverlayServer {
   constructor(port = 3333, baseDir = path.resolve(__dirname, '..'), userDataDir = null) {
+    let mockSettings = null;
+    if (typeof port === 'object' && port !== null) {
+      const opts = port;
+      port = (opts.server && opts.server.port) || opts.port || 3333;
+      baseDir = opts.baseDir || path.resolve(__dirname, '..');
+      userDataDir = opts.userDataDir || null;
+      if (opts.chat || opts.triggers || opts.timer || opts.companion || opts.banner) {
+        mockSettings = opts;
+      }
+    }
     this.port = port;
     this.baseDir = baseDir;
     this.userDataDir = userDataDir || this.resolveUserDataDir();
@@ -22,7 +32,7 @@ class OverlayServer {
     this.rankingTimer = null;
     this.settingsSaveTimer = null;
     this.streamTimerTicker = null;
-    this.settings = this.loadSettings();
+    this.settings = mockSettings ? this.deepMerge(this.getDefaultSettings(), mockSettings) : this.loadSettings();
     if (!this.settings.companion) this.settings.companion = {};
     if (!this.settings.companion.bubbleFont) this.settings.companion.bubbleFont = 'Nunito';
     if (this.settings.companion.bubbleFontSize === undefined) this.settings.companion.bubbleFontSize = 18;
@@ -84,6 +94,11 @@ class OverlayServer {
     if (!this.settings.chat) this.settings.chat = {};
     if (!this.settings.chat.fontFamily) this.settings.chat.fontFamily = 'quicksand';
 
+    if (!this.settings.banner) this.settings.banner = {};
+    const defaultBanner = this.getDefaultSettings().banner;
+    this.settings.banner = this.deepMerge(defaultBanner, this.settings.banner);
+    this.settings.banner.scale = this.clampBannerScale(this.settings.banner.scale);
+
     const initialSec = Math.max(0, (Number(this.settings.timer.durationMin) || 30) * 60);
     this.timerState = {
       remainingSeconds: initialSec,
@@ -139,6 +154,17 @@ class OverlayServer {
       }
     }
     return output;
+  }
+
+  static clampBannerScale(val) {
+    if (val === null || val === undefined || val === '') return 1.0;
+    const num = Number(val);
+    if (!Number.isFinite(num)) return 1.0;
+    return Math.max(0.5, Math.min(1.5, num));
+  }
+
+  clampBannerScale(val) {
+    return OverlayServer.clampBannerScale(val);
   }
 
   loadSettings() {
@@ -206,6 +232,9 @@ class OverlayServer {
     }
     if (newSettings) {
       this.settings = this.deepMerge(this.settings, newSettings);
+    }
+    if (this.settings && this.settings.banner && this.settings.banner.scale !== undefined) {
+      this.settings.banner.scale = this.clampBannerScale(this.settings.banner.scale);
     }
     const p = this.getSettingsPath();
     const bak = this.getBackupPath();
@@ -337,6 +366,23 @@ class OverlayServer {
         reduceSecondsPerLike: 0.1,
         theme: 'Purple',
         scale: 1.0
+      },
+      banner: {
+        enabled: true,
+        scale: 1.0,
+        topper: 'bear',
+        animation: 'float',
+        name: 'AkiWren',
+        subtitle: 'Cozy Variety Streamer',
+        bio: 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.',
+        socials: {
+          twitch: 'AkiWren',
+          tiktok: '@akiwren_live',
+          discord: 'discord.gg/akiwren',
+          twitter: '@akiwren',
+          instagram: '',
+          youtube: ''
+        }
       },
       updates: {
         autoCheck: true,
