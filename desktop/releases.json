@@ -1,6 +1,24 @@
 {
-    "latest":  "1.5.4",
+    "latest":  "1.5.5",
     "releases":  [
+                     {
+                         "version":  "1.5.5",
+                         "releaseName":  "Shing Live v1.5.5 - Compact Banner Controls \u0026 TikTok PFP Engine",
+                         "releaseDate":  "2026-10-14",
+                         "type":  "feature",
+                         "summary":  "Compact layout refinement for Streamer Info Banner settings, streamlined TikTok profile picture integration under Display \u0026 Layout, balanced 2x2 grid alignment, and per-paragraph line text synchronization.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.5.5.zip",
+                         "highlights":  [
+                                            "Compact TikTok PFP Integration: Streamlined avatar preview (48px) and sync controls directly inside the Display \u0026 Layout card",
+                                            "Grid Stretch Prevention: Eliminated vertical card stretching in dashboard settings for a balanced, void-free layout",
+                                            "Streamlined Per-Paragraph Line Inputs: Reorganized banner text inputs into compact 2-column rows alongside the multi-line paragraph editor",
+                                            "Automatic Avatar Toggle Dimming: Dynamic visual feedback when enabling or disabling the banner avatar badge",
+                                            "TikTok Profile Picture (PFP) Integration: Seamless replacement of chibi sprites with streamer TikTok avatars via CORS-safe proxy"
+                                        ],
+                         "notes":  "Compact layout refinement and TikTok PFP banner integration.",
+                         "packageSize":  "4.12 MB",
+                         "checksum":  "ab47d52c42a65ebe5b12cf67d43456f869b7466989f0083360044128237b419f"
+                     },
                      {
                          "version":  "1.5.4",
                          "releaseName":  "Shing Live v1.5.4 - Streamer TikTok PFP \u0026 Paragraph Line Text Engine",
