@@ -284,6 +284,7 @@ class OverlayServer {
       username: 'shimmy_ming',
       confirmed: false,
       theme: 'Purple',
+      autoMinimizeOnConnect: false,
       universalVolume: 0.85,
       universalMuted: false,
       favorites: ['jar', 'companion', 'overlays'],

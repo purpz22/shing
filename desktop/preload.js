@@ -24,6 +24,11 @@ contextBridge.exposeInMainWorld('api', {
   clearJar: () => ipcRenderer.invoke('jar:clear'),
   openOverlayInBrowser: (name) => ipcRenderer.invoke('overlay:open', name),
 
+  // Window Management APIs
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  restoreWindow: () => ipcRenderer.invoke('window:restore'),
+  isWindowMinimized: () => ipcRenderer.invoke('window:is-minimized'),
+
   // Sound & Media Management APIs
   listSounds: () => ipcRenderer.invoke('sounds:list'),
   searchSounds: (query) => ipcRenderer.invoke('sounds:search', query),

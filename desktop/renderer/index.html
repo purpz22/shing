@@ -68,6 +68,9 @@
       <button id="header-disconnect-btn" class="header-disconnect-btn hidden" title="Disconnect from TikTok Live">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
       </button>
+      <button id="header-minimize-btn" class="header-minimize-btn" title="Minimize Shing Live to taskbar (reduces CPU to near 0%)">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M19 13H5v-2h14v2z"/></svg>
+      </button>
     </div>
   </div>
 </header>
@@ -1298,6 +1301,16 @@
               <span>Disconnect</span>
             </button>
             <button class="btn btn-secondary" id="switch-account-btn">Change Account</button>
+          </div>
+
+          <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; cursor: pointer;">
+              <input type="checkbox" id="setting-auto-minimize">
+              <span>Auto-minimize window when TikTok Live connects</span>
+            </label>
+            <div class="hint-text" style="margin-top: 4px; margin-left: 22px;">
+              Automatically minimizes the app to the Windows taskbar 2 seconds after connecting. Reduces CPU usage to near 0% for low-end laptops while OBS overlays stay active.
+            </div>
           </div>
         </div>
 

@@ -249,6 +249,25 @@ body {
   color: #ffffff;
   border-color: #dc2626;
 }
+.header-minimize-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-card, #ffffff);
+  color: var(--text-muted, #7c6f93);
+  border: 1.5px solid var(--border-color, #e2d9f3);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+.header-minimize-btn:hover {
+  background: var(--bg-hover, #ede4ff);
+  color: var(--primary, #8b5cf6);
+  border-color: var(--primary, #8b5cf6);
+}
 .hidden {
   display: none !important;
 }

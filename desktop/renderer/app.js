@@ -1084,6 +1084,29 @@ const CONNECT_ICONS = {
 };
 
 let currentConnectionStatus = 'disconnected';
+let autoMinimizeTimer = null;
+
+function scheduleAutoMinimize() {
+  if (autoMinimizeTimer) {
+    clearTimeout(autoMinimizeTimer);
+  }
+  autoMinimizeTimer = setTimeout(async () => {
+    autoMinimizeTimer = null;
+    if (currentConnectionStatus === 'connected' && typeof window.api !== 'undefined' && window.api.minimizeWindow) {
+      showToast('Minimizing to taskbar for optimal CPU performance. Overlays remain active.', 'info', 'Performance');
+      try {
+        await window.api.minimizeWindow();
+      } catch (err) {}
+    }
+  }, 2000);
+}
+
+function cancelAutoMinimize() {
+  if (autoMinimizeTimer) {
+    clearTimeout(autoMinimizeTimer);
+    autoMinimizeTimer = null;
+  }
+}
 
 function updateConnectionUI(statusData = {}) {
   const state = statusData.status || 'disconnected';
@@ -1151,7 +1174,12 @@ function updateConnectionUI(statusData = {}) {
     if (!statusData.manual && prevState !== 'connected') {
       showToast(`Connected to @${uname}'s TikTok Live stream!`, 'success', 'TikTok Live');
     }
+
+    if (prevState !== 'connected' && appSettings.autoMinimizeOnConnect) {
+      scheduleAutoMinimize();
+    }
   } else if (state === 'connecting') {
+    cancelAutoMinimize();
     if (pill) pill.title = `Connecting to @${uname}...`;
     if (hdrConnectBtn) {
       hdrConnectBtn.className = 'header-connect-btn connecting';
@@ -1170,6 +1198,7 @@ function updateConnectionUI(statusData = {}) {
     if (setConnectLabel) setConnectLabel.textContent = 'Connecting...';
     if (setDisconnectBtn) setDisconnectBtn.classList.remove('hidden');
   } else if (state === 'waiting') {
+    cancelAutoMinimize();
     if (pill) pill.title = statusData.message || `@${uname} is offline. Click Connect when you go live.`;
     if (hdrConnectBtn) {
       hdrConnectBtn.className = 'header-connect-btn';
@@ -1188,6 +1217,7 @@ function updateConnectionUI(statusData = {}) {
     if (setConnectLabel) setConnectLabel.textContent = 'Connect Live';
     if (setDisconnectBtn) setDisconnectBtn.classList.remove('hidden');
   } else {
+    cancelAutoMinimize();
     if (pill) pill.title = `Not connected (@${uname}) - Click to change account`;
     if (hdrConnectBtn) {
       hdrConnectBtn.className = 'header-connect-btn';
@@ -1239,6 +1269,9 @@ async function handleManualConnect(rawUsername) {
     }
     if (res && res.status === 'connected') {
       showToast(`Connected to @${res.username || cleanUser}'s TikTok Live stream!`, 'success', 'TikTok Live');
+      if (appSettings.autoMinimizeOnConnect) {
+        scheduleAutoMinimize();
+      }
     } else if (res && res.status === 'waiting') {
       const toastMsg = res.error && res.error !== 'offline'
         ? (res.message || `Could not connect to @${res.username || cleanUser}. Retrying automatically...`)
@@ -1974,6 +2007,9 @@ async function initSettings() {
     $('setting-theme').value = appSettings.theme;
   }
   $('setting-username').value = `@${appSettings.username || 'shimmy_ming'}`;
+  if ($('setting-auto-minimize')) {
+    $('setting-auto-minimize').checked = Boolean(appSettings.autoMinimizeOnConnect);
+  }
 
   // Populate Updates settings
   if (appSettings.updates) {
@@ -4284,6 +4320,26 @@ document.addEventListener('DOMContentLoaded', () => {
     appSettings.theme = $('setting-theme').value;
     applyTheme(appSettings.theme);
     saveCurrentSettings();
+  });
+
+  // Settings: Auto-minimize on Connect
+  $('setting-auto-minimize')?.addEventListener('change', () => {
+    appSettings.autoMinimizeOnConnect = $('setting-auto-minimize').checked;
+    saveCurrentSettings();
+    showToast(
+      appSettings.autoMinimizeOnConnect
+        ? 'Auto-minimize enabled: Shing Live will minimize 2s after connecting to TikTok Live.'
+        : 'Auto-minimize disabled: Window will stay open when connected.',
+      'info',
+      'Settings'
+    );
+  });
+
+  // Header quick minimize button
+  $('header-minimize-btn')?.addEventListener('click', async () => {
+    if (typeof window.api !== 'undefined' && window.api.minimizeWindow) {
+      await window.api.minimizeWindow();
+    }
   });
 
   // Version Pill & Sidebar Update buttons

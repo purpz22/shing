@@ -1351,6 +1351,33 @@ ipcMain.handle('overlay:open', (evt, name) => {
   return { success: true, url };
 });
 
+// Window Management Handlers
+ipcMain.handle('window:minimize', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.minimize();
+    return { success: true };
+  }
+  return { success: false };
+});
+
+ipcMain.handle('window:restore', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+    mainWindow.focus();
+    return { success: true };
+  }
+  return { success: false };
+});
+
+ipcMain.handle('window:is-minimized', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    return { minimized: mainWindow.isMinimized() };
+  }
+  return { minimized: false };
+});
+
 // App Updater Handlers
 ipcMain.handle('updater:get-version', () => {
   return {
