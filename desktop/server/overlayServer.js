@@ -398,6 +398,8 @@ class OverlayServer {
         shineEffect: true,
         borderGlow: true,
         showAvatar: true,
+        avatarUrl: '',
+        paragraphs: 'shimmy_ming\nCozy Variety Streamer\nDaily at 7:00 PM EST\nWelcome to the cozy corner! Streaming daily games, art, and chill chats.',
         name: 'shimmy_ming',
         subtitle: 'Cozy Variety Streamer',
         bio: 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.',

@@ -166,7 +166,8 @@ if (fs.existsSync(rendererAppPath)) {
 const suitesToRun = [
   'desktop/tests/test-banner-server-settings.js',
   'desktop/tests/test-banner-overlay-markup.js',
-  'desktop/tests/test-banner-dashboard-ui.js'
+  'desktop/tests/test-banner-dashboard-ui.js',
+  'desktop/tests/test-banner-tiktok-pfp-paragraphs.js'
 ];
 
 for (const suiteRel of suitesToRun) {

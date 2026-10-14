@@ -2430,6 +2430,16 @@ function populateBannerSettings(customSettings = null) {
   if ($('banner-shine-toggle')) {
     $('banner-shine-toggle').checked = banner.shineEffect !== false;
   }
+  if ($('banner-avatar-url-input')) {
+    $('banner-avatar-url-input').value = banner.avatarUrl || '';
+  }
+  if ($('banner-avatar-preview-img')) {
+    $('banner-avatar-preview-img').src = banner.avatarUrl || '../assets/avatar.png';
+  }
+  if ($('banner-paragraphs-input')) {
+    const lines = [banner.name || '', banner.subtitle || '', banner.schedule || '', banner.bio || ''].filter(Boolean);
+    $('banner-paragraphs-input').value = banner.paragraphs || lines.join('\n');
+  }
   if ($('banner-name-input')) {
     $('banner-name-input').value = banner.name || '';
   }
@@ -2478,6 +2488,15 @@ async function handleSearchUser() {
   $('modal-unique-id').textContent = `@${profile.uniqueId || username}`;
   if (imgEl) {
     imgEl.src = profile.avatar || '../assets/avatar.png';
+  }
+
+  if (profile && profile.avatar && !profile.avatar.includes('avatar.png')) {
+    if (!appSettings.banner) appSettings.banner = {};
+    if (!appSettings.banner.avatarUrl || appSettings.banner.avatarUrl.includes('avatar.png')) {
+      appSettings.banner.avatarUrl = profile.avatar;
+      if ($('banner-avatar-url-input')) $('banner-avatar-url-input').value = profile.avatar;
+      if ($('banner-avatar-preview-img')) $('banner-avatar-preview-img').src = profile.avatar;
+    }
   }
 
   $('modal-step-search').style.display = 'none';
@@ -4089,27 +4108,102 @@ document.addEventListener('DOMContentLoaded', () => {
     saveSettingsDebounced();
   });
 
+  // Profile Picture (TikTok PFP) Controls
+  $('banner-avatar-url-input')?.addEventListener('input', e => {
+    const banner = ensureBannerSettings();
+    banner.avatarUrl = e.target.value.trim();
+    if ($('banner-avatar-preview-img')) {
+      $('banner-avatar-preview-img').src = banner.avatarUrl || '../assets/avatar.png';
+    }
+    saveSettingsDebounced();
+  });
+
+  $('banner-sync-pfp-btn')?.addEventListener('click', async () => {
+    const banner = ensureBannerSettings();
+    const uname = (appSettings.username || (banner.socials && banner.socials.tiktok) || 'shimmy_ming').replace(/^@/, '').trim();
+    try {
+      showToast(`Fetching TikTok profile picture for @${uname}...`, 'info', 'TikTok PFP');
+      const profile = await window.api.searchTikTokUser(uname);
+      if (profile && profile.avatar && !profile.avatar.includes('avatar.png')) {
+        banner.avatarUrl = profile.avatar;
+        if ($('banner-avatar-url-input')) $('banner-avatar-url-input').value = profile.avatar;
+        if ($('banner-avatar-preview-img')) $('banner-avatar-preview-img').src = profile.avatar;
+        saveSettingsDebounced();
+        showToast(`TikTok profile picture synchronized for @${uname}!`, 'success', 'TikTok PFP');
+      } else {
+        showToast(`Could not fetch profile picture for @${uname}. Using fallback.`, 'warning', 'TikTok PFP');
+      }
+    } catch (err) {
+      showToast(`Error fetching TikTok PFP: ${err.message}`, 'error', 'TikTok PFP');
+    }
+  });
+
+  $('banner-reset-pfp-btn')?.addEventListener('click', () => {
+    const banner = ensureBannerSettings();
+    banner.avatarUrl = '';
+    if ($('banner-avatar-url-input')) $('banner-avatar-url-input').value = '';
+    if ($('banner-avatar-preview-img')) $('banner-avatar-preview-img').src = '../assets/avatar.png';
+    saveSettingsDebounced();
+    showToast('Reset to default profile picture.', 'info', 'TikTok PFP');
+  });
+
+  function syncParagraphsFromLineInputs() {
+    const banner = ensureBannerSettings();
+    const fullText = [banner.name || '', banner.subtitle || '', banner.schedule || '', banner.bio || ''].join('\n');
+    banner.paragraphs = fullText;
+    if ($('banner-paragraphs-input')) {
+      $('banner-paragraphs-input').value = fullText;
+    }
+  }
+
+  $('banner-paragraphs-input')?.addEventListener('input', e => {
+    const banner = ensureBannerSettings();
+    banner.paragraphs = e.target.value;
+    const lines = e.target.value.split(/\r?\n/);
+    if (lines[0] !== undefined) {
+      banner.name = lines[0];
+      if ($('banner-name-input')) $('banner-name-input').value = lines[0];
+    }
+    if (lines[1] !== undefined) {
+      banner.subtitle = lines[1];
+      if ($('banner-subtitle-input')) $('banner-subtitle-input').value = lines[1];
+    }
+    if (lines[2] !== undefined) {
+      banner.schedule = lines[2];
+      if ($('banner-schedule-input')) $('banner-schedule-input').value = lines[2];
+    }
+    if (lines[3] !== undefined) {
+      banner.bio = lines[3];
+      if ($('banner-bio-input')) $('banner-bio-input').value = lines[3];
+    }
+    saveSettingsDebounced();
+  });
+
   $('banner-name-input')?.addEventListener('input', e => {
     const banner = ensureBannerSettings();
     banner.name = e.target.value;
+    syncParagraphsFromLineInputs();
     saveSettingsDebounced();
   });
 
   $('banner-subtitle-input')?.addEventListener('input', e => {
     const banner = ensureBannerSettings();
     banner.subtitle = e.target.value;
+    syncParagraphsFromLineInputs();
     saveSettingsDebounced();
   });
 
   $('banner-bio-input')?.addEventListener('input', e => {
     const banner = ensureBannerSettings();
     banner.bio = e.target.value;
+    syncParagraphsFromLineInputs();
     saveSettingsDebounced();
   });
 
   $('banner-schedule-input')?.addEventListener('input', e => {
     const banner = ensureBannerSettings();
     banner.schedule = e.target.value;
+    syncParagraphsFromLineInputs();
     saveSettingsDebounced();
   });
 

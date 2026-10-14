@@ -53,7 +53,11 @@ assert(html.includes('id="preview-scene-1-btn"'), 'index.html missing #preview-s
 assert(html.includes('id="preview-scene-2-btn"'), 'index.html missing #preview-scene-2-btn');
 assert(html.includes('id="preview-scene-3-btn"'), 'index.html missing #preview-scene-3-btn');
 
-// Text inputs
+// Text & Paragraph inputs
+assert(html.includes('id="banner-paragraphs-input"'), 'index.html missing #banner-paragraphs-input');
+assert(html.includes('id="banner-avatar-url-input"'), 'index.html missing #banner-avatar-url-input');
+assert(html.includes('id="banner-sync-pfp-btn"'), 'index.html missing #banner-sync-pfp-btn');
+assert(html.includes('id="banner-reset-pfp-btn"'), 'index.html missing #banner-reset-pfp-btn');
 assert(html.includes('id="banner-name-input"'), 'index.html missing #banner-name-input');
 assert(html.includes('id="banner-subtitle-input"'), 'index.html missing #banner-subtitle-input');
 assert(html.includes('id="banner-bio-input"'), 'index.html missing #banner-bio-input');

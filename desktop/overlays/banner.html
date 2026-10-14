@@ -261,6 +261,16 @@
     image-rendering: crisp-edges;
   }
 
+  .banner-avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
   .banner-live-pill {
     display: inline-flex;
     align-items: center;
@@ -683,7 +693,8 @@
         <!-- Left Column: Avatar Showcase -->
         <div class="banner-avatar-section" id="banner-avatar-section">
           <div class="banner-avatar-wrap">
-            <canvas id="banner-avatar-canvas" width="64" height="64"></canvas>
+            <img id="banner-avatar-img" class="banner-avatar-img" src="/assets/avatar.png" alt="Profile Picture" onerror="this.onerror=null;this.src='/assets/avatar.png';">
+            <canvas id="banner-avatar-canvas" width="64" height="64" style="display: none;"></canvas>
           </div>
           <div class="banner-live-pill" id="banner-live-pill">
             <span class="live-pulse-dot"></span>
@@ -790,6 +801,8 @@ let currentBanner = {
   shineEffect: true,
   borderGlow: true,
   showAvatar: true,
+  avatarUrl: '',
+  paragraphs: '',
   name: 'shimmy_ming',
   subtitle: 'Cozy Variety Streamer',
   bio: 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.',
@@ -1084,17 +1097,26 @@ function applyBannerSettings(banner) {
   if (!banner || typeof banner !== 'object') return;
   Object.assign(currentBanner, banner);
 
-  if (typeof currentBanner.name === 'string' && nameEl) {
-    nameEl.textContent = currentBanner.name;
-  }
-  if (typeof currentBanner.subtitle === 'string' && subtitleEl) {
-    subtitleEl.textContent = currentBanner.subtitle;
-  }
-  if (typeof currentBanner.bio === 'string' && bioEl) {
-    bioEl.textContent = currentBanner.bio;
-  }
-  if (typeof currentBanner.schedule === 'string' && scheduleEl) {
-    scheduleEl.textContent = currentBanner.schedule;
+  // Per paragraph line synchronization
+  if (typeof banner.paragraphs === 'string' && banner.paragraphs.trim()) {
+    const lines = banner.paragraphs.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length > 0 && lines[0] && nameEl) nameEl.textContent = lines[0];
+    if (lines.length > 1 && lines[1] && subtitleEl) subtitleEl.textContent = lines[1];
+    if (lines.length > 2 && lines[2] && scheduleEl) scheduleEl.textContent = lines[2];
+    if (lines.length > 3 && lines[3] && bioEl) bioEl.textContent = lines[3];
+  } else {
+    if (typeof currentBanner.name === 'string' && nameEl) {
+      nameEl.textContent = currentBanner.name;
+    }
+    if (typeof currentBanner.subtitle === 'string' && subtitleEl) {
+      subtitleEl.textContent = currentBanner.subtitle;
+    }
+    if (typeof currentBanner.bio === 'string' && bioEl) {
+      bioEl.textContent = currentBanner.bio;
+    }
+    if (typeof currentBanner.schedule === 'string' && scheduleEl) {
+      scheduleEl.textContent = currentBanner.schedule;
+    }
   }
   if (typeof currentBanner.statusBadge === 'string' && statusBadgeEl) {
     statusBadgeEl.textContent = currentBanner.statusBadge;
@@ -1168,10 +1190,28 @@ function applyBannerSettings(banner) {
     }
   }
 
-  // Avatar section toggle
+  // Avatar section toggle & TikTok PFP image resolution
   const avatarSec = document.getElementById('banner-avatar-section');
   if (avatarSec) {
     avatarSec.style.display = currentBanner.showAvatar === false ? 'none' : '';
+  }
+  const avatarImg = document.getElementById('banner-avatar-img');
+  if (avatarImg) {
+    const rawAvatar = currentBanner.avatarUrl || currentBanner.avatar || '';
+    if (rawAvatar && typeof rawAvatar === 'string' && rawAvatar.trim()) {
+      const cleanAvatar = rawAvatar.trim();
+      if (cleanAvatar.startsWith('http://') || cleanAvatar.startsWith('https://')) {
+        if (typeof location !== 'undefined' && location.protocol && location.protocol.startsWith('http')) {
+          avatarImg.src = '/api/avatar-proxy?url=' + encodeURIComponent(cleanAvatar);
+        } else {
+          avatarImg.src = cleanAvatar;
+        }
+      } else {
+        avatarImg.src = cleanAvatar;
+      }
+    } else {
+      avatarImg.src = '/assets/avatar.png';
+    }
   }
 
   // Social handles rendering
@@ -1498,6 +1538,9 @@ function animateLoop(now) {
 function applyAllSettings(settings) {
   if (!settings || typeof settings !== 'object') return;
   if (settings.banner) {
+    if (!settings.banner.avatarUrl && (settings.avatar || settings.userAvatar)) {
+      settings.banner.avatarUrl = settings.avatar || settings.userAvatar;
+    }
     applyBannerSettings(settings.banner);
   }
   if (settings.companion) {

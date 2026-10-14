@@ -1,6 +1,24 @@
 {
-    "latest":  "1.5.3",
+    "latest":  "1.5.4",
     "releases":  [
+                     {
+                         "version":  "1.5.4",
+                         "releaseName":  "Shing Live v1.5.4 - Streamer TikTok PFP \u0026 Paragraph Line Text Engine",
+                         "releaseDate":  "2026-10-14",
+                         "type":  "feature",
+                         "summary":  "Streamer TikTok profile picture (PFP) integration for the animated banner avatar circle, multi-line paragraph text editor with per-paragraph line synchronization, and automatic TikTok PFP synchronization.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.5.4.zip",
+                         "highlights":  [
+                                            "TikTok Profile Picture (PFP) Integration: Replaces the chibi character sprite in the animated banner with the streamer\u0027s actual TikTok profile picture via CORS-safe proxy",
+                                            "Per-Paragraph Line Configuration: Full-width stacked inputs for Paragraph Line 1 (Headline), Line 2 (Subtitle), Line 3 (Schedule), Line 4 (Bio), and Status Badge",
+                                            "Multi-Line Paragraph Editor: Dedicated multi-line textarea with two-way real-time synchronization with individual paragraph lines",
+                                            "One-Click TikTok PFP Sync: Sync button in dashboard to automatically fetch and update profile picture directly from connected TikTok account",
+                                            "Automatic Fallback: Seamless graceful fallback to local avatar assets if offline or TikTok CDN is unreachable"
+                                        ],
+                         "notes":  "TikTok Profile Picture integration and per-paragraph line banner text configuration.",
+                         "packageSize":  "4.11 MB",
+                         "checksum":  "800647742f1e9b40b3f86f123fe2830bae683ce3ccf9be02e37e4c92ee34ff33"
+                     },
                      {
                          "version":  "1.5.3",
                          "releaseName":  "Shing Live v1.5.3 - Dedicated Streamer Info Banner \u0026 Cute Templates",
