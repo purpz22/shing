@@ -98,6 +98,7 @@ class OverlayServer {
     const defaultBanner = this.getDefaultSettings().banner;
     this.settings.banner = this.deepMerge(defaultBanner, this.settings.banner);
     this.settings.banner.scale = this.clampBannerScale(this.settings.banner.scale);
+    this.settings.banner.sceneDuration = this.clampBannerDuration(this.settings.banner.sceneDuration);
 
     const initialSec = Math.max(0, (Number(this.settings.timer.durationMin) || 30) * 60);
     this.timerState = {
@@ -167,6 +168,17 @@ class OverlayServer {
     return OverlayServer.clampBannerScale(val);
   }
 
+  static clampBannerDuration(val) {
+    if (val === null || val === undefined || val === '') return 5;
+    const num = Number(val);
+    if (!Number.isFinite(num)) return 5;
+    return Math.max(2, Math.min(30, Math.round(num)));
+  }
+
+  clampBannerDuration(val) {
+    return OverlayServer.clampBannerDuration(val);
+  }
+
   loadSettings() {
     const defaults = this.getDefaultSettings();
     const p = this.getSettingsPath();
@@ -233,8 +245,13 @@ class OverlayServer {
     if (newSettings) {
       this.settings = this.deepMerge(this.settings, newSettings);
     }
-    if (this.settings && this.settings.banner && this.settings.banner.scale !== undefined) {
-      this.settings.banner.scale = this.clampBannerScale(this.settings.banner.scale);
+    if (this.settings && this.settings.banner) {
+      if (this.settings.banner.scale !== undefined) {
+        this.settings.banner.scale = this.clampBannerScale(this.settings.banner.scale);
+      }
+      if (this.settings.banner.sceneDuration !== undefined) {
+        this.settings.banner.sceneDuration = this.clampBannerDuration(this.settings.banner.sceneDuration);
+      }
     }
     const p = this.getSettingsPath();
     const bak = this.getBackupPath();
@@ -369,12 +386,23 @@ class OverlayServer {
       },
       banner: {
         enabled: true,
+        template: 'pastel-dream',
+        aspectRatio: '3:1',
         scale: 1.0,
         topper: 'bear',
         animation: 'float',
+        transitionStyle: 'slide',
+        sceneDuration: 5,
+        autoCycle: true,
+        particles: 'sparkles',
+        shineEffect: true,
+        borderGlow: true,
+        showAvatar: true,
         name: 'shimmy_ming',
         subtitle: 'Cozy Variety Streamer',
         bio: 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.',
+        schedule: 'Daily at 7:00 PM EST',
+        statusBadge: 'LIVE NOW',
         socials: {
           twitch: 'shimmy_ming',
           tiktok: '@shimmy_ming',

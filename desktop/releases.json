@@ -1,6 +1,26 @@
 {
-    "latest":  "1.5.2",
+    "latest":  "1.5.3",
     "releases":  [
+                     {
+                         "version":  "1.5.3",
+                         "releaseName":  "Shing Live v1.5.3 - Dedicated Streamer Info Banner \u0026 Cute Templates",
+                         "releaseDate":  "2026-10-14",
+                         "type":  "feature",
+                         "summary":  "Dedicated Streamer Info Banner section in sidebar navigation with Creavite-style horizontal animated banner, multi-scene cycling (Identity, Schedule, Socials), 5 cute aesthetic themes (Pastel Dream, Cozy Cat Cafe, Magical Sparkle Ribbon, Chibi Pixel Arcade, Sakura Blossom), floating particle canvas, glossy shine sweep, and dual localhost / 127.0.0.1 copy buttons.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.5.3.zip",
+                         "highlights":  [
+                                            "Dedicated Sidebar Navigation Tab: Streamer Info Banner now has its own first-class section with quick action buttons, live stage preview, and full customization controls",
+                                            "Creavite Animated Banner: Multi-scene cycling banner that smoothly transitions between streamer identity, stream schedule \u0026 bio, and social media handles",
+                                            "5 Cute Aesthetic Themes: Pastel Dream, Cozy Cat Cafe, Magical Sparkle Ribbon, Chibi Pixel Arcade, and Sakura Blossom",
+                                            "HTML5 Canvas Particle Physics: Floating sparkles, twinkling stars, drifting hearts, delicate sakura petals, and soft bubbles",
+                                            "Glossy Light Sweep Effect: Smooth diagonal light reflection passing across the banner at regular intervals",
+                                            "Dual URL Copy Buttons: One-click copying for both localhost:3333 and 127.0.0.1:3333 for seamless OBS and TikTok LIVE Studio integration",
+                                            "Scene Testing Controls: Instant preview buttons to inspect Scene 1, Scene 2, and Scene 3 in real-time"
+                                        ],
+                         "notes":  "Dedicated Streamer Info Banner tab with Creavite-style horizontal animated banners and cute templates.",
+                         "packageSize":  "4.11 MB",
+                         "checksum":  "df2ae0e8e53ef004aa0d6c4e97241251082e3f795a1c5987e69d911a2df052ae"
+                     },
                      {
                          "version":  "1.5.2",
                          "releaseName":  "Shing Live v1.5.2 - Streamer Info Banner \u0026 Profile Updates",

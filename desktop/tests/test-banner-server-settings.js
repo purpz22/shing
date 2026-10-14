@@ -35,6 +35,11 @@ async function run() {
     assert.strictEqual(repoSettings.banner.socials.tiktok, '@shimmy_ming');
     assert.strictEqual(repoSettings.banner.socials.discord, '');
     assert.strictEqual(repoSettings.banner.socials.twitter, '');
+    assert.strictEqual(repoSettings.banner.template, 'pastel-dream', 'repo settings banner.template must be pastel-dream');
+    assert.strictEqual(repoSettings.banner.aspectRatio, '3:1', 'repo settings banner.aspectRatio must be 3:1');
+    assert.strictEqual(repoSettings.banner.transitionStyle, 'slide', 'repo settings banner.transitionStyle must be slide');
+    assert.strictEqual(repoSettings.banner.sceneDuration, 5, 'repo settings banner.sceneDuration must be 5');
+    assert.strictEqual(repoSettings.banner.particles, 'sparkles', 'repo settings banner.particles must be sparkles');
   }
 
   const server = new OverlayServer(testPort, tempBaseDir, tempDir);
@@ -45,12 +50,23 @@ async function run() {
     assert.ok(defaults.banner, 'getDefaultSettings() must include banner property');
     assert.strictEqual(typeof defaults.banner.enabled, 'boolean', 'banner.enabled must be boolean');
     assert.strictEqual(defaults.banner.enabled, true, 'banner.enabled default must be true');
+    assert.strictEqual(defaults.banner.template, 'pastel-dream', 'banner.template default must be pastel-dream');
+    assert.strictEqual(defaults.banner.aspectRatio, '3:1', 'banner.aspectRatio default must be 3:1');
     assert.strictEqual(defaults.banner.scale, 1.0, 'banner.scale default must be 1.0');
     assert.strictEqual(defaults.banner.topper, 'bear', 'banner.topper default must be bear');
     assert.strictEqual(defaults.banner.animation, 'float', 'banner.animation default must be float');
+    assert.strictEqual(defaults.banner.transitionStyle, 'slide', 'banner.transitionStyle default must be slide');
+    assert.strictEqual(defaults.banner.sceneDuration, 5, 'banner.sceneDuration default must be 5');
+    assert.strictEqual(defaults.banner.autoCycle, true, 'banner.autoCycle default must be true');
+    assert.strictEqual(defaults.banner.particles, 'sparkles', 'banner.particles default must be sparkles');
+    assert.strictEqual(defaults.banner.shineEffect, true, 'banner.shineEffect default must be true');
+    assert.strictEqual(defaults.banner.borderGlow, true, 'banner.borderGlow default must be true');
+    assert.strictEqual(defaults.banner.showAvatar, true, 'banner.showAvatar default must be true');
     assert.strictEqual(defaults.banner.name, 'shimmy_ming', 'banner.name default must be shimmy_ming');
     assert.strictEqual(defaults.banner.subtitle, 'Cozy Variety Streamer', 'banner.subtitle default must be Cozy Variety Streamer');
     assert.strictEqual(defaults.banner.bio, 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.', 'banner.bio default matches spec');
+    assert.strictEqual(defaults.banner.schedule, 'Daily at 7:00 PM EST', 'banner.schedule default matches spec');
+    assert.strictEqual(defaults.banner.statusBadge, 'LIVE NOW', 'banner.statusBadge default matches spec');
     assert.ok(defaults.banner.socials, 'banner.socials must exist');
     assert.strictEqual(defaults.banner.socials.twitch, 'shimmy_ming', 'socials.twitch must be shimmy_ming');
     assert.strictEqual(defaults.banner.socials.tiktok, '@shimmy_ming', 'socials.tiktok must be @shimmy_ming');
@@ -76,6 +92,15 @@ async function run() {
     assert.strictEqual(server.clampBannerScale('invalid'), 1.0, 'Non-numeric scale falls back to 1.0');
     assert.strictEqual(server.clampBannerScale(null), 1.0, 'null scale falls back to 1.0');
     assert.strictEqual(server.clampBannerScale(undefined), 1.0, 'undefined scale falls back to 1.0');
+
+    // 2b. Verify scene duration clamping logic (2s to 30s)
+    assert.strictEqual(typeof server.clampBannerDuration, 'function', 'server must have clampBannerDuration method');
+    assert.strictEqual(server.clampBannerDuration(5), 5, 'Duration 5 preserves 5');
+    assert.strictEqual(server.clampBannerDuration(10), 10, 'Duration 10 preserves 10');
+    assert.strictEqual(server.clampBannerDuration(1), 2, 'Duration 1 underflows to 2');
+    assert.strictEqual(server.clampBannerDuration(0), 2, 'Duration 0 underflows to 2');
+    assert.strictEqual(server.clampBannerDuration(50), 30, 'Duration 50 overflows to 30');
+    assert.strictEqual(server.clampBannerDuration('invalid'), 5, 'Invalid duration falls back to 5');
 
     // 3. Verify constructor initializes missing or partial banner configuration
     const dummyUserDataDir = path.join(tempDir, 'partial_user_data');

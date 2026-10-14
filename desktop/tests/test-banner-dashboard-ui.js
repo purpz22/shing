@@ -26,23 +26,51 @@ assert(
   'index.html missing banner subtitle "1:1 Centered About Me & Socials Widget"'
 );
 
-// 2. Verify Streamer Info Banner customization controls in Companion tab
+// 2. Verify dedicated Streamer Info Banner section in sidebar navigation & tab-pane
+assert(html.includes('data-tab="banner"'), 'index.html missing sidebar nav button with data-tab="banner"');
+assert(html.includes('data-icon="banner"'), 'index.html missing banner nav-icon data-icon="banner"');
+assert(html.includes('id="tab-banner"'), 'index.html missing dedicated section with id="tab-banner"');
+assert(html.includes('id="banner-preview-iframe"'), 'index.html missing #banner-preview-iframe in dedicated stage card');
+
+// 2b. Verify Streamer Info Banner customization controls
 assert(html.includes('id="banner-enable-toggle"'), 'index.html missing #banner-enable-toggle');
 assert(html.includes('id="banner-scale-slider"'), 'index.html missing #banner-scale-slider');
 assert(html.includes('id="banner-scale-badge"'), 'index.html missing #banner-scale-badge');
 assert(html.includes('id="banner-topper-select"'), 'index.html missing #banner-topper-select');
 assert(html.includes('id="banner-anim-select"'), 'index.html missing #banner-anim-select');
+assert(html.includes('id="banner-template-select"'), 'index.html missing #banner-template-select');
+assert(html.includes('id="banner-aspect-select"'), 'index.html missing #banner-aspect-select');
+assert(html.includes('id="banner-show-avatar-toggle"'), 'index.html missing #banner-show-avatar-toggle');
+assert(html.includes('id="banner-autocycle-toggle"'), 'index.html missing #banner-autocycle-toggle');
+assert(html.includes('id="banner-duration-slider"'), 'index.html missing #banner-duration-slider');
+assert(html.includes('id="banner-duration-badge"'), 'index.html missing #banner-duration-badge');
+assert(html.includes('id="banner-transition-select"'), 'index.html missing #banner-transition-select');
+assert(html.includes('id="banner-particles-select"'), 'index.html missing #banner-particles-select');
+assert(html.includes('id="banner-shine-toggle"'), 'index.html missing #banner-shine-toggle');
+assert(html.includes('id="banner-copy-localhost-btn"'), 'index.html missing #banner-copy-localhost-btn');
+assert(html.includes('id="banner-copy-127-btn"'), 'index.html missing #banner-copy-127-btn');
+assert(html.includes('id="preview-scene-1-btn"'), 'index.html missing #preview-scene-1-btn');
+assert(html.includes('id="preview-scene-2-btn"'), 'index.html missing #preview-scene-2-btn');
+assert(html.includes('id="preview-scene-3-btn"'), 'index.html missing #preview-scene-3-btn');
 
 // Text inputs
 assert(html.includes('id="banner-name-input"'), 'index.html missing #banner-name-input');
 assert(html.includes('id="banner-subtitle-input"'), 'index.html missing #banner-subtitle-input');
 assert(html.includes('id="banner-bio-input"'), 'index.html missing #banner-bio-input');
+assert(html.includes('id="banner-schedule-input"'), 'index.html missing #banner-schedule-input');
+assert(html.includes('id="banner-status-input"'), 'index.html missing #banner-status-input');
 assert(html.includes('id="banner-twitch-input"'), 'index.html missing #banner-twitch-input');
 assert(html.includes('id="banner-tiktok-input"'), 'index.html missing #banner-tiktok-input');
 assert(html.includes('id="banner-discord-input"'), 'index.html missing #banner-discord-input');
 assert(html.includes('id="banner-twitter-input"'), 'index.html missing #banner-twitter-input');
 assert(html.includes('id="banner-instagram-input"'), 'index.html missing #banner-instagram-input');
 assert(html.includes('id="banner-youtube-input"'), 'index.html missing #banner-youtube-input');
+
+// Verify cute templates
+const templates = ['pastel-dream', 'cozy-cat', 'magical-ribbon', 'pixel-arcade', 'sakura-blossom'];
+templates.forEach(tpl => {
+  assert(html.includes(`data-template="${tpl}"`), `index.html missing template card with data-template="${tpl}"`);
+});
 
 // 3. Verify scale slider attributes
 const sliderMatch = html.match(/id="banner-scale-slider"[^>]*>/) || html.match(/<input[^>]*id="banner-scale-slider"[^>]*>/);
@@ -78,6 +106,13 @@ assert(js.includes('banner-scale-badge'), 'app.js missing banner-scale-badge upd
 assert(js.includes('banner-topper-select'), 'app.js missing banner-topper-select binding');
 assert(js.includes('banner-anim-select'), 'app.js missing banner-anim-select binding');
 assert(js.includes('banner-name-input'), 'app.js missing banner-name-input binding');
+assert(js.includes('banner-template-select'), 'app.js missing banner-template-select binding');
+assert(js.includes('banner-aspect-select'), 'app.js missing banner-aspect-select binding');
+assert(js.includes('banner-duration-slider'), 'app.js missing banner-duration-slider binding');
+assert(js.includes('banner-transition-select'), 'app.js missing banner-transition-select binding');
+assert(js.includes('banner-particles-select'), 'app.js missing banner-particles-select binding');
+assert(js.includes('banner-copy-localhost-btn'), 'app.js missing banner-copy-localhost-btn binding');
+assert(js.includes('banner-copy-127-btn'), 'app.js missing banner-copy-127-btn binding');
 
 // 7. Functional simulation of banner event handlers and boundary clamping
 {

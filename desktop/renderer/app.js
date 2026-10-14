@@ -959,6 +959,14 @@ function switchTab(tabId) {
       }, 60);
     }
   }
+  if (tabId === 'banner') {
+    const ifr = $('banner-preview-iframe');
+    if (ifr && ifr.contentWindow) {
+      setTimeout(() => {
+        try { ifr.contentWindow.dispatchEvent(new Event('resize')); } catch (e) {}
+      }, 60);
+    }
+  }
   const jarIfr = $('jar-preview-iframe');
   if (jarIfr && jarIfr.contentWindow) {
     try {
@@ -2390,6 +2398,38 @@ function populateBannerSettings(customSettings = null) {
   if ($('banner-anim-select')) {
     $('banner-anim-select').value = banner.animation || 'float';
   }
+  if ($('banner-template-select')) {
+    $('banner-template-select').value = banner.template || 'pastel-dream';
+  }
+  const tpl = banner.template || 'pastel-dream';
+  document.querySelectorAll('#banner-template-cards .template-card').forEach(card => {
+    card.classList.toggle('active', card.dataset.template === tpl);
+  });
+  if ($('banner-aspect-select')) {
+    $('banner-aspect-select').value = banner.aspectRatio || '3:1';
+  }
+  if ($('banner-show-avatar-toggle')) {
+    $('banner-show-avatar-toggle').checked = banner.showAvatar !== false;
+  }
+  if ($('banner-autocycle-toggle')) {
+    $('banner-autocycle-toggle').checked = banner.autoCycle !== false;
+  }
+  const bDur = Math.max(2, Math.min(15, Number(banner.sceneDuration) || 5));
+  if ($('banner-duration-slider')) {
+    $('banner-duration-slider').value = String(bDur);
+  }
+  if ($('banner-duration-badge')) {
+    $('banner-duration-badge').textContent = `${bDur}s`;
+  }
+  if ($('banner-transition-select')) {
+    $('banner-transition-select').value = banner.transitionStyle || 'slide';
+  }
+  if ($('banner-particles-select')) {
+    $('banner-particles-select').value = banner.particles || 'sparkles';
+  }
+  if ($('banner-shine-toggle')) {
+    $('banner-shine-toggle').checked = banner.shineEffect !== false;
+  }
   if ($('banner-name-input')) {
     $('banner-name-input').value = banner.name || '';
   }
@@ -2398,6 +2438,12 @@ function populateBannerSettings(customSettings = null) {
   }
   if ($('banner-bio-input')) {
     $('banner-bio-input').value = banner.bio || '';
+  }
+  if ($('banner-schedule-input')) {
+    $('banner-schedule-input').value = banner.schedule || '';
+  }
+  if ($('banner-status-input')) {
+    $('banner-status-input').value = banner.statusBadge || '';
   }
   const socials = banner.socials || {};
   if ($('banner-twitch-input')) $('banner-twitch-input').value = socials.twitch || '';
@@ -3908,12 +3954,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!appSettings.banner) {
       appSettings.banner = {
         enabled: true,
+        template: 'pastel-dream',
+        aspectRatio: '3:1',
         scale: 1.0,
         topper: 'bear',
         animation: 'float',
+        transitionStyle: 'slide',
+        sceneDuration: 5,
+        autoCycle: true,
+        particles: 'sparkles',
+        shineEffect: true,
+        borderGlow: true,
+        showAvatar: true,
         name: appSettings.username || 'shimmy_ming',
         subtitle: 'Cozy Variety Streamer',
         bio: 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.',
+        schedule: 'Daily at 7:00 PM EST',
+        statusBadge: 'LIVE NOW',
         socials: {
           twitch: appSettings.username || 'shimmy_ming',
           tiktok: appSettings.lowerThird?.tiktok || '@shimmy_ming',
@@ -3951,9 +4008,38 @@ document.addEventListener('DOMContentLoaded', () => {
     saveSettingsDebounced(0);
   });
 
+  // Template cards selection
+  document.querySelectorAll('#banner-template-cards .template-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const tpl = card.dataset.template;
+      if (!tpl) return;
+      document.querySelectorAll('#banner-template-cards .template-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      if ($('banner-template-select')) $('banner-template-select').value = tpl;
+      const banner = ensureBannerSettings();
+      banner.template = tpl;
+      saveSettingsDebounced();
+    });
+  });
+
+  $('banner-template-select')?.addEventListener('change', e => {
+    const banner = ensureBannerSettings();
+    banner.template = e.target.value;
+    document.querySelectorAll('#banner-template-cards .template-card').forEach(c => {
+      c.classList.toggle('active', c.dataset.template === banner.template);
+    });
+    saveSettingsDebounced();
+  });
+
+  $('banner-aspect-select')?.addEventListener('change', e => {
+    const banner = ensureBannerSettings();
+    banner.aspectRatio = e.target.value;
+    saveSettingsDebounced();
+  });
+
   $('banner-topper-select')?.addEventListener('change', e => {
     const banner = ensureBannerSettings();
-    const allowed = ['bear', 'ribbon', 'cat', 'none'];
+    const allowed = ['bear', 'ribbon', 'cat', 'wings', 'none'];
     banner.topper = allowed.includes(e.target.value) ? e.target.value : 'bear';
     saveSettingsDebounced();
   });
@@ -3962,6 +4048,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const banner = ensureBannerSettings();
     const allowed = ['float', 'sway', 'pulse', 'breathe', 'bounce'];
     banner.animation = allowed.includes(e.target.value) ? e.target.value : 'float';
+    saveSettingsDebounced();
+  });
+
+  $('banner-show-avatar-toggle')?.addEventListener('change', e => {
+    const banner = ensureBannerSettings();
+    banner.showAvatar = e.target.checked;
+    saveSettingsDebounced();
+  });
+
+  $('banner-autocycle-toggle')?.addEventListener('change', e => {
+    const banner = ensureBannerSettings();
+    banner.autoCycle = e.target.checked;
+    saveSettingsDebounced();
+  });
+
+  $('banner-duration-slider')?.addEventListener('input', e => {
+    const banner = ensureBannerSettings();
+    const dur = Math.max(2, Math.min(15, Number(e.target.value) || 5));
+    banner.sceneDuration = dur;
+    if ($('banner-duration-badge')) $('banner-duration-badge').textContent = `${dur}s`;
+    saveSettingsDebounced();
+  });
+
+  $('banner-transition-select')?.addEventListener('change', e => {
+    const banner = ensureBannerSettings();
+    banner.transitionStyle = e.target.value;
+    saveSettingsDebounced();
+  });
+
+  $('banner-particles-select')?.addEventListener('change', e => {
+    const banner = ensureBannerSettings();
+    banner.particles = e.target.value;
+    saveSettingsDebounced();
+  });
+
+  $('banner-shine-toggle')?.addEventListener('change', e => {
+    const banner = ensureBannerSettings();
+    banner.shineEffect = e.target.checked;
     saveSettingsDebounced();
   });
 
@@ -3983,6 +4107,18 @@ document.addEventListener('DOMContentLoaded', () => {
     saveSettingsDebounced();
   });
 
+  $('banner-schedule-input')?.addEventListener('input', e => {
+    const banner = ensureBannerSettings();
+    banner.schedule = e.target.value;
+    saveSettingsDebounced();
+  });
+
+  $('banner-status-input')?.addEventListener('input', e => {
+    const banner = ensureBannerSettings();
+    banner.statusBadge = e.target.value;
+    saveSettingsDebounced();
+  });
+
   const bannerSocialFields = [
     { id: 'banner-twitch-input', key: 'twitch' },
     { id: 'banner-tiktok-input', key: 'tiktok' },
@@ -3999,6 +4135,46 @@ document.addEventListener('DOMContentLoaded', () => {
       saveSettingsDebounced();
     });
   });
+
+  // Dual URL Copy actions
+  $('banner-copy-localhost-btn')?.addEventListener('click', async () => {
+    const url = 'http://localhost:3333/overlays/banner.html';
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('Banner URL (localhost) copied to clipboard!', 'success', 'Banner');
+    } catch (e) {
+      showToast(url, 'info', 'Banner URL');
+    }
+  });
+
+  $('banner-copy-127-btn')?.addEventListener('click', async () => {
+    const url = 'http://127.0.0.1:3333/overlays/banner.html';
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('Banner URL (127.0.0.1) copied to clipboard!', 'success', 'Banner');
+    } catch (e) {
+      showToast(url, 'info', 'Banner URL');
+    }
+  });
+
+  // Scene preview test buttons
+  function sendBannerTestScene(sceneIndex) {
+    const ifr = $('banner-preview-iframe');
+    if (ifr && ifr.contentWindow) {
+      try {
+        ifr.contentWindow.postMessage({ type: 'banner:test-scene', scene: sceneIndex }, '*');
+      } catch (e) {}
+    }
+    fetch('/api/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'banner:test-scene', scene: sceneIndex })
+    }).catch(() => {});
+  }
+
+  $('preview-scene-1-btn')?.addEventListener('click', () => sendBannerTestScene(0));
+  $('preview-scene-2-btn')?.addEventListener('click', () => sendBannerTestScene(1));
+  $('preview-scene-3-btn')?.addEventListener('click', () => sendBannerTestScene(2));
 
   // Settings: Theme
   $('setting-theme').addEventListener('change', () => {

@@ -38,17 +38,38 @@ assert.ok(
   'Must scale container using var(--banner-scale)'
 );
 
-// Test 3: SVG Decorative Toppers (bear, ribbon, cat) & Hidden state for none
+// Test 3: SVG Decorative Toppers (bear, ribbon, cat, wings) & Hidden state for none
 assert.ok(bannerHtml.includes('id="banner-topper"'), 'Must contain #banner-topper container');
 assert.ok(bannerHtml.includes('topper-bear') || bannerHtml.includes('topper="bear"'), 'Must contain bear topper');
 assert.ok(bannerHtml.includes('topper-ribbon') || bannerHtml.includes('topper="ribbon"'), 'Must contain ribbon topper');
 assert.ok(bannerHtml.includes('topper-cat') || bannerHtml.includes('topper="cat"'), 'Must contain cat topper');
+assert.ok(bannerHtml.includes('topper-wings') || bannerHtml.includes('topper="wings"'), 'Must contain wings topper');
 
 // Check topper SVG content keywords
 assert.ok(bannerHtml.includes('<svg'), 'Toppers must use SVG vectors');
 assert.ok(/bear/i.test(bannerHtml), 'Bear topper must be present');
 assert.ok(/ribbon/i.test(bannerHtml), 'Ribbon topper must be present');
 assert.ok(/cat/i.test(bannerHtml), 'Cat topper must be present');
+assert.ok(/wings/i.test(bannerHtml), 'Wings topper must be present');
+
+// Test 3b: 5 Cute Aesthetic Theme Classes
+const cuteThemes = ['theme-pastel-dream', 'theme-cozy-cat', 'theme-magical-ribbon', 'theme-pixel-arcade', 'theme-sakura-blossom'];
+for (const tpl of cuteThemes) {
+  assert.ok(bannerHtml.includes(tpl), `Must define cute theme class .${tpl}`);
+}
+
+// Test 3c: Particle Canvas and Glossy Shine Sweep
+assert.ok(bannerHtml.includes('id="banner-particle-canvas"'), 'Must contain #banner-particle-canvas');
+assert.ok(bannerHtml.includes('id="banner-shine-overlay"'), 'Must contain #banner-shine-overlay');
+assert.ok(bannerHtml.includes('shineSweep'), 'Must contain shineSweep keyframe animation');
+
+// Test 3d: Multi-Scene Structure & Indicators
+assert.ok(bannerHtml.includes('id="banner-scene-1"'), 'Must contain Scene 1 (Identity)');
+assert.ok(bannerHtml.includes('id="banner-scene-2"'), 'Must contain Scene 2 (Bio & Schedule)');
+assert.ok(bannerHtml.includes('id="banner-scene-3"'), 'Must contain Scene 3 (Socials)');
+assert.ok(bannerHtml.includes('id="banner-schedule-text"'), 'Must contain #banner-schedule-text');
+assert.ok(bannerHtml.includes('id="scene-dots-container"'), 'Must contain #scene-dots-container');
+assert.ok(bannerHtml.includes('id="scene-progress-fill"'), 'Must contain #scene-progress-fill');
 
 // Test 4: CSS Animation Classes and Keyframes
 const requiredAnimClasses = ['anim-float', 'anim-sway', 'anim-pulse', 'anim-breathe', 'anim-bounce'];
