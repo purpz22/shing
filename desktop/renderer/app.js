@@ -2409,7 +2409,12 @@ function populateBannerSettings(customSettings = null) {
     $('banner-aspect-select').value = banner.aspectRatio || '3:1';
   }
   if ($('banner-show-avatar-toggle')) {
-    $('banner-show-avatar-toggle').checked = banner.showAvatar !== false;
+    const isAvOn = banner.showAvatar !== false;
+    $('banner-show-avatar-toggle').checked = isAvOn;
+    if ($('banner-avatar-row')) {
+      $('banner-avatar-row').style.opacity = isAvOn ? '1' : '0.4';
+      $('banner-avatar-row').style.pointerEvents = isAvOn ? 'auto' : 'none';
+    }
   }
   if ($('banner-autocycle-toggle')) {
     $('banner-autocycle-toggle').checked = banner.autoCycle !== false;
@@ -4073,6 +4078,10 @@ document.addEventListener('DOMContentLoaded', () => {
   $('banner-show-avatar-toggle')?.addEventListener('change', e => {
     const banner = ensureBannerSettings();
     banner.showAvatar = e.target.checked;
+    if ($('banner-avatar-row')) {
+      $('banner-avatar-row').style.opacity = e.target.checked ? '1' : '0.4';
+      $('banner-avatar-row').style.pointerEvents = e.target.checked ? 'auto' : 'none';
+    }
     saveSettingsDebounced();
   });
 

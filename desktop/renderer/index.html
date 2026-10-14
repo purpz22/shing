@@ -1119,10 +1119,23 @@
             </label>
           </div>
 
-          <div style="margin-top: 10px;">
-            <label class="checkbox-label">
+          <div style="margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 10px;">
+            <label class="checkbox-label" style="margin-bottom: 8px;">
               <input type="checkbox" id="banner-show-avatar-toggle" checked> Show Profile Picture Avatar Badge
             </label>
+
+            <div class="banner-avatar-control-row" id="banner-avatar-row">
+              <div class="banner-avatar-preview-wrap">
+                <img id="banner-avatar-preview-img" src="../assets/avatar.png" alt="TikTok Profile Picture" class="banner-avatar-preview-img" onerror="this.onerror=null;this.src='../assets/avatar.png';">
+              </div>
+              <div class="banner-avatar-inputs-col">
+                <input type="text" id="banner-avatar-url-input" placeholder="TikTok PFP URL or click Sync">
+                <div class="banner-avatar-actions">
+                  <button type="button" id="banner-sync-pfp-btn" class="btn btn-secondary btn-xs">Sync TikTok PFP</button>
+                  <button type="button" id="banner-reset-pfp-btn" class="btn btn-secondary btn-xs">Use Default</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1169,66 +1182,44 @@
           </div>
         </div>
 
-        <!-- 4. Streamer Profile Picture (TikTok PFP) -->
-        <div class="form-card">
-          <div class="card-header-flex">
-            <h3>Streamer Profile Picture (TikTok PFP)</h3>
-            <span class="badge-pill">Avatar Showcase</span>
-          </div>
-          <p class="section-desc">Displayed in the circular avatar badge on your stream banner. Click Sync TikTok PFP to instantly import your profile picture.</p>
-
-          <div class="banner-avatar-control-row">
-            <div class="banner-avatar-preview-wrap">
-              <img id="banner-avatar-preview-img" src="../assets/avatar.png" alt="TikTok Profile Picture" class="banner-avatar-preview-img" onerror="this.onerror=null;this.src='../assets/avatar.png';">
-            </div>
-            <div class="banner-avatar-inputs-col">
-              <label>TikTok Profile Picture / Avatar URL
-                <input type="text" id="banner-avatar-url-input" placeholder="https://... or click Sync TikTok PFP">
-              </label>
-              <div class="banner-avatar-actions">
-                <button type="button" id="banner-sync-pfp-btn" class="btn btn-secondary">Sync TikTok PFP</button>
-                <button type="button" id="banner-reset-pfp-btn" class="btn btn-secondary">Use Default PFP</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 5. Banner Text (Per Paragraph Line) -->
+        <!-- 4. Banner Text (Per Paragraph Line) -->
         <div class="form-card">
           <div class="card-header-flex">
             <h3>Banner Text (Per Paragraph Line)</h3>
             <span class="badge-pill">Multi-Line Paragraphs</span>
           </div>
-          <p class="section-desc">Customize your animated banner text per paragraph line. Each line animates smoothly across your banner scenes.</p>
+          <p class="section-desc" style="margin-bottom: 6px;">Each paragraph line animates across banner scenes. Edit below or use the paragraph editor.</p>
 
           <label>Multi-Line Paragraph Editor
-            <textarea id="banner-paragraphs-input" rows="4" placeholder="Paragraph Line 1: Headline / Streamer Name&#10;Paragraph Line 2: Subtitle / Tagline&#10;Paragraph Line 3: Stream Schedule / Highlight&#10;Paragraph Line 4: Bio / About Me"></textarea>
+            <textarea id="banner-paragraphs-input" rows="3" placeholder="Paragraph Line 1: Headline / Streamer Name&#10;Paragraph Line 2: Subtitle / Tagline&#10;Paragraph Line 3: Stream Schedule / Highlight&#10;Paragraph Line 4: Bio / About Me"></textarea>
           </label>
 
-          <div class="paragraph-lines-stack">
-            <label>Paragraph Line 1 (Headline / Streamer Name)
+          <div class="row-2" style="margin-top: 6px;">
+            <label>Paragraph Line 1 (Headline)
               <input type="text" id="banner-name-input" placeholder="shimmy_ming">
             </label>
 
-            <label>Paragraph Line 2 (Subtitle / Tagline)
+            <label>Paragraph Line 2 (Subtitle)
               <input type="text" id="banner-subtitle-input" placeholder="Cozy Variety Streamer">
             </label>
+          </div>
 
-            <label>Paragraph Line 3 (Stream Schedule / Highlight)
+          <div class="row-2">
+            <label>Paragraph Line 3 (Schedule)
               <input type="text" id="banner-schedule-input" placeholder="Daily at 7:00 PM EST">
-            </label>
-
-            <label>Paragraph Line 4 (Bio / About Me)
-              <input type="text" id="banner-bio-input" placeholder="Welcome to the cozy corner! Streaming daily games, art, and chill chats.">
             </label>
 
             <label>Status Badge (Header Pill)
               <input type="text" id="banner-status-input" placeholder="LIVE NOW">
             </label>
           </div>
+
+          <label>Paragraph Line 4 (Bio / About Me)
+            <input type="text" id="banner-bio-input" placeholder="Welcome to the cozy corner! Streaming daily games, art, and chill chats.">
+          </label>
         </div>
 
-        <!-- 6. Scene 3 Content: Socials Grid -->
+        <!-- 5. Scene 3 Content: Socials Grid -->
         <div class="form-card">
           <h3>Banner Social Handles (Scene 3)</h3>
 
