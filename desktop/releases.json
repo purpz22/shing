@@ -1,6 +1,24 @@
 {
-    "latest":  "1.5.5",
+    "latest":  "1.5.6",
     "releases":  [
+                     {
+                         "version":  "1.5.6",
+                         "releaseName":  "Shing Live v1.5.6 - Auto-Minimize Performance \u0026 Banner Text Updates",
+                         "releaseDate":  "2026-10-15",
+                         "type":  "feature",
+                         "summary":  "Automatic window minimization upon TikTok Live connection for ultra-low CPU usage on low-end laptops, header quick minimize control, updated streamer banner defaults to \"I am shing\" and \"Cute ang mag follow\", and two-line banner scene optimization.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.5.6.zip",
+                         "highlights":  [
+                                            "Auto-Minimize on Connect: Reduces Electron dashboard CPU usage to near 0% by automatically minimizing to the taskbar 2s after connecting, while OBS browser sources continue updating at full speed",
+                                            "Header Quick Minimize Button: Convenient circular minimize action directly in the top header bar next to account connection controls",
+                                            "Streamer Banner Identity: Updated default banner text to \"I am shing\" and tagline \"Cute ang mag follow\"",
+                                            "Dynamic Two-Line Banner Formatting: Automatically hides the empty schedule clock row and smoothly balances scenes when using two-line text paragraphs",
+                                            "Seamless AppData Migration: Automatically upgrades existing local configurations to the updated banner text on startup"
+                                        ],
+                         "notes":  "Auto-minimize performance optimizations for low-end laptops and streamer banner text updates.",
+                         "packageSize":  "4.12 MB",
+                         "checksum":  "f4d70f4e9a188bfd49db859f49123a5f3cda09b870f320a3f887fc61651c97ac"
+                     },
                      {
                          "version":  "1.5.5",
                          "releaseName":  "Shing Live v1.5.5 - Compact Banner Controls \u0026 TikTok PFP Engine",
