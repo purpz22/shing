@@ -17,8 +17,8 @@
                                             "OBS Studio and TikTok LIVE Studio Overlay: Dedicated transparent browser source overlay at /overlays/pngtuber.html with sub-millisecond WebSocket state sync"
                                         ],
                          "notes":  "Audio-reactive PNGTuber studio with microphone audio engine, threshold VU meter, and OBS browser source overlay.",
-                         "packageSize":  "4.59 MB",
-                         "checksum":  "bd60a5f08496c32408e29535017ea28e54f872e61086d83059a35ff6b5d92165"
+                         "packageSize":  "4.15 MB",
+                         "checksum":  "cd90221afeeff49468a4621a88408b9643b50f9c517c02fa4d35ac81243002ed"
                      },
                      {
                          "version":  "1.5.6",

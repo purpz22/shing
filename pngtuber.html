@@ -158,7 +158,7 @@
 <div id="pngtuber-root">
   <div id="pngtuber-avatar-container" class="bounce-veadotube">
     <div id="pngtuber-reaction-bubble"></div>
-    <img id="pngtuber-img" src="/assets/pngtuber/popcat_closed.png" alt="PNGTuber Avatar">
+    <img id="pngtuber-img" src="/assets/pngtuber/shing_idle.png" alt="PNGTuber Avatar">
   </div>
 </div>
 
@@ -170,16 +170,28 @@
   const avatarImg = document.getElementById('pngtuber-img');
   const reactionBubble = document.getElementById('pngtuber-reaction-bubble');
 
+  function resolvePngTuberImgSrc(src) {
+    if (!src) return '';
+    const s = String(src).trim();
+    if (s.startsWith('data:') || s.startsWith('http:') || s.startsWith('https:') || s.startsWith('file://')) {
+      return s;
+    }
+    if (!s.startsWith('/')) {
+      return '/' + s.replace(/^\.\.\//, '');
+    }
+    return s;
+  }
+
   // Configuration state
   let config = {
     enabled: true,
-    preset: 'popcat',
-    mode: '2-frame',
+    preset: 'shing',
+    mode: '4-frame',
     images: {
-      idle: '/assets/pngtuber/popcat_closed.png',
-      blink: '',
-      talk: '/assets/pngtuber/popcat_open.png',
-      talkBlink: ''
+      idle: '/assets/pngtuber/shing_idle.png',
+      blink: '/assets/pngtuber/shing_blink.png',
+      talk: '/assets/pngtuber/shing_talk.png',
+      talkBlink: '/assets/pngtuber/shing_talk_blink.png'
     },
     threshold: 22,
     holdDelay: 180,
@@ -209,24 +221,28 @@
   };
 
   function preloadImages() {
-    if (config.images.idle) preloadedImages.idle.src = config.images.idle;
-    if (config.images.blink) preloadedImages.blink.src = config.images.blink;
-    if (config.images.talk) preloadedImages.talk.src = config.images.talk;
-    if (config.images.talkBlink) preloadedImages.talkBlink.src = config.images.talkBlink;
+    if (config.images.idle) preloadedImages.idle.src = resolvePngTuberImgSrc(config.images.idle);
+    if (config.images.blink) preloadedImages.blink.src = resolvePngTuberImgSrc(config.images.blink);
+    if (config.images.talk) preloadedImages.talk.src = resolvePngTuberImgSrc(config.images.talk);
+    if (config.images.talkBlink) preloadedImages.talkBlink.src = resolvePngTuberImgSrc(config.images.talkBlink);
   }
 
   function resolveFrame() {
+    let raw = '';
     if (isTalking) {
       if (isBlinking && config.images.talkBlink) {
-        return config.images.talkBlink;
+        raw = config.images.talkBlink;
+      } else {
+        raw = config.images.talk || config.images.idle || '/assets/pngtuber/shing_idle.png';
       }
-      return config.images.talk || config.images.idle;
     } else {
       if (isBlinking && config.images.blink) {
-        return config.images.blink;
+        raw = config.images.blink;
+      } else {
+        raw = config.images.idle || '/assets/pngtuber/shing_idle.png';
       }
-      return config.images.idle;
     }
+    return resolvePngTuberImgSrc(raw);
   }
 
   function updateDisplay() {
@@ -247,6 +263,15 @@
     config = Object.assign({}, config, newCfg);
     if (newCfg.images) {
       config.images = Object.assign({}, config.images, newCfg.images);
+    }
+    if (config.preset === 'popcat') {
+      config.preset = 'shing';
+    }
+    if (config.images) {
+      if (!config.images.idle || config.images.idle.includes('popcat')) config.images.idle = '/assets/pngtuber/shing_idle.png';
+      if (!config.images.talk || config.images.talk.includes('popcat')) config.images.talk = '/assets/pngtuber/shing_talk.png';
+      if (config.images.blink && config.images.blink.includes('popcat')) config.images.blink = '/assets/pngtuber/shing_blink.png';
+      if (config.images.talkBlink && config.images.talkBlink.includes('popcat')) config.images.talkBlink = '/assets/pngtuber/shing_talk_blink.png';
     }
 
     // Apply CSS variables

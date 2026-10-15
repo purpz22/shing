@@ -47,16 +47,23 @@ async function run() {
 
   assert.ok(defaults.pngtuber, 'defaults.pngtuber should exist');
   assert.strictEqual(defaults.pngtuber.enabled, true);
-  assert.strictEqual(defaults.pngtuber.preset, 'popcat');
-  assert.strictEqual(defaults.pngtuber.mode, '2-frame');
-  assert.strictEqual(defaults.pngtuber.images.idle, '/assets/pngtuber/popcat_closed.png');
-  assert.strictEqual(defaults.pngtuber.images.talk, '/assets/pngtuber/popcat_open.png');
+  assert.strictEqual(defaults.pngtuber.preset, 'shing');
+  assert.strictEqual(defaults.pngtuber.mode, '4-frame');
+  assert.strictEqual(defaults.pngtuber.images.idle, '/assets/pngtuber/shing_idle.png');
+  assert.strictEqual(defaults.pngtuber.images.talk, '/assets/pngtuber/shing_talk.png');
+  assert.strictEqual(defaults.pngtuber.images.blink, '/assets/pngtuber/shing_blink.png');
+  assert.strictEqual(defaults.pngtuber.images.talkBlink, '/assets/pngtuber/shing_talk_blink.png');
   assert.strictEqual(defaults.pngtuber.threshold, 22);
   assert.strictEqual(defaults.pngtuber.holdDelay, 180);
   assert.strictEqual(defaults.pngtuber.bounceStyle, 'veadotube');
   assert.strictEqual(defaults.pngtuber.bounceHeight, 16);
   assert.strictEqual(defaults.pngtuber.scale, 1.0);
   assert.strictEqual(defaults.pngtuber.reactToGifts, true);
+
+  // Test Auto-Migration of legacy popcat preset
+  const legacyLoaded = server.loadSettings();
+  assert.strictEqual(legacyLoaded.pngtuber.preset, 'shing');
+  assert.strictEqual(legacyLoaded.pngtuber.images.idle, '/assets/pngtuber/shing_idle.png');
 
   // 3. Test Clamping upon saveSettings
   server.saveSettings({

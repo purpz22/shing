@@ -441,7 +441,7 @@
         <div class="overlay-card" data-goto="pngtuber">
           <div class="card-preview pngtuber-preview-box">
             <div class="demo-pngtuber-widget">
-              <img src="../assets/pngtuber/popcat_closed.png" alt="PNGTuber" id="ov-demo-pngtuber-img" class="demo-pngtuber-avatar">
+              <img src="../assets/pngtuber/shing_idle.png" alt="PNGTuber" id="ov-demo-pngtuber-img" class="demo-pngtuber-avatar">
               <div class="demo-pngtuber-vu-mini">
                 <div class="demo-pngtuber-vu-level" id="ov-demo-pngtuber-vu"></div>
               </div>
@@ -1502,7 +1502,7 @@
           <!-- Interactive Live Stage Viewport -->
           <div id="pngtuber-stage-viewport" class="stage-viewport bg-checkerboard">
             <div id="pngtuber-stage-avatar-wrap" class="stage-avatar-wrap bounce-veadotube">
-              <img id="pngtuber-stage-img" src="../assets/pngtuber/popcat_closed.png" alt="PNGTuber Preview">
+              <img id="pngtuber-stage-img" src="../assets/pngtuber/shing_idle.png" alt="PNGTuber Preview">
             </div>
             <div class="stage-overlay-badges">
               <span id="pngtuber-stage-badge" class="badge-status-idle">IDLE</span>
@@ -1533,9 +1533,9 @@
               </div>
             </div>
 
-            <!-- Microphone Input Select & Sensitivity Row -->
-            <div class="mic-controls-row">
-              <div class="control-col mic-select-col">
+            <!-- Microphone Input Select & Sensitivity Controls -->
+            <div class="mic-controls-box">
+              <div class="mic-device-row">
                 <label for="pngtuber-mic-select">Microphone Input Device</label>
                 <div class="select-with-btn">
                   <select id="pngtuber-mic-select" class="styled-select">
@@ -1547,14 +1547,16 @@
                 </div>
               </div>
 
-              <div class="control-col">
-                <label for="pngtuber-threshold-slider">Sensitivity Threshold: <span id="pngtuber-thresh-badge">22%</span></label>
-                <input type="range" id="pngtuber-threshold-slider" min="1" max="100" value="22" step="1">
-              </div>
+              <div class="mic-sliders-row">
+                <div class="control-col">
+                  <label for="pngtuber-threshold-slider">Sensitivity Threshold: <span id="pngtuber-thresh-badge">22%</span></label>
+                  <input type="range" id="pngtuber-threshold-slider" min="1" max="100" value="22" step="1">
+                </div>
 
-              <div class="control-col">
-                <label for="pngtuber-hold-slider">Hold Delay (ms): <span id="pngtuber-hold-badge">180 ms</span></label>
-                <input type="range" id="pngtuber-hold-slider" min="50" max="800" value="180" step="10">
+                <div class="control-col">
+                  <label for="pngtuber-hold-slider">Hold Delay (ms): <span id="pngtuber-hold-badge">180 ms</span></label>
+                  <input type="range" id="pngtuber-hold-slider" min="50" max="800" value="180" step="10">
+                </div>
               </div>
             </div>
 
@@ -1583,22 +1585,22 @@
               </div>
             </div>
             <div class="preset-buttons-grid">
-              <button class="preset-choice-btn active" data-preset="popcat">
+              <button class="preset-choice-btn active" data-preset="shing">
                 <div class="preset-thumb-wrap">
-                  <img src="../assets/pngtuber/popcat_closed.png" alt="Pop Cat">
+                  <img src="../assets/pngtuber/shing_idle.png" alt="Shing Chibi">
                 </div>
                 <div class="preset-info">
-                  <div class="preset-name">Pop Cat</div>
-                  <div class="preset-desc">Classic bouncy pop cat</div>
+                  <div class="preset-name">Shing Chibi</div>
+                  <div class="preset-desc">Cute anime streamer chibi</div>
                 </div>
               </button>
               <button class="preset-choice-btn" data-preset="pixelcat">
                 <div class="preset-thumb-wrap">
-                  <img src="../assets/pngtuber/pixelcat_closed.png" alt="Cozy Pixel Cat">
+                  <img src="../assets/pngtuber/pixelcat_idle.png" alt="Cozy Pixel Cat">
                 </div>
                 <div class="preset-info">
                   <div class="preset-name">Cozy Pixel Cat</div>
-                  <div class="preset-desc">Retro crisp pixel art cat</div>
+                  <div class="preset-desc">Retro calico pixel cat</div>
                 </div>
               </button>
               <button class="preset-choice-btn" data-preset="custom">
@@ -1625,7 +1627,7 @@
               <div class="avatar-slot-box" data-slot="idle">
                 <div class="slot-badge">Neutral Idle</div>
                 <div class="slot-thumb-dropzone" id="slot-drop-idle">
-                  <img id="slot-img-idle" src="../assets/pngtuber/popcat_closed.png" alt="Idle Frame">
+                  <img id="slot-img-idle" src="../assets/pngtuber/shing_idle.png" alt="Idle Frame">
                   <div class="slot-overlay-prompt">Drop Image</div>
                 </div>
                 <div class="slot-meta">
@@ -1662,7 +1664,7 @@
               <div class="avatar-slot-box" data-slot="talk">
                 <div class="slot-badge">Talking</div>
                 <div class="slot-thumb-dropzone" id="slot-drop-talk">
-                  <img id="slot-img-talk" src="../assets/pngtuber/popcat_open.png" alt="Talking Frame">
+                  <img id="slot-img-talk" src="../assets/pngtuber/shing_talk.png" alt="Talking Frame">
                   <div class="slot-overlay-prompt">Drop Image</div>
                 </div>
                 <div class="slot-meta">

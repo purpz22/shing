@@ -3429,29 +3429,70 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
 }
 
-.mic-controls-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 12px;
+.mic-controls-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
 }
 
-@media (max-width: 640px) {
-  .mic-controls-row {
+.mic-device-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+}
+
+.mic-device-row label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.mic-sliders-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 500px) {
+  .mic-sliders-row {
     grid-template-columns: 1fr;
   }
 }
 
-.mic-select-col {
-  grid-column: span 1;
+.control-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.control-col label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
 }
 
 .select-with-btn {
   display: flex;
   gap: 6px;
+  width: 100%;
+  min-width: 0;
 }
 
 .select-with-btn select {
   flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .mic-actions-row {
@@ -3697,9 +3738,10 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
 /* Physics Controls Grid */
 .physics-controls-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px 18px;
   margin-top: 8px;
+  min-width: 0;
 }
 
 @media (max-width: 640px) {

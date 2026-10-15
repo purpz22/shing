@@ -35,7 +35,8 @@ assert.ok(html.includes('id="pngtuber-hold-slider"'), 'Must have hold delay slid
 assert.ok(html.includes('id="pngtuber-mic-select"'), 'Must have microphone device dropdown');
 
 // 4. Presets & 4-Frame Slots
-assert.ok(html.includes('data-preset="popcat"'), 'Must have Pop Cat preset button');
+assert.ok(html.includes('data-preset="shing"'), 'Must have Shing Chibi preset button');
+assert.ok(!html.includes('data-preset="popcat"'), 'Must not have Pop Cat preset button');
 assert.ok(html.includes('data-preset="pixelcat"'), 'Must have Cozy Pixel Cat preset button');
 assert.ok(html.includes('data-preset="custom"'), 'Must have Custom Avatar preset button');
 assert.ok(html.includes('data-slot="idle"'), 'Must have Idle state slot');

@@ -282,10 +282,30 @@ class OverlayServer {
       }
     }
 
+    let result = defaults;
     if (raw) {
-      return this.deepMerge(defaults, raw);
+      result = this.deepMerge(defaults, raw);
     }
-    return defaults;
+    if (result && result.pngtuber) {
+      if (result.pngtuber.preset === 'popcat') {
+        result.pngtuber.preset = 'shing';
+      }
+      if (result.pngtuber.images) {
+        if (!result.pngtuber.images.idle || result.pngtuber.images.idle.includes('popcat')) {
+          result.pngtuber.images.idle = '/assets/pngtuber/shing_idle.png';
+        }
+        if (!result.pngtuber.images.talk || result.pngtuber.images.talk.includes('popcat')) {
+          result.pngtuber.images.talk = '/assets/pngtuber/shing_talk.png';
+        }
+        if (result.pngtuber.images.blink && result.pngtuber.images.blink.includes('popcat')) {
+          result.pngtuber.images.blink = '/assets/pngtuber/shing_blink.png';
+        }
+        if (result.pngtuber.images.talkBlink && result.pngtuber.images.talkBlink.includes('popcat')) {
+          result.pngtuber.images.talkBlink = '/assets/pngtuber/shing_talk_blink.png';
+        }
+      }
+    }
+    return result;
   }
 
   scheduleSettingsSave(delay = 300) {
@@ -492,13 +512,13 @@ class OverlayServer {
       },
       pngtuber: {
         enabled: true,
-        preset: 'popcat',
-        mode: '2-frame',
+        preset: 'shing',
+        mode: '4-frame',
         images: {
-          idle: '/assets/pngtuber/popcat_closed.png',
-          blink: '',
-          talk: '/assets/pngtuber/popcat_open.png',
-          talkBlink: ''
+          idle: '/assets/pngtuber/shing_idle.png',
+          blink: '/assets/pngtuber/shing_blink.png',
+          talk: '/assets/pngtuber/shing_talk.png',
+          talkBlink: '/assets/pngtuber/shing_talk_blink.png'
         },
         threshold: 22,
         holdDelay: 180,

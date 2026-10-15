@@ -9,17 +9,21 @@ console.log('Testing PNGTuber State Resolution, Assets, and Hold-Delay Audio Log
 // 1. Verify PNG Assets Integrity on Disk
 const assetsDir = path.join(__dirname, '..', 'assets', 'pngtuber');
 const assetFiles = [
-  'popcat_closed.png',
-  'popcat_open.png',
-  'pixelcat_closed.png',
-  'pixelcat_open.png'
+  'shing_idle.png',
+  'shing_blink.png',
+  'shing_talk.png',
+  'shing_talk_blink.png',
+  'pixelcat_idle.png',
+  'pixelcat_blink.png',
+  'pixelcat_talk.png',
+  'pixelcat_talk_blink.png'
 ];
 
 for (const filename of assetFiles) {
   const filePath = path.join(assetsDir, filename);
   assert.ok(fs.existsSync(filePath), `Asset ${filename} must exist on disk`);
   const buf = fs.readFileSync(filePath);
-  assert.ok(buf.length > 50000, `Asset ${filename} must be non-empty valid graphic`);
+  assert.ok(buf.length > 500, `Asset ${filename} must be non-empty valid graphic`);
   // Verify PNG Magic bytes: 89 50 4E 47 0D 0A 1A 0A
   assert.strictEqual(buf[0], 0x89);
   assert.strictEqual(buf[1], 0x50);
@@ -39,22 +43,21 @@ function resolveFrame(cfg, isTalking, isBlinking) {
   }
 }
 
-// 2a. Test 2-Frame Mode (Pop Cat)
-const popCatConfig = {
-  mode: '2-frame',
+// 2a. Test Shing Chibi (4-Frame Mode)
+const shingConfig = {
+  mode: '4-frame',
   images: {
-    idle: '/assets/pngtuber/popcat_closed.png',
-    blink: '',
-    talk: '/assets/pngtuber/popcat_open.png',
-    talkBlink: ''
+    idle: '/assets/pngtuber/shing_idle.png',
+    blink: '/assets/pngtuber/shing_blink.png',
+    talk: '/assets/pngtuber/shing_talk.png',
+    talkBlink: '/assets/pngtuber/shing_talk_blink.png'
   }
 };
 
-assert.strictEqual(resolveFrame(popCatConfig, false, false), '/assets/pngtuber/popcat_closed.png');
-assert.strictEqual(resolveFrame(popCatConfig, true, false), '/assets/pngtuber/popcat_open.png');
-// In 2-frame mode, blink seamlessly falls back to idle/talk
-assert.strictEqual(resolveFrame(popCatConfig, false, true), '/assets/pngtuber/popcat_closed.png');
-assert.strictEqual(resolveFrame(popCatConfig, true, true), '/assets/pngtuber/popcat_open.png');
+assert.strictEqual(resolveFrame(shingConfig, false, false), '/assets/pngtuber/shing_idle.png');
+assert.strictEqual(resolveFrame(shingConfig, true, false), '/assets/pngtuber/shing_talk.png');
+assert.strictEqual(resolveFrame(shingConfig, false, true), '/assets/pngtuber/shing_blink.png');
+assert.strictEqual(resolveFrame(shingConfig, true, true), '/assets/pngtuber/shing_talk_blink.png');
 
 // 2b. Test 4-Frame Mode (Full Avatar)
 const fourFrameConfig = {

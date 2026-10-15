@@ -2556,13 +2556,13 @@ function ensurePngTuberSettings() {
   if (!target.pngtuber) {
     target.pngtuber = {
       enabled: true,
-      preset: 'popcat',
-      mode: '2-frame',
+      preset: 'shing',
+      mode: '4-frame',
       images: {
-        idle: '/assets/pngtuber/popcat_closed.png',
-        blink: '',
-        talk: '/assets/pngtuber/popcat_open.png',
-        talkBlink: ''
+        idle: '/assets/pngtuber/shing_idle.png',
+        blink: '/assets/pngtuber/shing_blink.png',
+        talk: '/assets/pngtuber/shing_talk.png',
+        talkBlink: '/assets/pngtuber/shing_talk_blink.png'
       },
       threshold: 22,
       holdDelay: 180,
@@ -2577,8 +2577,49 @@ function ensurePngTuberSettings() {
       reactToGifts: true,
       inputDeviceId: 'default'
     };
+  } else {
+    // Auto-migrate legacy popcat
+    if (target.pngtuber.preset === 'popcat') {
+      target.pngtuber.preset = 'shing';
+    }
+    if (target.pngtuber.images) {
+      if (!target.pngtuber.images.idle || target.pngtuber.images.idle.includes('popcat')) {
+        target.pngtuber.images.idle = '/assets/pngtuber/shing_idle.png';
+      }
+      if (!target.pngtuber.images.talk || target.pngtuber.images.talk.includes('popcat')) {
+        target.pngtuber.images.talk = '/assets/pngtuber/shing_talk.png';
+      }
+      if (target.pngtuber.images.blink && target.pngtuber.images.blink.includes('popcat')) {
+        target.pngtuber.images.blink = '/assets/pngtuber/shing_blink.png';
+      }
+      if (target.pngtuber.images.talkBlink && target.pngtuber.images.talkBlink.includes('popcat')) {
+        target.pngtuber.images.talkBlink = '/assets/pngtuber/shing_talk_blink.png';
+      }
+    }
   }
   return target.pngtuber;
+}
+
+function resolvePngTuberImgSrc(src) {
+  if (!src) return '';
+  const s = String(src).trim();
+  if (s.startsWith('data:') || s.startsWith('http:') || s.startsWith('https:') || s.startsWith('file://')) {
+    return s;
+  }
+  if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
+    const clean = s.replace(/^\/+/, '');
+    if (clean.startsWith('assets/')) {
+      return '../' + clean;
+    }
+    if (clean.startsWith('media/')) {
+      return 'http://localhost:3333/' + clean;
+    }
+    return '../assets/pngtuber/' + clean.replace(/^.*[\\\/]/, '');
+  }
+  if (!s.startsWith('/')) {
+    return '/' + s.replace(/^\.\.\//, '');
+  }
+  return s;
 }
 
 // PNGTuber Studio Runtime State
@@ -2598,13 +2639,15 @@ let isDraggingThreshold = false;
 
 function resolveStageFrame() {
   const cfg = ensurePngTuberSettings();
+  let raw = '';
   if (pngtuberIsTalking) {
-    if (pngtuberIsBlinking && cfg.images && cfg.images.talkBlink) return cfg.images.talkBlink;
-    return (cfg.images && cfg.images.talk) || (cfg.images && cfg.images.idle) || '/assets/pngtuber/popcat_closed.png';
+    if (pngtuberIsBlinking && cfg.images && cfg.images.talkBlink) raw = cfg.images.talkBlink;
+    else raw = (cfg.images && cfg.images.talk) || (cfg.images && cfg.images.idle) || '/assets/pngtuber/shing_idle.png';
   } else {
-    if (pngtuberIsBlinking && cfg.images && cfg.images.blink) return cfg.images.blink;
-    return (cfg.images && cfg.images.idle) || '/assets/pngtuber/popcat_closed.png';
+    if (pngtuberIsBlinking && cfg.images && cfg.images.blink) raw = cfg.images.blink;
+    else raw = (cfg.images && cfg.images.idle) || '/assets/pngtuber/shing_idle.png';
   }
+  return resolvePngTuberImgSrc(raw);
 }
 
 function updateLiveStageAvatar() {
@@ -2731,11 +2774,11 @@ function populatePngTuberSettings() {
 
   // Update Slot Images & Fallback Placeholders
   const imgs = cfg.images || {};
-  if ($('slot-img-idle')) $('slot-img-idle').src = imgs.idle || '../assets/pngtuber/popcat_closed.png';
+  if ($('slot-img-idle')) $('slot-img-idle').src = resolvePngTuberImgSrc(imgs.idle || '../assets/pngtuber/shing_idle.png');
 
   if ($('slot-img-blink')) {
     if (imgs.blink) {
-      $('slot-img-blink').src = imgs.blink;
+      $('slot-img-blink').src = resolvePngTuberImgSrc(imgs.blink);
       $('slot-img-blink').classList.remove('hidden');
       $('slot-ph-blink')?.classList.add('hidden');
     } else {
@@ -2744,11 +2787,11 @@ function populatePngTuberSettings() {
     }
   }
 
-  if ($('slot-img-talk')) $('slot-img-talk').src = imgs.talk || '../assets/pngtuber/popcat_open.png';
+  if ($('slot-img-talk')) $('slot-img-talk').src = resolvePngTuberImgSrc(imgs.talk || '../assets/pngtuber/shing_talk.png');
 
   if ($('slot-img-talkBlink')) {
     if (imgs.talkBlink) {
-      $('slot-img-talkBlink').src = imgs.talkBlink;
+      $('slot-img-talkBlink').src = resolvePngTuberImgSrc(imgs.talkBlink);
       $('slot-img-talkBlink').classList.remove('hidden');
       $('slot-ph-talkBlink')?.classList.add('hidden');
     } else {
@@ -2939,10 +2982,15 @@ async function handleBrowseSlot(slot) {
 
 function handleResetSlot(slot) {
   const cfg = ensurePngTuberSettings();
+  const prefix = (cfg.preset === 'pixelcat') ? 'pixelcat' : 'shing';
   if (slot === 'idle') {
-    cfg.images.idle = (cfg.preset === 'pixelcat') ? '/assets/pngtuber/pixelcat_closed.png' : '/assets/pngtuber/popcat_closed.png';
+    cfg.images.idle = `/assets/pngtuber/${prefix}_idle.png`;
   } else if (slot === 'talk') {
-    cfg.images.talk = (cfg.preset === 'pixelcat') ? '/assets/pngtuber/pixelcat_open.png' : '/assets/pngtuber/popcat_open.png';
+    cfg.images.talk = `/assets/pngtuber/${prefix}_talk.png`;
+  } else if (slot === 'blink') {
+    cfg.images.blink = `/assets/pngtuber/${prefix}_blink.png`;
+  } else if (slot === 'talkBlink') {
+    cfg.images.talkBlink = `/assets/pngtuber/${prefix}_talk_blink.png`;
   } else {
     cfg.images[slot] = '';
   }
@@ -2988,27 +3036,27 @@ function initPngTuberStudio() {
       const cfg = ensurePngTuberSettings();
       cfg.preset = preset;
 
-      if (preset === 'popcat') {
+      if (preset === 'shing') {
         cfg.images = {
-          idle: '/assets/pngtuber/popcat_closed.png',
-          blink: '',
-          talk: '/assets/pngtuber/popcat_open.png',
-          talkBlink: ''
+          idle: '/assets/pngtuber/shing_idle.png',
+          blink: '/assets/pngtuber/shing_blink.png',
+          talk: '/assets/pngtuber/shing_talk.png',
+          talkBlink: '/assets/pngtuber/shing_talk_blink.png'
         };
-        cfg.mode = '2-frame';
+        cfg.mode = '4-frame';
       } else if (preset === 'pixelcat') {
         cfg.images = {
-          idle: '/assets/pngtuber/pixelcat_closed.png',
-          blink: '',
-          talk: '/assets/pngtuber/pixelcat_open.png',
-          talkBlink: ''
+          idle: '/assets/pngtuber/pixelcat_idle.png',
+          blink: '/assets/pngtuber/pixelcat_blink.png',
+          talk: '/assets/pngtuber/pixelcat_talk.png',
+          talkBlink: '/assets/pngtuber/pixelcat_talk_blink.png'
         };
-        cfg.mode = '2-frame';
+        cfg.mode = '4-frame';
       }
 
       populatePngTuberSettings();
       saveSettingsDebounced();
-      showToast(`Activated ${preset === 'popcat' ? 'Pop Cat' : (preset === 'pixelcat' ? 'Cozy Pixel Cat' : 'Custom')} preset!`, 'success', 'PNGTuber');
+      showToast(`Activated ${preset === 'shing' ? 'Shing Chibi' : (preset === 'pixelcat' ? 'Cozy Pixel Cat' : 'Custom')} preset!`, 'success', 'PNGTuber');
     });
   });
 
