@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shing Live - PNGTuber Avatar Overlay</title>
+<style>
+  :root {
+    --avatar-scale: 1.0;
+    --avatar-x: 50%;
+    --avatar-y: 85%;
+    --bounce-height: 16px;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent !important;
+    user-select: none;
+  }
+
+  #pngtuber-root {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  #pngtuber-avatar-container {
+    position: absolute;
+    left: var(--avatar-x, 50%);
+    top: var(--avatar-y, 85%);
+    transform: translate(-50%, -100%) scale(var(--avatar-scale, 1.0));
+    transform-origin: center bottom;
+    will-change: transform;
+    transition: transform 140ms cubic-bezier(0.2, 0.8, 0.4, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  #pngtuber-img {
+    display: block;
+    max-width: 520px;
+    max-height: 520px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    image-rendering: auto;
+    filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.28));
+    transition: filter 160ms ease;
+  }
+
+  /* Pixel Art Rendering if detected or chosen */
+  .pixel-art #pngtuber-img {
+    image-rendering: pixelated;
+  }
+
+  /* Veadotube Bounce Physics */
+  #pngtuber-avatar-container.bounce-veadotube.is-talking {
+    transform: translate(-50%, calc(-100% - var(--bounce-height, 16px))) scale(calc(var(--avatar-scale, 1.0) * 1.02), calc(var(--avatar-scale, 1.0) * 0.98));
+    transition: transform 60ms cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  }
+
+  #pngtuber-avatar-container.bounce-veadotube:not(.is-talking) {
+    transform: translate(-50%, -100%) scale(var(--avatar-scale, 1.0));
+    transition: transform 120ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  /* Squish & Pop Physics */
+  #pngtuber-avatar-container.bounce-squish.is-talking {
+    animation: pngtuber-squish-pulse 0.22s ease-in-out infinite alternate;
+  }
+
+  @keyframes pngtuber-squish-pulse {
+    0% {
+      transform: translate(-50%, calc(-100% - var(--bounce-height, 16px))) scale(calc(var(--avatar-scale, 1.0) * 1.05), calc(var(--avatar-scale, 1.0) * 0.95));
+    }
+    100% {
+      transform: translate(-50%, calc(-100% - var(--bounce-height, 16px) * 0.6)) scale(calc(var(--avatar-scale, 1.0) * 0.96), calc(var(--avatar-scale, 1.0) * 1.04));
+    }
+  }
+
+  /* Gentle Float Physics */
+  #pngtuber-avatar-container.bounce-gentle.is-talking {
+    transform: translate(-50%, calc(-100% - var(--bounce-height, 16px) * 0.75)) scale(var(--avatar-scale, 1.0));
+    transition: transform 200ms ease-out;
+  }
+
+  /* Static / None Physics */
+  #pngtuber-avatar-container.bounce-none.is-talking {
+    transform: translate(-50%, -100%) scale(var(--avatar-scale, 1.0));
+  }
+
+  /* Celebration Jump (Gifts & Follows) */
+  #pngtuber-avatar-container.celebrating {
+    animation: pngtuber-celebrate 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes pngtuber-celebrate {
+    0% {
+      transform: translate(-50%, -100%) scale(var(--avatar-scale, 1.0));
+    }
+    20% {
+      transform: translate(-50%, calc(-100% - 40px)) scale(calc(var(--avatar-scale, 1.0) * 1.1), calc(var(--avatar-scale, 1.0) * 0.9)) rotate(-4deg);
+    }
+    40% {
+      transform: translate(-50%, calc(-100% - 12px)) scale(calc(var(--avatar-scale, 1.0) * 0.95), calc(var(--avatar-scale, 1.0) * 1.05)) rotate(4deg);
+    }
+    60% {
+      transform: translate(-50%, calc(-100% - 32px)) scale(calc(var(--avatar-scale, 1.0) * 1.08), calc(var(--avatar-scale, 1.0) * 0.92)) rotate(-2deg);
+    }
+    80% {
+      transform: translate(-50%, calc(-100% - 8px)) scale(var(--avatar-scale, 1.0)) rotate(1deg);
+    }
+    100% {
+      transform: translate(-50%, -100%) scale(var(--avatar-scale, 1.0)) rotate(0deg);
+    }
+  }
+
+  /* Event Reaction Floating Bubble */
+  #pngtuber-reaction-bubble {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    background: rgba(28, 22, 54, 0.92);
+    border: 1.5px solid rgba(192, 132, 252, 0.6);
+    border-radius: 14px;
+    padding: 6px 14px;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fdf4ff;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+    transition: opacity 220ms ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  #pngtuber-reaction-bubble.active {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+</style>
+</head>
+<body>
+
+<div id="pngtuber-root">
+  <div id="pngtuber-avatar-container" class="bounce-veadotube">
+    <div id="pngtuber-reaction-bubble"></div>
+    <img id="pngtuber-img" src="/assets/pngtuber/popcat_closed.png" alt="PNGTuber Avatar">
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const avatarContainer = document.getElementById('pngtuber-avatar-container');
+  const avatarImg = document.getElementById('pngtuber-img');
+  const reactionBubble = document.getElementById('pngtuber-reaction-bubble');
+
+  // Configuration state
+  let config = {
+    enabled: true,
+    preset: 'popcat',
+    mode: '2-frame',
+    images: {
+      idle: '/assets/pngtuber/popcat_closed.png',
+      blink: '',
+      talk: '/assets/pngtuber/popcat_open.png',
+      talkBlink: ''
+    },
+    threshold: 22,
+    holdDelay: 180,
+    bounceStyle: 'veadotube',
+    bounceHeight: 16,
+    scale: 1.0,
+    positionX: 50,
+    positionY: 85,
+    blinkInterval: 3.5,
+    blinkDuration: 140,
+    reactToGifts: true
+  };
+
+  // Live runtime state
+  let isTalking = false;
+  let isBlinking = false;
+  let blinkTimer = null;
+  let celebrateTimer = null;
+  let bubbleTimer = null;
+
+  // Image cache to prevent flicker
+  const preloadedImages = {
+    idle: new Image(),
+    blink: new Image(),
+    talk: new Image(),
+    talkBlink: new Image()
+  };
+
+  function preloadImages() {
+    if (config.images.idle) preloadedImages.idle.src = config.images.idle;
+    if (config.images.blink) preloadedImages.blink.src = config.images.blink;
+    if (config.images.talk) preloadedImages.talk.src = config.images.talk;
+    if (config.images.talkBlink) preloadedImages.talkBlink.src = config.images.talkBlink;
+  }
+
+  function resolveFrame() {
+    if (isTalking) {
+      if (isBlinking && config.images.talkBlink) {
+        return config.images.talkBlink;
+      }
+      return config.images.talk || config.images.idle;
+    } else {
+      if (isBlinking && config.images.blink) {
+        return config.images.blink;
+      }
+      return config.images.idle;
+    }
+  }
+
+  function updateDisplay() {
+    const targetSrc = resolveFrame();
+    if (targetSrc && avatarImg.getAttribute('src') !== targetSrc) {
+      avatarImg.src = targetSrc;
+    }
+
+    if (isTalking) {
+      avatarContainer.classList.add('is-talking');
+    } else {
+      avatarContainer.classList.remove('is-talking');
+    }
+  }
+
+  function applyConfig(newCfg) {
+    if (!newCfg) return;
+    config = Object.assign({}, config, newCfg);
+    if (newCfg.images) {
+      config.images = Object.assign({}, config.images, newCfg.images);
+    }
+
+    // Apply CSS variables
+    const scale = Math.max(0.5, Math.min(2.5, Number(config.scale) || 1.0));
+    const posX = Math.max(0, Math.min(100, Number(config.positionX) || 50));
+    const posY = Math.max(0, Math.min(100, Number(config.positionY) || 85));
+    const bounceHeight = Math.max(0, Math.min(60, Number(config.bounceHeight) || 16));
+
+    document.documentElement.style.setProperty('--avatar-scale', scale);
+    document.documentElement.style.setProperty('--avatar-x', posX + '%');
+    document.documentElement.style.setProperty('--avatar-y', posY + '%');
+    document.documentElement.style.setProperty('--bounce-height', bounceHeight + 'px');
+
+    // Bounce physics style
+    avatarContainer.classList.remove('bounce-veadotube', 'bounce-squish', 'bounce-gentle', 'bounce-none');
+    avatarContainer.classList.add('bounce-' + (config.bounceStyle || 'veadotube'));
+
+    if (config.preset === 'pixelcat') {
+      avatarContainer.classList.add('pixel-art');
+    } else {
+      avatarContainer.classList.remove('pixel-art');
+    }
+
+    preloadImages();
+    updateDisplay();
+    scheduleBlink();
+  }
+
+  // Eye Blink Loop
+  function scheduleBlink() {
+    if (blinkTimer) clearTimeout(blinkTimer);
+    const intervalSec = Math.max(1.0, Math.min(10.0, Number(config.blinkInterval) || 3.5));
+    // Add natural randomization: 75% to 125% of interval
+    const variance = (Math.random() * 0.5 + 0.75);
+    const delayMs = intervalSec * 1000 * variance;
+
+    blinkTimer = setTimeout(() => {
+      // Only blink if blink frames are configured
+      const hasBlinkFrame = (isTalking && config.images.talkBlink) || (!isTalking && config.images.blink);
+      if (hasBlinkFrame) {
+        isBlinking = true;
+        updateDisplay();
+        const duration = Math.max(80, Math.min(350, Number(config.blinkDuration) || 140));
+        setTimeout(() => {
+          isBlinking = false;
+          updateDisplay();
+          scheduleBlink();
+        }, duration);
+      } else {
+        scheduleBlink();
+      }
+    }, delayMs);
+  }
+
+  // Celebration Jump for TikTok Gifts / Follows
+  function triggerCelebration(message) {
+    if (!config.reactToGifts) return;
+    avatarContainer.classList.remove('celebrating');
+    void avatarContainer.offsetWidth; // Force reflow
+    avatarContainer.classList.add('celebrating');
+
+    if (message && reactionBubble) {
+      reactionBubble.textContent = message;
+      reactionBubble.classList.add('active');
+      if (bubbleTimer) clearTimeout(bubbleTimer);
+      bubbleTimer = setTimeout(() => {
+        reactionBubble.classList.remove('active');
+      }, 2500);
+    }
+
+    if (celebrateTimer) clearTimeout(celebrateTimer);
+    celebrateTimer = setTimeout(() => {
+      avatarContainer.classList.remove('celebrating');
+    }, 1300);
+  }
+
+  // 1. WebSocket Client
+  let ws = null;
+  let wsReconnectTimer = null;
+
+  function connectWs() {
+    const loc = window.location;
+    const proto = (loc.protocol === 'https:') ? 'wss:' : 'ws:';
+    const host = loc.host || 'localhost:3333';
+    const wsUrl = `${proto}//${host}/ws`;
+
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch (e) {
+      scheduleWsReconnect();
+      return;
+    }
+
+    ws.onopen = function() {
+      if (wsReconnectTimer) {
+        clearTimeout(wsReconnectTimer);
+        wsReconnectTimer = null;
+      }
+    };
+
+    ws.onmessage = function(event) {
+      try {
+        const msg = JSON.parse(event.data);
+        handleMessage(msg);
+      } catch (err) {}
+    };
+
+    ws.onclose = function() {
+      scheduleWsReconnect();
+    };
+
+    ws.onerror = function() {
+      scheduleWsReconnect();
+    };
+  }
+
+  function scheduleWsReconnect() {
+    if (wsReconnectTimer) return;
+    wsReconnectTimer = setTimeout(() => {
+      wsReconnectTimer = null;
+      connectWs();
+    }, 2000);
+  }
+
+  function handleMessage(msg) {
+    if (!msg || typeof msg !== 'object') return;
+
+    if (msg.type === 'init' && msg.settings) {
+      if (msg.settings.pngtuber) applyConfig(msg.settings.pngtuber);
+    }
+
+    if (msg.type === 'settings:update' && msg.settings) {
+      if (msg.settings.pngtuber) applyConfig(msg.settings.pngtuber);
+    }
+
+    if (msg.type === 'pngtuber:state') {
+      isTalking = Boolean(msg.talking);
+      updateDisplay();
+    }
+
+    // Stream Event Celebrations
+    if (msg.type === 'gift') {
+      const giftName = msg.giftName || msg.gift || 'Gift';
+      const sender = msg.nickname || msg.user || 'Viewer';
+      triggerCelebration(`Thank you ${sender} for ${giftName}!`);
+    } else if (msg.type === 'follow') {
+      const sender = msg.nickname || msg.user || 'Viewer';
+      triggerCelebration(`Welcome ${sender}!`);
+    } else if (msg.type === 'like' && Number(msg.count) >= 50) {
+      triggerCelebration(`Likes Tap Combo!`);
+    }
+  }
+
+  // 2. Fetch Initial Settings via HTTP
+  function fetchSettings() {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.pngtuber) {
+          applyConfig(data.pngtuber);
+        }
+      })
+      .catch(() => {});
+  }
+
+  // 3. Standalone Direct Mic Analyzer (Optional via ?mic=1 or ?standalone=1)
+  const urlParams = new URLSearchParams(window.location.search);
+  const directMicEnabled = urlParams.has('mic') || urlParams.has('standalone');
+
+  if (directMicEnabled && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    initDirectMic();
+  }
+
+  function initDirectMic() {
+    let audioCtx = null;
+    let analyser = null;
+    let micStream = null;
+    let holdTimer = null;
+
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        micStream = stream;
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContextClass();
+        const source = audioCtx.createMediaStreamSource(stream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        function checkVolume() {
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          const avg = (sum / dataArray.length) / 255 * 100;
+          const threshold = Number(config.threshold) || 22;
+          const holdMs = Number(config.holdDelay) || 180;
+
+          if (avg >= threshold) {
+            if (holdTimer) clearTimeout(holdTimer);
+            if (!isTalking) {
+              isTalking = true;
+              updateDisplay();
+            }
+          } else {
+            if (isTalking && !holdTimer) {
+              holdTimer = setTimeout(() => {
+                isTalking = false;
+                holdTimer = null;
+                updateDisplay();
+              }, holdMs);
+            }
+          }
+          requestAnimationFrame(checkVolume);
+        }
+        checkVolume();
+      })
+      .catch(err => {
+        console.warn('Direct mic access not granted or unavailable:', err);
+      });
+  }
+
+  // Initialization
+  preloadImages();
+  fetchSettings();
+  connectWs();
+  scheduleBlink();
+})();
+</script>
+</body>
+</html>

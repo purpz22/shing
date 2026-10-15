@@ -35,6 +35,8 @@ contextBridge.exposeInMainWorld('api', {
   downloadSound: (soundUrl, title) => ipcRenderer.invoke('sounds:download', soundUrl, title),
   selectLocalSound: () => ipcRenderer.invoke('sounds:select-local'),
   selectLocalMedia: () => ipcRenderer.invoke('media:select-local'),
+  selectPngTuberImage: (slot) => ipcRenderer.invoke('pngtuber:select-image', slot),
+  savePngTuberImage: (slot, dataBase64, extension) => ipcRenderer.invoke('pngtuber:save-custom-image', slot, dataBase64, extension),
 
   // Rankings APIs
   getRankings: () => ipcRenderer.invoke('rankings:get'),

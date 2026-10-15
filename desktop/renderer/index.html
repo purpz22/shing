@@ -129,6 +129,11 @@
           <span class="nav-label">Banner</span>
           <span class="star-toggle" data-fav="banner" title="Pin to Favorites"></span>
         </button>
+        <button class="nav-item" data-tab="pngtuber">
+          <span class="nav-icon" data-icon="pngtuber"></span>
+          <span class="nav-label">PNGTuber</span>
+          <span class="star-toggle" data-fav="pngtuber" title="Pin to Favorites"></span>
+        </button>
         <button class="nav-item" data-tab="settings">
           <span class="nav-icon" data-icon="settings"></span>
           <span class="nav-label">Settings</span>
@@ -428,6 +433,28 @@
             <div class="card-actions">
               <button class="btn btn-primary copy-url-btn" data-url="http://localhost:3333/overlays/banner.html">Copy URL</button>
               <button class="btn btn-secondary open-ext-btn" data-overlay="banner">Preview</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PNGTuber Avatar Card -->
+        <div class="overlay-card" data-goto="pngtuber">
+          <div class="card-preview pngtuber-preview-box">
+            <div class="demo-pngtuber-widget">
+              <img src="../assets/pngtuber/popcat_closed.png" alt="PNGTuber" id="ov-demo-pngtuber-img" class="demo-pngtuber-avatar">
+              <div class="demo-pngtuber-vu-mini">
+                <div class="demo-pngtuber-vu-level" id="ov-demo-pngtuber-vu"></div>
+              </div>
+            </div>
+            <div class="demo-comp-badge">Voice Reactive</div>
+          </div>
+          <div class="card-info">
+            <h3>PNGTuber Avatar</h3>
+            <p>Audio-reactive avatar with Pop Cat &amp; Pixel Cat presets, real mic VU meter, and transparent OBS overlay.</p>
+            <div class="card-actions">
+              <button class="btn btn-primary copy-url-btn" data-url="http://localhost:3333/overlays/pngtuber.html">Copy URL</button>
+              <button class="btn btn-secondary open-ext-btn" data-overlay="pngtuber">Preview</button>
+              <button class="btn btn-secondary goto-tab-btn" data-tab="pngtuber">Studio</button>
             </div>
           </div>
         </div>
@@ -1436,6 +1463,300 @@
               <input type="text" id="input-update-feed" placeholder="https://raw.githubusercontent.com/purpz22/shing/main/desktop/releases.json (Default)">
             </label>
             <div class="hint-text">Leave blank to use official purpz22/shing GitHub release channel.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. PNGTUBER STUDIO TAB -->
+    <section id="tab-pngtuber" class="tab-pane">
+      <div class="section-header">
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+          <div>
+            <h2>PNGTuber Studio</h2>
+            <p>Live microphone-reactive avatar for OBS and TikTok LIVE Studio with bounce physics and custom frames.</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <label class="toggle-switch" title="Enable or disable PNGTuber overlay">
+              <input type="checkbox" id="pngtuber-enabled" checked>
+              <span class="toggle-slider"></span>
+            </label>
+            <span style="font-weight: 700; font-size: 14px; color: var(--text-main);">Enabled</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pngtuber-studio-grid">
+        <!-- Left Column: Live Reactive Stage & Audio VU Meter -->
+        <div class="pngtuber-stage-panel card">
+          <div class="panel-header">
+            <h3>Live Avatar Stage</h3>
+            <div class="stage-bg-toggles">
+              <button class="stage-bg-btn active" data-bg="checkerboard" title="Transparent Checkerboard">Grid</button>
+              <button class="stage-bg-btn" data-bg="dark" title="Dark Room">Dark</button>
+              <button class="stage-bg-btn" data-bg="green" title="Green Screen">Green</button>
+              <button class="stage-bg-btn" data-bg="magenta" title="Magenta Screen">Magenta</button>
+            </div>
+          </div>
+
+          <!-- Interactive Live Stage Viewport -->
+          <div id="pngtuber-stage-viewport" class="stage-viewport bg-checkerboard">
+            <div id="pngtuber-stage-avatar-wrap" class="stage-avatar-wrap bounce-veadotube">
+              <img id="pngtuber-stage-img" src="../assets/pngtuber/popcat_closed.png" alt="PNGTuber Preview">
+            </div>
+            <div class="stage-overlay-badges">
+              <span id="pngtuber-stage-badge" class="badge-status-idle">IDLE</span>
+              <span id="pngtuber-fps-badge" class="badge-fps">60 FPS</span>
+            </div>
+          </div>
+
+          <!-- VU Meter & Voice Activation Controls (veadotube style) -->
+          <div class="vu-meter-card">
+            <div class="vu-header-row">
+              <div class="vu-title-wrap">
+                <span class="nav-icon" data-icon="mic"></span>
+                <span class="vu-title">Voice Activation Meter</span>
+              </div>
+              <div class="vu-readout">
+                <span id="pngtuber-vu-level-text">0%</span>
+                <span class="vu-divider">/</span>
+                <span class="vu-thresh-label">Threshold:</span>
+                <span id="pngtuber-threshold-text" class="vu-thresh-val">22%</span>
+              </div>
+            </div>
+
+            <!-- Vertical VU Level Meter Bar & Horizontal Draggable Threshold -->
+            <div class="vu-meter-track" id="pngtuber-vu-track">
+              <div class="vu-meter-fill" id="pngtuber-vu-fill" style="width: 0%;"></div>
+              <div class="vu-threshold-marker" id="pngtuber-vu-marker" style="left: 22%;">
+                <div class="vu-marker-handle" title="Drag to adjust voice threshold"></div>
+              </div>
+            </div>
+
+            <!-- Microphone Input Select & Sensitivity Row -->
+            <div class="mic-controls-row">
+              <div class="control-col mic-select-col">
+                <label for="pngtuber-mic-select">Microphone Input Device</label>
+                <div class="select-with-btn">
+                  <select id="pngtuber-mic-select" class="styled-select">
+                    <option value="default">Default System Microphone</option>
+                  </select>
+                  <button id="pngtuber-refresh-mics-btn" class="btn btn-secondary btn-icon" title="Refresh Audio Devices">
+                    <span class="nav-icon" data-icon="refresh"></span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="control-col">
+                <label for="pngtuber-threshold-slider">Sensitivity Threshold: <span id="pngtuber-thresh-badge">22%</span></label>
+                <input type="range" id="pngtuber-threshold-slider" min="1" max="100" value="22" step="1">
+              </div>
+
+              <div class="control-col">
+                <label for="pngtuber-hold-slider">Hold Delay (ms): <span id="pngtuber-hold-badge">180 ms</span></label>
+                <input type="range" id="pngtuber-hold-slider" min="50" max="800" value="180" step="10">
+              </div>
+            </div>
+
+            <div class="mic-actions-row">
+              <button id="pngtuber-mic-toggle-btn" class="btn btn-secondary btn-sm">
+                <span class="nav-icon" data-icon="mic"></span>
+                <span id="pngtuber-mic-btn-label">Mute Test Mic</span>
+              </button>
+              <button id="pngtuber-test-talk-btn" class="btn btn-secondary btn-sm" title="Simulate speaking for 2 seconds">
+                <span>Simulate Speech</span>
+              </button>
+              <div class="vu-status-note" id="pngtuber-mic-status-note">Microphone Active &amp; Calibrated</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Avatar Presets, Frame Slots & Motion Physics -->
+        <div class="pngtuber-settings-panel">
+          <!-- Preset Selector Card -->
+          <div class="card preset-card">
+            <div class="panel-header">
+              <h3>Avatar Preset</h3>
+              <div class="mode-pill-toggle">
+                <button class="mode-btn active" data-mode="2-frame">2-Frame Mode</button>
+                <button class="mode-btn" data-mode="4-frame">4-Frame Mode (+ Blink)</button>
+              </div>
+            </div>
+            <div class="preset-buttons-grid">
+              <button class="preset-choice-btn active" data-preset="popcat">
+                <div class="preset-thumb-wrap">
+                  <img src="../assets/pngtuber/popcat_closed.png" alt="Pop Cat">
+                </div>
+                <div class="preset-info">
+                  <div class="preset-name">Pop Cat</div>
+                  <div class="preset-desc">Classic bouncy pop cat</div>
+                </div>
+              </button>
+              <button class="preset-choice-btn" data-preset="pixelcat">
+                <div class="preset-thumb-wrap">
+                  <img src="../assets/pngtuber/pixelcat_closed.png" alt="Cozy Pixel Cat">
+                </div>
+                <div class="preset-info">
+                  <div class="preset-name">Cozy Pixel Cat</div>
+                  <div class="preset-desc">Retro crisp pixel art cat</div>
+                </div>
+              </button>
+              <button class="preset-choice-btn" data-preset="custom">
+                <div class="preset-thumb-wrap custom-icon">
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                </div>
+                <div class="preset-info">
+                  <div class="preset-name">Custom Avatar</div>
+                  <div class="preset-desc">Your uploaded PNG frames</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- 4 State Slots Grid -->
+          <div class="card slots-card">
+            <div class="panel-header">
+              <h3>Avatar State Frames</h3>
+              <span class="hint-text">PNG, WebP, GIF supported. Drag and drop or browse.</span>
+            </div>
+
+            <div class="avatar-slots-grid">
+              <!-- Slot 1: Idle (Neutral Closed) -->
+              <div class="avatar-slot-box" data-slot="idle">
+                <div class="slot-badge">Neutral Idle</div>
+                <div class="slot-thumb-dropzone" id="slot-drop-idle">
+                  <img id="slot-img-idle" src="../assets/pngtuber/popcat_closed.png" alt="Idle Frame">
+                  <div class="slot-overlay-prompt">Drop Image</div>
+                </div>
+                <div class="slot-meta">
+                  <div class="slot-state-title">Closed Mouth</div>
+                  <div class="slot-state-sub">Silent state</div>
+                </div>
+                <div class="slot-btn-row">
+                  <button class="btn btn-secondary btn-xs slot-browse-btn" data-slot="idle">Browse</button>
+                  <button class="btn btn-secondary btn-xs slot-reset-btn" data-slot="idle">Reset</button>
+                </div>
+              </div>
+
+              <!-- Slot 2: Blink Idle -->
+              <div class="avatar-slot-box" data-slot="blink">
+                <div class="slot-badge">Blink Idle</div>
+                <div class="slot-thumb-dropzone" id="slot-drop-blink">
+                  <img id="slot-img-blink" src="" alt="Blink Frame" class="hidden">
+                  <div class="slot-empty-placeholder" id="slot-ph-blink">
+                    <span>(Fallback to Idle)</span>
+                  </div>
+                  <div class="slot-overlay-prompt">Drop Image</div>
+                </div>
+                <div class="slot-meta">
+                  <div class="slot-state-title">Closed Eyes</div>
+                  <div class="slot-state-sub">Silent blink</div>
+                </div>
+                <div class="slot-btn-row">
+                  <button class="btn btn-secondary btn-xs slot-browse-btn" data-slot="blink">Browse</button>
+                  <button class="btn btn-secondary btn-xs slot-clear-btn" data-slot="blink">Clear</button>
+                </div>
+              </div>
+
+              <!-- Slot 3: Talking (Open Mouth) -->
+              <div class="avatar-slot-box" data-slot="talk">
+                <div class="slot-badge">Talking</div>
+                <div class="slot-thumb-dropzone" id="slot-drop-talk">
+                  <img id="slot-img-talk" src="../assets/pngtuber/popcat_open.png" alt="Talking Frame">
+                  <div class="slot-overlay-prompt">Drop Image</div>
+                </div>
+                <div class="slot-meta">
+                  <div class="slot-state-title">Open Mouth</div>
+                  <div class="slot-state-sub">Speaking state</div>
+                </div>
+                <div class="slot-btn-row">
+                  <button class="btn btn-secondary btn-xs slot-browse-btn" data-slot="talk">Browse</button>
+                  <button class="btn btn-secondary btn-xs slot-reset-btn" data-slot="talk">Reset</button>
+                </div>
+              </div>
+
+              <!-- Slot 4: Talking Blink -->
+              <div class="avatar-slot-box" data-slot="talkBlink">
+                <div class="slot-badge">Talking Blink</div>
+                <div class="slot-thumb-dropzone" id="slot-drop-talkBlink">
+                  <img id="slot-img-talkBlink" src="" alt="Talking Blink Frame" class="hidden">
+                  <div class="slot-empty-placeholder" id="slot-ph-talkBlink">
+                    <span>(Fallback to Talk)</span>
+                  </div>
+                  <div class="slot-overlay-prompt">Drop Image</div>
+                </div>
+                <div class="slot-meta">
+                  <div class="slot-state-title">Speaking Blink</div>
+                  <div class="slot-state-sub">Talking blink</div>
+                </div>
+                <div class="slot-btn-row">
+                  <button class="btn btn-secondary btn-xs slot-browse-btn" data-slot="talkBlink">Browse</button>
+                  <button class="btn btn-secondary btn-xs slot-clear-btn" data-slot="talkBlink">Clear</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Motion & Physics Customization Card -->
+          <div class="card physics-card">
+            <div class="panel-header">
+              <h3>Bounce Motion &amp; Display</h3>
+            </div>
+            <div class="physics-controls-grid">
+              <div class="control-col">
+                <label for="pngtuber-bounce-style">Bounce Style</label>
+                <select id="pngtuber-bounce-style" class="styled-select">
+                  <option value="veadotube" selected>Veadotube Bounce (Crisp Jump)</option>
+                  <option value="squish">Squish &amp; Pop</option>
+                  <option value="gentle">Gentle Float</option>
+                  <option value="none">None (Static Frame Swap)</option>
+                </select>
+              </div>
+
+              <div class="control-col">
+                <label for="pngtuber-bounce-slider">Bounce Height: <span id="pngtuber-bounce-badge">16 px</span></label>
+                <input type="range" id="pngtuber-bounce-slider" min="0" max="50" value="16" step="1">
+              </div>
+
+              <div class="control-col">
+                <label for="pngtuber-scale-slider">Avatar Size: <span id="pngtuber-scale-badge">100%</span></label>
+                <input type="range" id="pngtuber-scale-slider" min="0.5" max="2.0" value="1.0" step="0.05">
+              </div>
+
+              <div class="control-col">
+                <label for="pngtuber-posy-slider">Vertical Offset: <span id="pngtuber-posy-badge">85%</span></label>
+                <input type="range" id="pngtuber-posy-slider" min="30" max="100" value="85" step="1">
+              </div>
+
+              <div class="control-col">
+                <label for="pngtuber-blink-interval">Blink Interval: <span id="pngtuber-blink-badge">3.5 s</span></label>
+                <input type="range" id="pngtuber-blink-interval" min="1.0" max="8.0" value="3.5" step="0.5">
+              </div>
+
+              <div class="control-col" style="justify-content: flex-end;">
+                <label class="checkbox-label" style="margin-bottom: 8px;">
+                  <input type="checkbox" id="pngtuber-react-gifts" checked> React to Stream Gifts / Follows
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- OBS Browser Source Connection Card -->
+          <div class="card obs-card">
+            <div class="panel-header">
+              <h3>OBS Studio / TikTok LIVE Studio Setup</h3>
+            </div>
+            <p class="obs-card-desc">Add as a <strong>Browser Source</strong> in your streaming software with transparent background:</p>
+            <div class="obs-url-box">
+              <input type="text" readonly value="http://localhost:3333/overlays/pngtuber.html" class="styled-input mono" id="pngtuber-obs-url">
+              <button class="btn btn-primary btn-sm copy-url-btn" data-url="http://localhost:3333/overlays/pngtuber.html">Copy URL</button>
+              <button class="btn btn-secondary btn-sm open-ext-btn" data-overlay="pngtuber">Open Preview</button>
+            </div>
+            <div class="obs-specs-row">
+              <div class="obs-spec-item"><strong>Recommended Width:</strong> 600 px</div>
+              <div class="obs-spec-item"><strong>Recommended Height:</strong> 600 px</div>
+              <div class="obs-spec-item"><strong>FPS:</strong> 60</div>
+            </div>
           </div>
         </div>
       </div>

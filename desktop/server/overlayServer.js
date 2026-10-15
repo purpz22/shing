@@ -100,6 +100,14 @@ class OverlayServer {
     this.settings.banner.scale = this.clampBannerScale(this.settings.banner.scale);
     this.settings.banner.sceneDuration = this.clampBannerDuration(this.settings.banner.sceneDuration);
 
+    if (!this.settings.pngtuber) this.settings.pngtuber = {};
+    const defaultPngTuber = this.getDefaultSettings().pngtuber;
+    this.settings.pngtuber = this.deepMerge(defaultPngTuber, this.settings.pngtuber);
+    this.settings.pngtuber.scale = this.clampPngTuberScale(this.settings.pngtuber.scale);
+    this.settings.pngtuber.threshold = this.clampPngTuberThreshold(this.settings.pngtuber.threshold);
+    this.settings.pngtuber.holdDelay = this.clampPngTuberHoldDelay(this.settings.pngtuber.holdDelay);
+    this.settings.pngtuber.bounceHeight = this.clampPngTuberBounce(this.settings.pngtuber.bounceHeight);
+
     const oldDefaultParagraphs = 'shimmy_ming\nCozy Variety Streamer\nDaily at 7:00 PM EST\nWelcome to the cozy corner! Streaming daily games, art, and chill chats.';
     if (this.settings.banner.paragraphs === oldDefaultParagraphs) {
       this.settings.banner.paragraphs = 'I am shing\nCute ang mag follow';
@@ -188,6 +196,50 @@ class OverlayServer {
     return OverlayServer.clampBannerDuration(val);
   }
 
+  static clampPngTuberScale(val) {
+    if (val === null || val === undefined || val === '') return 1.0;
+    const num = Number(val);
+    if (!Number.isFinite(num)) return 1.0;
+    return Math.max(0.5, Math.min(2.5, Math.round(num * 100) / 100));
+  }
+
+  clampPngTuberScale(val) {
+    return OverlayServer.clampPngTuberScale(val);
+  }
+
+  static clampPngTuberThreshold(val) {
+    if (val === null || val === undefined || val === '') return 22;
+    const num = Number(val);
+    if (!Number.isFinite(num)) return 22;
+    return Math.max(1, Math.min(100, Math.round(num)));
+  }
+
+  clampPngTuberThreshold(val) {
+    return OverlayServer.clampPngTuberThreshold(val);
+  }
+
+  static clampPngTuberHoldDelay(val) {
+    if (val === null || val === undefined || val === '') return 180;
+    const num = Number(val);
+    if (!Number.isFinite(num)) return 180;
+    return Math.max(50, Math.min(1000, Math.round(num)));
+  }
+
+  clampPngTuberHoldDelay(val) {
+    return OverlayServer.clampPngTuberHoldDelay(val);
+  }
+
+  static clampPngTuberBounce(val) {
+    if (val === null || val === undefined || val === '') return 16;
+    const num = Number(val);
+    if (!Number.isFinite(num)) return 16;
+    return Math.max(0, Math.min(60, Math.round(num)));
+  }
+
+  clampPngTuberBounce(val) {
+    return OverlayServer.clampPngTuberBounce(val);
+  }
+
   loadSettings() {
     const defaults = this.getDefaultSettings();
     const p = this.getSettingsPath();
@@ -260,6 +312,20 @@ class OverlayServer {
       }
       if (this.settings.banner.sceneDuration !== undefined) {
         this.settings.banner.sceneDuration = this.clampBannerDuration(this.settings.banner.sceneDuration);
+      }
+    }
+    if (this.settings && this.settings.pngtuber) {
+      if (this.settings.pngtuber.scale !== undefined) {
+        this.settings.pngtuber.scale = this.clampPngTuberScale(this.settings.pngtuber.scale);
+      }
+      if (this.settings.pngtuber.threshold !== undefined) {
+        this.settings.pngtuber.threshold = this.clampPngTuberThreshold(this.settings.pngtuber.threshold);
+      }
+      if (this.settings.pngtuber.holdDelay !== undefined) {
+        this.settings.pngtuber.holdDelay = this.clampPngTuberHoldDelay(this.settings.pngtuber.holdDelay);
+      }
+      if (this.settings.pngtuber.bounceHeight !== undefined) {
+        this.settings.pngtuber.bounceHeight = this.clampPngTuberBounce(this.settings.pngtuber.bounceHeight);
       }
     }
     const p = this.getSettingsPath();
@@ -423,6 +489,29 @@ class OverlayServer {
           instagram: '',
           youtube: ''
         }
+      },
+      pngtuber: {
+        enabled: true,
+        preset: 'popcat',
+        mode: '2-frame',
+        images: {
+          idle: '/assets/pngtuber/popcat_closed.png',
+          blink: '',
+          talk: '/assets/pngtuber/popcat_open.png',
+          talkBlink: ''
+        },
+        threshold: 22,
+        holdDelay: 180,
+        bounceStyle: 'veadotube',
+        bounceHeight: 16,
+        scale: 1.0,
+        positionX: 50,
+        positionY: 85,
+        blinkInterval: 3.5,
+        blinkDuration: 140,
+        sensitivity: 1.2,
+        reactToGifts: true,
+        inputDeviceId: 'default'
       },
       updates: {
         autoCheck: true,
@@ -884,6 +973,11 @@ class OverlayServer {
       return;
     }
 
+    if (data.type === 'pngtuber:state') {
+      this.broadcast(data);
+      return;
+    }
+
     if (data.type === 'settings:save') {
       this.saveSettings(data.settings);
     } else if (data.type === 'test:event') {
@@ -1232,6 +1326,33 @@ class OverlayServer {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({ error: e.message }));
       }
+    }
+
+    if (pathname === '/api/pngtuber/state') {
+      if (req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', () => {
+          try {
+            const parsed = JSON.parse(body || '{}');
+            const state = {
+              type: 'pngtuber:state',
+              talking: Boolean(parsed.talking),
+              volume: Math.max(0, Math.min(100, Number(parsed.volume) || 0)),
+              state: parsed.state || (parsed.talking ? 'talk' : 'idle')
+            };
+            this.broadcast(state);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, state }));
+          } catch (e) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: e.message }));
+          }
+        });
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true }));
     }
 
     if (pathname === '/api/version') {

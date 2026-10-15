@@ -1,6 +1,25 @@
 {
-    "latest":  "1.5.6",
+    "latest":  "1.5.7",
     "releases":  [
+                     {
+                         "version":  "1.5.7",
+                         "releaseName":  "Shing Live v1.5.7 - Audio-Reactive PNGTuber Studio",
+                         "releaseDate":  "2026-10-15",
+                         "type":  "feature",
+                         "summary":  "Authentic audio-reactive PNGTuber avatar studio integrated into Shing Live. Features real physical microphone input capture, dynamic green/yellow/red VU meter with draggable threshold pin, 4-frame animation states (neutral idle, blink idle, talking, talking blink), custom drag-and-drop avatar slot configuration, Pop Cat and Cozy Pixel Cat presets, bounce physics, and transparent OBS Studio / TikTok LIVE Studio overlay sync.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.5.7.zip",
+                         "highlights":  [
+                                            "Real Microphone Audio Capture: Physical mic hardware input processing with real-time 512-point FFT Web Audio analysis",
+                                            "Dynamic Draggable Threshold VU Meter: Horizontal real-time audio meter with interactive threshold pin to dial in speech sensitivity",
+                                            "4-Frame Avatar Animation Engine: Supports 2-frame (talk/shut) and 4-frame (idle, blink, talk, talk-blink) animation cycles with natural blink timers",
+                                            "Drag-and-Drop Image Slots: Drag custom PNG/GIF images directly into avatar state slots or browse local files with automatic persistence",
+                                            "Pop Cat and Cozy Pixel Cat Presets: High-resolution authentic presets preloaded and ready to use instantly",
+                                            "OBS Studio and TikTok LIVE Studio Overlay: Dedicated transparent browser source overlay at /overlays/pngtuber.html with sub-millisecond WebSocket state sync"
+                                        ],
+                         "notes":  "Audio-reactive PNGTuber studio with microphone audio engine, threshold VU meter, and OBS browser source overlay.",
+                         "packageSize":  "4.59 MB",
+                         "checksum":  "bd60a5f08496c32408e29535017ea28e54f872e61086d83059a35ff6b5d92165"
+                     },
                      {
                          "version":  "1.5.6",
                          "releaseName":  "Shing Live v1.5.6 - Auto-Minimize Performance \u0026 Banner Text Updates",

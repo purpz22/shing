@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, Menu, ipcMain, shell, dialog, nativeImage } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, shell, dialog, nativeImage, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
@@ -89,6 +89,23 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  if (session && session.defaultSession) {
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+      if (permission === 'media') {
+        return callback(true);
+      }
+      callback(true);
+    });
+    if (typeof session.defaultSession.setPermissionCheckHandler === 'function') {
+      session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+        if (permission === 'media') {
+          return true;
+        }
+        return true;
+      });
+    }
+  }
+
   try {
     await overlayServer.start();
   } catch (err) {
@@ -1299,6 +1316,61 @@ ipcMain.handle('media:select-local', async () => {
     url: `/media/${filename}`,
     mediaType
   };
+});
+
+// PNGTuber Image Selection & Custom Upload IPC Handlers
+ipcMain.handle('pngtuber:select-image', async (evt, slot) => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: `Select PNGTuber Frame Image (${slot || 'Avatar'})`,
+    filters: [
+      { name: 'Images (PNG, GIF, WebP, JPG)', extensions: ['png', 'gif', 'webp', 'jpg', 'jpeg'] }
+    ],
+    properties: ['openFile']
+  });
+  if (res.canceled || !res.filePaths.length) return { canceled: true };
+
+  const srcPath = res.filePaths[0];
+  const origName = path.basename(srcPath);
+  const ext = path.extname(origName).toLowerCase();
+  const cleanBase = path.basename(origName, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const safeSlot = String(slot || 'frame').replace(/[^a-zA-Z0-9_-]/g, '');
+  const filename = `pngtuber_${safeSlot}_${Date.now()}_${cleanBase}${ext}`;
+  const mediaDir = path.join(overlayServer ? overlayServer.userDataDir : app.getPath('userData'), 'media');
+  if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
+  const destPath = path.join(mediaDir, filename);
+
+  fs.copyFileSync(srcPath, destPath);
+  return {
+    success: true,
+    slot,
+    filename,
+    url: `/media/${filename}`
+  };
+});
+
+ipcMain.handle('pngtuber:save-custom-image', async (evt, slot, dataBase64, extension = 'png') => {
+  if (!dataBase64) return { success: false, error: 'No image data provided' };
+  try {
+    const safeSlot = String(slot || 'frame').replace(/[^a-zA-Z0-9_-]/g, '');
+    const cleanExt = (extension || 'png').replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'png';
+    const filename = `pngtuber_${safeSlot}_${Date.now()}.${cleanExt}`;
+    const mediaDir = path.join(overlayServer ? overlayServer.userDataDir : app.getPath('userData'), 'media');
+    if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
+    const destPath = path.join(mediaDir, filename);
+
+    const base64Clean = dataBase64.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '');
+    const buffer = Buffer.from(base64Clean, 'base64');
+    fs.writeFileSync(destPath, buffer);
+
+    return {
+      success: true,
+      slot,
+      filename,
+      url: `/media/${filename}`
+    };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 });
 
 // Rankings IPC Handlers (Top Likers & Viewer Stay Ranking)

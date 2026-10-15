@@ -1,0 +1,152 @@
+'use strict';
+
+const assert = require('assert');
+const path = require('path');
+const fs = require('fs');
+const http = require('http');
+const { WebSocket } = require('ws');
+
+const OverlayServer = require('../server/overlayServer');
+
+console.log('Testing PNGTuber Server Settings, Schema, and Real-Time State Sync...');
+
+async function run() {
+  const testPort = 3349;
+  const tempDir = path.join(__dirname, 'tmp-pngtuber-test-data-' + Date.now());
+  const tempBaseDir = path.join(tempDir, 'desktop-mock');
+  const tempOverlaysDir = path.join(tempBaseDir, 'overlays');
+  fs.mkdirSync(tempOverlaysDir, { recursive: true });
+
+  const pngtuberOverlayPath = path.join(tempOverlaysDir, 'pngtuber.html');
+  fs.writeFileSync(pngtuberOverlayPath, '<!DOCTYPE html><html><head><title>PNGTuber</title></head><body>PNGTuber Overlay</body></html>', 'utf8');
+
+  // 1. Test Static Clamping Functions
+  assert.strictEqual(OverlayServer.clampPngTuberScale(1.0), 1.0);
+  assert.strictEqual(OverlayServer.clampPngTuberScale(0.2), 0.5);
+  assert.strictEqual(OverlayServer.clampPngTuberScale(3.5), 2.5);
+  assert.strictEqual(OverlayServer.clampPngTuberScale('invalid'), 1.0);
+  assert.strictEqual(OverlayServer.clampPngTuberScale(null), 1.0);
+
+  assert.strictEqual(OverlayServer.clampPngTuberThreshold(22), 22);
+  assert.strictEqual(OverlayServer.clampPngTuberThreshold(-10), 1);
+  assert.strictEqual(OverlayServer.clampPngTuberThreshold(150), 100);
+  assert.strictEqual(OverlayServer.clampPngTuberThreshold('invalid'), 22);
+
+  assert.strictEqual(OverlayServer.clampPngTuberHoldDelay(180), 180);
+  assert.strictEqual(OverlayServer.clampPngTuberHoldDelay(10), 50);
+  assert.strictEqual(OverlayServer.clampPngTuberHoldDelay(5000), 1000);
+  assert.strictEqual(OverlayServer.clampPngTuberHoldDelay('invalid'), 180);
+
+  assert.strictEqual(OverlayServer.clampPngTuberBounce(16), 16);
+  assert.strictEqual(OverlayServer.clampPngTuberBounce(-5), 0);
+  assert.strictEqual(OverlayServer.clampPngTuberBounce(100), 60);
+
+  // 2. Test Default Settings Schema
+  const server = new OverlayServer(testPort, tempBaseDir, tempDir);
+  const defaults = server.getDefaultSettings();
+
+  assert.ok(defaults.pngtuber, 'defaults.pngtuber should exist');
+  assert.strictEqual(defaults.pngtuber.enabled, true);
+  assert.strictEqual(defaults.pngtuber.preset, 'popcat');
+  assert.strictEqual(defaults.pngtuber.mode, '2-frame');
+  assert.strictEqual(defaults.pngtuber.images.idle, '/assets/pngtuber/popcat_closed.png');
+  assert.strictEqual(defaults.pngtuber.images.talk, '/assets/pngtuber/popcat_open.png');
+  assert.strictEqual(defaults.pngtuber.threshold, 22);
+  assert.strictEqual(defaults.pngtuber.holdDelay, 180);
+  assert.strictEqual(defaults.pngtuber.bounceStyle, 'veadotube');
+  assert.strictEqual(defaults.pngtuber.bounceHeight, 16);
+  assert.strictEqual(defaults.pngtuber.scale, 1.0);
+  assert.strictEqual(defaults.pngtuber.reactToGifts, true);
+
+  // 3. Test Clamping upon saveSettings
+  server.saveSettings({
+    pngtuber: {
+      scale: 9.99,
+      threshold: 999,
+      holdDelay: 10,
+      bounceHeight: -50
+    }
+  });
+
+  assert.strictEqual(server.settings.pngtuber.scale, 2.5);
+  assert.strictEqual(server.settings.pngtuber.threshold, 100);
+  assert.strictEqual(server.settings.pngtuber.holdDelay, 50);
+  assert.strictEqual(server.settings.pngtuber.bounceHeight, 0);
+
+  // 4. Test Live WebSocket & HTTP API State Sync
+  await server.start();
+
+  const wsMessages = [];
+  const ws = new WebSocket(`ws://localhost:${testPort}`);
+  ws.on('message', raw => {
+    try {
+      wsMessages.push(JSON.parse(raw.toString()));
+    } catch (_) {}
+  });
+
+  await new Promise((resolve, reject) => {
+    ws.on('open', resolve);
+    ws.on('error', reject);
+  });
+
+  // Verify Init packet includes pngtuber settings
+  await new Promise(resolve => setTimeout(resolve, 150));
+  const initMsg = wsMessages.find(m => m.type === 'init');
+  assert.ok(initMsg, 'Client must receive init message');
+  assert.ok(initMsg.settings.pngtuber, 'init message should include pngtuber settings');
+
+  // Verify WebSocket state broadcast
+  ws.send(JSON.stringify({
+    type: 'pngtuber:state',
+    talking: true,
+    volume: 78,
+    state: 'talk'
+  }));
+
+  await new Promise(resolve => setTimeout(resolve, 150));
+  const stateMsg = wsMessages.find(m => m.type === 'pngtuber:state' && m.talking === true);
+  assert.ok(stateMsg, 'Client must receive broadcast pngtuber:state message');
+  assert.strictEqual(stateMsg.volume, 78);
+  assert.strictEqual(stateMsg.state, 'talk');
+
+  // Verify HTTP POST /api/pngtuber/state
+  const postData = JSON.stringify({ talking: false, volume: 5, state: 'idle' });
+  await new Promise((resolve, reject) => {
+    const req = http.request({
+      hostname: 'localhost',
+      port: testPort,
+      path: '/api/pngtuber/state',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    }, res => {
+      assert.strictEqual(res.statusCode, 200);
+      resolve();
+    });
+    req.on('error', reject);
+    req.write(postData);
+    req.end();
+  });
+
+  await new Promise(resolve => setTimeout(resolve, 150));
+  const httpStateMsg = wsMessages.find(m => m.type === 'pngtuber:state' && m.talking === false);
+  assert.ok(httpStateMsg, 'Client must receive HTTP triggered pngtuber:state message');
+  assert.strictEqual(httpStateMsg.volume, 5);
+  assert.strictEqual(httpStateMsg.state, 'idle');
+
+  ws.close();
+  server.stop();
+
+  if (fs.existsSync(tempDir)) {
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (e) {}
+  }
+
+  console.log('All PNGTuber server settings and real-time state sync tests passed successfully!');
+}
+
+run().catch(err => {
+  console.error('Test failed:', err);
+  process.exit(1);
+});

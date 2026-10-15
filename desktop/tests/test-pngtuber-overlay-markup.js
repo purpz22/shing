@@ -1,0 +1,42 @@
+'use strict';
+
+const assert = require('assert');
+const path = require('path');
+const fs = require('fs');
+
+console.log('Testing PNGTuber Standalone Overlay Markup, CSS Physics, and State Engine...');
+
+const overlayPath = path.join(__dirname, '..', 'overlays', 'pngtuber.html');
+const rootMirrorPath = path.join(__dirname, '..', '..', 'pngtuber.html');
+
+assert.ok(fs.existsSync(overlayPath), 'desktop/overlays/pngtuber.html must exist');
+assert.ok(fs.existsSync(rootMirrorPath), 'root pngtuber.html must exist for remote deployment');
+
+const overlayContent = fs.readFileSync(overlayPath, 'utf8');
+const rootContent = fs.readFileSync(rootMirrorPath, 'utf8');
+
+assert.strictEqual(overlayContent, rootContent, 'root pngtuber.html must exactly mirror desktop/overlays/pngtuber.html');
+
+// 1. DOM Elements
+assert.ok(overlayContent.includes('id="pngtuber-root"'), 'Must have #pngtuber-root container');
+assert.ok(overlayContent.includes('id="pngtuber-avatar-container"'), 'Must have #pngtuber-avatar-container');
+assert.ok(overlayContent.includes('id="pngtuber-img"'), 'Must have #pngtuber-img element');
+
+// 2. CSS Styling & Physics
+assert.ok(overlayContent.includes('background: transparent'), 'Must have transparent background for OBS');
+assert.ok(overlayContent.includes('--avatar-scale'), 'Must declare --avatar-scale CSS variable');
+assert.ok(overlayContent.includes('--bounce-height'), 'Must declare --bounce-height CSS variable');
+assert.ok(overlayContent.includes('.is-talking'), 'Must contain .is-talking animation style');
+assert.ok(overlayContent.includes('transform: translate3d') || overlayContent.includes('translate'), 'Must use GPU accelerated transforms');
+
+// 3. WebSocket and Event Logic
+assert.ok(overlayContent.includes('pngtuber:state'), 'Must listen to pngtuber:state WebSocket messages');
+assert.ok(overlayContent.includes('settings:update'), 'Must handle settings:update without reload');
+assert.ok(overlayContent.includes('AudioContext') || overlayContent.includes('webkitAudioContext'), 'Must support local AudioContext fallback');
+assert.ok(overlayContent.includes('idle') && overlayContent.includes('talk'), 'Must support 2-frame and 4-frame state switching');
+
+// 4. Zero Emojis Check
+const emojiRegex = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
+assert.strictEqual(emojiRegex.test(overlayContent), false, 'Overlay must contain strictly zero emojis');
+
+console.log('All PNGTuber overlay markup and physics tests passed successfully!');

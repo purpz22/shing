@@ -35,6 +35,17 @@ if (Test-Path $OverlayBannerFile) {
     }
 }
 
+# Keep root pngtuber.html synced with desktop/overlays/pngtuber.html for remote web hosting (purpleeez.site/shing/pngtuber.html)
+$OverlayPngTuberFile = Join-Path $RootDir 'desktop\overlays\pngtuber.html'
+$RootPngTuberFile = Join-Path $RootDir 'pngtuber.html'
+if (Test-Path $OverlayPngTuberFile) {
+    $OverlayPngTuberHash = (Get-FileHash -Path $OverlayPngTuberFile -Algorithm SHA256).Hash
+    $RootPngTuberHash = if (Test-Path $RootPngTuberFile) { (Get-FileHash -Path $RootPngTuberFile -Algorithm SHA256).Hash } else { '' }
+    if ($OverlayPngTuberHash -ne $RootPngTuberHash) {
+        Copy-Item -Path $OverlayPngTuberFile -Destination $RootPngTuberFile -Force
+    }
+}
+
 $AllowedExtensions = @(
     '.html', '.htm', '.css', '.js', '.mjs', '.json',
     '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico',

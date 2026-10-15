@@ -2002,6 +2002,9 @@ async function initSettings() {
   // Populate Streamer Info Banner
   populateBannerSettings();
 
+  // Populate PNGTuber Avatar Studio & Audio Engine
+  initPngTuberStudio();
+
   // Populate Settings
   if (appSettings.theme) {
     $('setting-theme').value = appSettings.theme;
@@ -2400,6 +2403,20 @@ function saveCurrentSettings() {
     if (target.banner && target.banner.scale !== undefined) {
       target.banner.scale = clampBannerScale(target.banner.scale);
     }
+    if (target.pngtuber) {
+      if (target.pngtuber.scale !== undefined) {
+        target.pngtuber.scale = clampPngTuberScale(target.pngtuber.scale);
+      }
+      if (target.pngtuber.threshold !== undefined) {
+        target.pngtuber.threshold = clampPngTuberThreshold(target.pngtuber.threshold);
+      }
+      if (target.pngtuber.holdDelay !== undefined) {
+        target.pngtuber.holdDelay = clampPngTuberHoldDelay(target.pngtuber.holdDelay);
+      }
+      if (target.pngtuber.bounceHeight !== undefined) {
+        target.pngtuber.bounceHeight = clampPngTuberBounce(target.pngtuber.bounceHeight);
+      }
+    }
   }
   if (typeof window !== 'undefined' && window.api && typeof window.api.saveSettings === 'function') {
     window.api.saveSettings(target);
@@ -2503,6 +2520,696 @@ function populateBannerSettings(customSettings = null) {
   if ($('banner-twitter-input')) $('banner-twitter-input').value = socials.twitter || '';
   if ($('banner-instagram-input')) $('banner-instagram-input').value = socials.instagram || '';
   if ($('banner-youtube-input')) $('banner-youtube-input').value = socials.youtube || '';
+}
+
+// PNGTuber Clamping Helpers
+function clampPngTuberScale(val) {
+  if (val === null || val === undefined || val === '') return 1.0;
+  const num = Number(val);
+  if (!Number.isFinite(num)) return 1.0;
+  return Math.max(0.5, Math.min(2.5, Math.round(num * 100) / 100));
+}
+
+function clampPngTuberThreshold(val) {
+  if (val === null || val === undefined || val === '') return 22;
+  const num = Number(val);
+  if (!Number.isFinite(num)) return 22;
+  return Math.max(1, Math.min(100, Math.round(num)));
+}
+
+function clampPngTuberHoldDelay(val) {
+  if (val === null || val === undefined || val === '') return 180;
+  const num = Number(val);
+  if (!Number.isFinite(num)) return 180;
+  return Math.max(50, Math.min(1000, Math.round(num)));
+}
+
+function clampPngTuberBounce(val) {
+  if (val === null || val === undefined || val === '') return 16;
+  const num = Number(val);
+  if (!Number.isFinite(num)) return 16;
+  return Math.max(0, Math.min(60, Math.round(num)));
+}
+
+function ensurePngTuberSettings() {
+  const target = (typeof window !== 'undefined' && window.appSettings) || appSettings;
+  if (!target.pngtuber) {
+    target.pngtuber = {
+      enabled: true,
+      preset: 'popcat',
+      mode: '2-frame',
+      images: {
+        idle: '/assets/pngtuber/popcat_closed.png',
+        blink: '',
+        talk: '/assets/pngtuber/popcat_open.png',
+        talkBlink: ''
+      },
+      threshold: 22,
+      holdDelay: 180,
+      bounceStyle: 'veadotube',
+      bounceHeight: 16,
+      scale: 1.0,
+      positionX: 50,
+      positionY: 85,
+      blinkInterval: 3.5,
+      blinkDuration: 140,
+      sensitivity: 1.2,
+      reactToGifts: true,
+      inputDeviceId: 'default'
+    };
+  }
+  return target.pngtuber;
+}
+
+// PNGTuber Studio Runtime State
+let pngtuberAudioCtx = null;
+let pngtuberAnalyser = null;
+let pngtuberMicStream = null;
+let pngtuberHoldTimer = null;
+let pngtuberBlinkTimer = null;
+let pngtuberSimulateTimer = null;
+let pngtuberIsTalking = false;
+let pngtuberIsBlinking = false;
+let pngtuberMicMuted = false;
+let pngtuberSmoothedVol = 0;
+let pngtuberAnimFrame = null;
+let pngtuberListenersAttached = false;
+let isDraggingThreshold = false;
+
+function resolveStageFrame() {
+  const cfg = ensurePngTuberSettings();
+  if (pngtuberIsTalking) {
+    if (pngtuberIsBlinking && cfg.images && cfg.images.talkBlink) return cfg.images.talkBlink;
+    return (cfg.images && cfg.images.talk) || (cfg.images && cfg.images.idle) || '/assets/pngtuber/popcat_closed.png';
+  } else {
+    if (pngtuberIsBlinking && cfg.images && cfg.images.blink) return cfg.images.blink;
+    return (cfg.images && cfg.images.idle) || '/assets/pngtuber/popcat_closed.png';
+  }
+}
+
+function updateLiveStageAvatar() {
+  const stageImg = $('pngtuber-stage-img');
+  const stageWrap = $('pngtuber-stage-avatar-wrap');
+  const stageBadge = $('pngtuber-stage-badge');
+  const demoImg = $('ov-demo-pngtuber-img');
+
+  const src = resolveStageFrame();
+  if (stageImg && src && stageImg.getAttribute('src') !== src) {
+    stageImg.src = src;
+  }
+  if (demoImg && src && demoImg.getAttribute('src') !== src) {
+    demoImg.src = src;
+  }
+
+  if (stageWrap) {
+    if (pngtuberIsTalking) {
+      stageWrap.classList.add('is-talking');
+    } else {
+      stageWrap.classList.remove('is-talking');
+    }
+  }
+
+  if (stageBadge) {
+    if (pngtuberIsTalking) {
+      stageBadge.className = 'badge-status-talking';
+      stageBadge.textContent = 'TALKING';
+    } else if (pngtuberIsBlinking) {
+      stageBadge.className = 'badge-status-blink';
+      stageBadge.textContent = 'BLINKING';
+    } else {
+      stageBadge.className = 'badge-status-idle';
+      stageBadge.textContent = 'IDLE';
+    }
+  }
+}
+
+function broadcastPngTuberState(talking, volume, state) {
+  const payload = {
+    type: 'pngtuber:state',
+    talking: Boolean(talking),
+    volume: Number(volume) || 0,
+    state: state || (talking ? 'talk' : 'idle')
+  };
+
+  if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+    try {
+      wsClient.send(JSON.stringify(payload));
+    } catch (e) {}
+  } else if (typeof window !== 'undefined' && window.api && window.api.simulateEvent) {
+    try {
+      window.api.simulateEvent('pngtuber:state', payload);
+    } catch (e) {}
+  }
+}
+
+function schedulePngTuberBlink() {
+  if (pngtuberBlinkTimer) clearTimeout(pngtuberBlinkTimer);
+  const cfg = ensurePngTuberSettings();
+  const intervalSec = Math.max(1.0, Math.min(10.0, Number(cfg.blinkInterval) || 3.5));
+  const delayMs = intervalSec * 1000 * (Math.random() * 0.5 + 0.75);
+
+  pngtuberBlinkTimer = setTimeout(() => {
+    const hasBlink = (pngtuberIsTalking && cfg.images && cfg.images.talkBlink) || (!pngtuberIsTalking && cfg.images && cfg.images.blink);
+    if (hasBlink) {
+      pngtuberIsBlinking = true;
+      updateLiveStageAvatar();
+      const dur = Math.max(80, Math.min(300, Number(cfg.blinkDuration) || 140));
+      setTimeout(() => {
+        pngtuberIsBlinking = false;
+        updateLiveStageAvatar();
+        schedulePngTuberBlink();
+      }, dur);
+    } else {
+      schedulePngTuberBlink();
+    }
+  }, delayMs);
+}
+
+function populatePngTuberSettings() {
+  const cfg = ensurePngTuberSettings();
+
+  if ($('pngtuber-enabled')) $('pngtuber-enabled').checked = cfg.enabled !== false;
+
+  document.querySelectorAll('#tab-pngtuber [data-preset]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.preset === cfg.preset);
+  });
+
+  document.querySelectorAll('#tab-pngtuber [data-mode]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === cfg.mode);
+  });
+
+  const thresh = clampPngTuberThreshold(cfg.threshold);
+  if ($('pngtuber-threshold-slider')) $('pngtuber-threshold-slider').value = thresh;
+  if ($('pngtuber-thresh-badge')) $('pngtuber-thresh-badge').textContent = `${thresh}%`;
+  if ($('pngtuber-threshold-text')) $('pngtuber-threshold-text').textContent = `${thresh}%`;
+  if ($('pngtuber-vu-marker')) $('pngtuber-vu-marker').style.left = `${thresh}%`;
+
+  const hold = clampPngTuberHoldDelay(cfg.holdDelay);
+  if ($('pngtuber-hold-slider')) $('pngtuber-hold-slider').value = hold;
+  if ($('pngtuber-hold-badge')) $('pngtuber-hold-badge').textContent = `${hold} ms`;
+
+  if ($('pngtuber-bounce-style')) $('pngtuber-bounce-style').value = cfg.bounceStyle || 'veadotube';
+
+  const bounceH = clampPngTuberBounce(cfg.bounceHeight);
+  if ($('pngtuber-bounce-slider')) $('pngtuber-bounce-slider').value = bounceH;
+  if ($('pngtuber-bounce-badge')) $('pngtuber-bounce-badge').textContent = `${bounceH} px`;
+  document.documentElement.style.setProperty('--stage-bounce-h', `${bounceH}px`);
+
+  const scale = clampPngTuberScale(cfg.scale);
+  if ($('pngtuber-scale-slider')) $('pngtuber-scale-slider').value = scale;
+  if ($('pngtuber-scale-badge')) $('pngtuber-scale-badge').textContent = `${Math.round(scale * 100)}%`;
+
+  const posY = Math.max(30, Math.min(100, Number(cfg.positionY) || 85));
+  if ($('pngtuber-posy-slider')) $('pngtuber-posy-slider').value = posY;
+  if ($('pngtuber-posy-badge')) $('pngtuber-posy-badge').textContent = `${posY}%`;
+
+  const blinkInt = Math.max(1.0, Math.min(8.0, Number(cfg.blinkInterval) || 3.5));
+  if ($('pngtuber-blink-interval')) $('pngtuber-blink-interval').value = blinkInt;
+  if ($('pngtuber-blink-badge')) $('pngtuber-blink-badge').textContent = `${blinkInt} s`;
+
+  if ($('pngtuber-react-gifts')) $('pngtuber-react-gifts').checked = cfg.reactToGifts !== false;
+
+  // Update Slot Images & Fallback Placeholders
+  const imgs = cfg.images || {};
+  if ($('slot-img-idle')) $('slot-img-idle').src = imgs.idle || '../assets/pngtuber/popcat_closed.png';
+
+  if ($('slot-img-blink')) {
+    if (imgs.blink) {
+      $('slot-img-blink').src = imgs.blink;
+      $('slot-img-blink').classList.remove('hidden');
+      $('slot-ph-blink')?.classList.add('hidden');
+    } else {
+      $('slot-img-blink').classList.add('hidden');
+      $('slot-ph-blink')?.classList.remove('hidden');
+    }
+  }
+
+  if ($('slot-img-talk')) $('slot-img-talk').src = imgs.talk || '../assets/pngtuber/popcat_open.png';
+
+  if ($('slot-img-talkBlink')) {
+    if (imgs.talkBlink) {
+      $('slot-img-talkBlink').src = imgs.talkBlink;
+      $('slot-img-talkBlink').classList.remove('hidden');
+      $('slot-ph-talkBlink')?.classList.add('hidden');
+    } else {
+      $('slot-img-talkBlink').classList.add('hidden');
+      $('slot-ph-talkBlink')?.classList.remove('hidden');
+    }
+  }
+
+  // Live Stage Viewport Styling
+  const stageWrap = $('pngtuber-stage-avatar-wrap');
+  if (stageWrap) {
+    stageWrap.className = 'stage-avatar-wrap bounce-' + (cfg.bounceStyle || 'veadotube');
+    if (cfg.preset === 'pixelcat') {
+      stageWrap.classList.add('pixel-art');
+    }
+  }
+
+  updateLiveStageAvatar();
+}
+
+async function refreshMicrophoneList() {
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+  const select = $('pngtuber-mic-select');
+  if (!select) return;
+
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const audioInputs = devices.filter(d => d.kind === 'audioinput');
+    const cfg = ensurePngTuberSettings();
+    const currentId = cfg.inputDeviceId || 'default';
+
+    select.innerHTML = '<option value="default">Default System Microphone</option>';
+    audioInputs.forEach((dev, idx) => {
+      const opt = document.createElement('option');
+      opt.value = dev.deviceId;
+      opt.textContent = dev.label || `Microphone ${idx + 1}`;
+      if (dev.deviceId === currentId) opt.selected = true;
+      select.appendChild(opt);
+    });
+  } catch (e) {}
+}
+
+async function startPngTuberAudioEngine() {
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    const statusNote = $('pngtuber-mic-status-note');
+    if (statusNote) statusNote.textContent = 'Audio capture unavailable';
+    return;
+  }
+
+  const cfg = ensurePngTuberSettings();
+  const deviceId = cfg.inputDeviceId || 'default';
+  const audioConstraints = (deviceId && deviceId !== 'default')
+    ? { audio: { deviceId: { exact: deviceId } } }
+    : { audio: true };
+
+  try {
+    if (pngtuberMicStream) {
+      pngtuberMicStream.getTracks().forEach(t => t.stop());
+      pngtuberMicStream = null;
+    }
+    if (pngtuberAudioCtx && pngtuberAudioCtx.state !== 'closed') {
+      try { await pngtuberAudioCtx.close(); } catch (e) {}
+      pngtuberAudioCtx = null;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+    pngtuberMicStream = stream;
+
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    pngtuberAudioCtx = new AudioContextClass();
+    if (pngtuberAudioCtx.state === 'suspended') {
+      await pngtuberAudioCtx.resume();
+    }
+
+    const source = pngtuberAudioCtx.createMediaStreamSource(stream);
+    pngtuberAnalyser = pngtuberAudioCtx.createAnalyser();
+    pngtuberAnalyser.fftSize = 512;
+    pngtuberAnalyser.smoothingTimeConstant = 0.2;
+    source.connect(pngtuberAnalyser);
+
+    const statusNote = $('pngtuber-mic-status-note');
+    if (statusNote) statusNote.textContent = 'Microphone Active & Calibrated';
+
+    await refreshMicrophoneList();
+    runAudioAnalysisLoop();
+  } catch (err) {
+    const statusNote = $('pngtuber-mic-status-note');
+    if (statusNote) statusNote.textContent = 'Mic note: ' + err.message;
+  }
+}
+
+function runAudioAnalysisLoop() {
+  if (pngtuberAnimFrame) cancelAnimationFrame(pngtuberAnimFrame);
+  const freqData = new Uint8Array(pngtuberAnalyser ? pngtuberAnalyser.frequencyBinCount : 256);
+
+  function analyze() {
+    let rawVol = 0;
+    if (pngtuberAnalyser && !pngtuberMicMuted) {
+      pngtuberAnalyser.getByteFrequencyData(freqData);
+      let sum = 0;
+      for (let i = 0; i < freqData.length; i++) {
+        sum += freqData[i];
+      }
+      rawVol = (sum / freqData.length) / 255 * 100;
+    }
+
+    const cfg = ensurePngTuberSettings();
+    const sens = Number(cfg.sensitivity) || 1.2;
+    const currentVol = Math.min(100, rawVol * sens);
+
+    if (currentVol > pngtuberSmoothedVol) {
+      pngtuberSmoothedVol = currentVol;
+    } else {
+      pngtuberSmoothedVol = pngtuberSmoothedVol * 0.85 + currentVol * 0.15;
+    }
+
+    if (pngtuberSmoothedVol < 0.5) pngtuberSmoothedVol = 0;
+
+    const pct = Math.min(100, Math.round(pngtuberSmoothedVol));
+    const vuFill = $('pngtuber-vu-fill');
+    const vuText = $('pngtuber-vu-level-text');
+    const demoVu = $('ov-demo-pngtuber-vu');
+
+    if (vuFill) vuFill.style.width = pct + '%';
+    if (vuText) vuText.textContent = pct + '%';
+    if (demoVu) demoVu.style.width = pct + '%';
+
+    const threshold = Number(cfg.threshold) || 22;
+    const holdMs = Number(cfg.holdDelay) || 180;
+
+    if (pct >= threshold) {
+      if (pngtuberHoldTimer) {
+        clearTimeout(pngtuberHoldTimer);
+        pngtuberHoldTimer = null;
+      }
+      if (!pngtuberIsTalking) {
+        pngtuberIsTalking = true;
+        updateLiveStageAvatar();
+        broadcastPngTuberState(true, pct, 'talk');
+      }
+    } else {
+      if (pngtuberIsTalking && !pngtuberHoldTimer) {
+        pngtuberHoldTimer = setTimeout(() => {
+          pngtuberIsTalking = false;
+          pngtuberHoldTimer = null;
+          updateLiveStageAvatar();
+          broadcastPngTuberState(false, pct, 'idle');
+        }, holdMs);
+      }
+    }
+
+    pngtuberAnimFrame = requestAnimationFrame(analyze);
+  }
+
+  analyze();
+}
+
+function applySlotImage(slot, url) {
+  const cfg = ensurePngTuberSettings();
+  if (!cfg.images) cfg.images = {};
+  cfg.images[slot] = url;
+  cfg.preset = 'custom';
+  populatePngTuberSettings();
+  saveSettingsDebounced();
+  showToast(`Updated ${slot} frame image!`, 'success', 'PNGTuber');
+}
+
+async function handleBrowseSlot(slot) {
+  if (typeof window !== 'undefined' && window.api && typeof window.api.selectPngTuberImage === 'function') {
+    const res = await window.api.selectPngTuberImage(slot);
+    if (res && res.success && res.url) {
+      applySlotImage(slot, res.url);
+    }
+  } else {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = () => {
+      if (!input.files.length) return;
+      const reader = new FileReader();
+      reader.onload = () => applySlotImage(slot, reader.result);
+      reader.readAsDataURL(input.files[0]);
+    };
+    input.click();
+  }
+}
+
+function handleResetSlot(slot) {
+  const cfg = ensurePngTuberSettings();
+  if (slot === 'idle') {
+    cfg.images.idle = (cfg.preset === 'pixelcat') ? '/assets/pngtuber/pixelcat_closed.png' : '/assets/pngtuber/popcat_closed.png';
+  } else if (slot === 'talk') {
+    cfg.images.talk = (cfg.preset === 'pixelcat') ? '/assets/pngtuber/pixelcat_open.png' : '/assets/pngtuber/popcat_open.png';
+  } else {
+    cfg.images[slot] = '';
+  }
+  populatePngTuberSettings();
+  saveSettingsDebounced();
+}
+
+function updateThresholdFromClientX(clientX) {
+  const track = $('pngtuber-vu-track');
+  if (!track) return;
+  const rect = track.getBoundingClientRect();
+  const rawPct = ((clientX - rect.left) / rect.width) * 100;
+  const clamped = clampPngTuberThreshold(rawPct);
+
+  const cfg = ensurePngTuberSettings();
+  cfg.threshold = clamped;
+
+  if ($('pngtuber-threshold-slider')) $('pngtuber-threshold-slider').value = clamped;
+  if ($('pngtuber-thresh-badge')) $('pngtuber-thresh-badge').textContent = `${clamped}%`;
+  if ($('pngtuber-threshold-text')) $('pngtuber-threshold-text').textContent = `${clamped}%`;
+  if ($('pngtuber-vu-marker')) $('pngtuber-vu-marker').style.left = `${clamped}%`;
+
+  saveSettingsDebounced();
+}
+
+function initPngTuberStudio() {
+  populatePngTuberSettings();
+
+  if (pngtuberListenersAttached) return;
+  pngtuberListenersAttached = true;
+
+  // 1. Enabled toggle
+  $('pngtuber-enabled')?.addEventListener('change', e => {
+    const cfg = ensurePngTuberSettings();
+    cfg.enabled = e.target.checked;
+    saveSettingsDebounced();
+  });
+
+  // 2. Preset choices
+  document.querySelectorAll('#tab-pngtuber [data-preset]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const preset = btn.dataset.preset;
+      const cfg = ensurePngTuberSettings();
+      cfg.preset = preset;
+
+      if (preset === 'popcat') {
+        cfg.images = {
+          idle: '/assets/pngtuber/popcat_closed.png',
+          blink: '',
+          talk: '/assets/pngtuber/popcat_open.png',
+          talkBlink: ''
+        };
+        cfg.mode = '2-frame';
+      } else if (preset === 'pixelcat') {
+        cfg.images = {
+          idle: '/assets/pngtuber/pixelcat_closed.png',
+          blink: '',
+          talk: '/assets/pngtuber/pixelcat_open.png',
+          talkBlink: ''
+        };
+        cfg.mode = '2-frame';
+      }
+
+      populatePngTuberSettings();
+      saveSettingsDebounced();
+      showToast(`Activated ${preset === 'popcat' ? 'Pop Cat' : (preset === 'pixelcat' ? 'Cozy Pixel Cat' : 'Custom')} preset!`, 'success', 'PNGTuber');
+    });
+  });
+
+  // 3. Mode buttons (2-Frame vs 4-Frame)
+  document.querySelectorAll('#tab-pngtuber [data-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.mode;
+      const cfg = ensurePngTuberSettings();
+      cfg.mode = mode;
+      populatePngTuberSettings();
+      saveSettingsDebounced();
+    });
+  });
+
+  // 4. Stage background toggles
+  document.querySelectorAll('#tab-pngtuber [data-bg]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#tab-pngtuber [data-bg]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const viewport = $('pngtuber-stage-viewport');
+      if (viewport) {
+        viewport.className = `stage-viewport bg-${btn.dataset.bg}`;
+      }
+    });
+  });
+
+  // 5. Sliders
+  $('pngtuber-threshold-slider')?.addEventListener('input', e => {
+    const val = clampPngTuberThreshold(e.target.value);
+    const cfg = ensurePngTuberSettings();
+    cfg.threshold = val;
+    if ($('pngtuber-thresh-badge')) $('pngtuber-thresh-badge').textContent = `${val}%`;
+    if ($('pngtuber-threshold-text')) $('pngtuber-threshold-text').textContent = `${val}%`;
+    if ($('pngtuber-vu-marker')) $('pngtuber-vu-marker').style.left = `${val}%`;
+    saveSettingsDebounced();
+  });
+
+  $('pngtuber-hold-slider')?.addEventListener('input', e => {
+    const val = clampPngTuberHoldDelay(e.target.value);
+    const cfg = ensurePngTuberSettings();
+    cfg.holdDelay = val;
+    if ($('pngtuber-hold-badge')) $('pngtuber-hold-badge').textContent = `${val} ms`;
+    saveSettingsDebounced();
+  });
+
+  $('pngtuber-bounce-style')?.addEventListener('change', e => {
+    const cfg = ensurePngTuberSettings();
+    cfg.bounceStyle = e.target.value;
+    const stageWrap = $('pngtuber-stage-avatar-wrap');
+    if (stageWrap) {
+      stageWrap.className = 'stage-avatar-wrap bounce-' + cfg.bounceStyle;
+      if (cfg.preset === 'pixelcat') stageWrap.classList.add('pixel-art');
+    }
+    saveSettingsDebounced();
+  });
+
+  $('pngtuber-bounce-slider')?.addEventListener('input', e => {
+    const val = clampPngTuberBounce(e.target.value);
+    const cfg = ensurePngTuberSettings();
+    cfg.bounceHeight = val;
+    if ($('pngtuber-bounce-badge')) $('pngtuber-bounce-badge').textContent = `${val} px`;
+    document.documentElement.style.setProperty('--stage-bounce-h', `${val}px`);
+    saveSettingsDebounced();
+  });
+
+  $('pngtuber-scale-slider')?.addEventListener('input', e => {
+    const val = clampPngTuberScale(e.target.value);
+    const cfg = ensurePngTuberSettings();
+    cfg.scale = val;
+    if ($('pngtuber-scale-badge')) $('pngtuber-scale-badge').textContent = `${Math.round(val * 100)}%`;
+    saveSettingsDebounced();
+  });
+
+  $('pngtuber-posy-slider')?.addEventListener('input', e => {
+    const val = Math.max(30, Math.min(100, Number(e.target.value) || 85));
+    const cfg = ensurePngTuberSettings();
+    cfg.positionY = val;
+    if ($('pngtuber-posy-badge')) $('pngtuber-posy-badge').textContent = `${val}%`;
+    saveSettingsDebounced();
+  });
+
+  $('pngtuber-blink-interval')?.addEventListener('input', e => {
+    const val = Math.max(1.0, Math.min(8.0, Number(e.target.value) || 3.5));
+    const cfg = ensurePngTuberSettings();
+    cfg.blinkInterval = val;
+    if ($('pngtuber-blink-badge')) $('pngtuber-blink-badge').textContent = `${val} s`;
+    schedulePngTuberBlink();
+    saveSettingsDebounced();
+  });
+
+  $('pngtuber-react-gifts')?.addEventListener('change', e => {
+    const cfg = ensurePngTuberSettings();
+    cfg.reactToGifts = e.target.checked;
+    saveSettingsDebounced();
+  });
+
+  // 6. Draggable VU Marker
+  const track = $('pngtuber-vu-track');
+  if (track) {
+    track.addEventListener('mousedown', e => {
+      isDraggingThreshold = true;
+      updateThresholdFromClientX(e.clientX);
+    });
+    window.addEventListener('mousemove', e => {
+      if (isDraggingThreshold) updateThresholdFromClientX(e.clientX);
+    });
+    window.addEventListener('mouseup', () => {
+      isDraggingThreshold = false;
+    });
+  }
+
+  // 7. Mic actions
+  $('pngtuber-mic-select')?.addEventListener('change', e => {
+    const cfg = ensurePngTuberSettings();
+    cfg.inputDeviceId = e.target.value;
+    startPngTuberAudioEngine();
+    saveSettingsDebounced();
+  });
+
+  $('pngtuber-refresh-mics-btn')?.addEventListener('click', async () => {
+    await refreshMicrophoneList();
+    showToast('Refreshed audio input devices!', 'info', 'PNGTuber');
+  });
+
+  $('pngtuber-mic-toggle-btn')?.addEventListener('click', () => {
+    pngtuberMicMuted = !pngtuberMicMuted;
+    const lbl = $('pngtuber-mic-btn-label');
+    if (lbl) lbl.textContent = pngtuberMicMuted ? 'Unmute Test Mic' : 'Mute Test Mic';
+    showToast(pngtuberMicMuted ? 'Test microphone muted' : 'Test microphone active', 'info', 'PNGTuber');
+  });
+
+  $('pngtuber-test-talk-btn')?.addEventListener('click', () => {
+    if (pngtuberSimulateTimer) clearTimeout(pngtuberSimulateTimer);
+    pngtuberIsTalking = true;
+    updateLiveStageAvatar();
+    broadcastPngTuberState(true, 80, 'talk');
+
+    const vuFill = $('pngtuber-vu-fill');
+    const vuText = $('pngtuber-vu-level-text');
+    if (vuFill) vuFill.style.width = '80%';
+    if (vuText) vuText.textContent = '80%';
+
+    pngtuberSimulateTimer = setTimeout(() => {
+      pngtuberIsTalking = false;
+      updateLiveStageAvatar();
+      broadcastPngTuberState(false, 0, 'idle');
+      if (vuFill) vuFill.style.width = '0%';
+      if (vuText) vuText.textContent = '0%';
+    }, 2000);
+  });
+
+  // 8. Slot Browse & Reset Buttons
+  document.querySelectorAll('.slot-browse-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleBrowseSlot(btn.dataset.slot));
+  });
+
+  document.querySelectorAll('.slot-reset-btn, .slot-clear-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleResetSlot(btn.dataset.slot));
+  });
+
+  // 9. Slot Drag and Drop
+  ['idle', 'blink', 'talk', 'talkBlink'].forEach(slot => {
+    const dropzone = $(`slot-drop-${slot}`);
+    if (!dropzone) return;
+    dropzone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropzone.classList.add('drag-over');
+    });
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('drag-over');
+    });
+    dropzone.addEventListener('drop', async e => {
+      e.preventDefault();
+      dropzone.classList.remove('drag-over');
+      if (!e.dataTransfer.files || !e.dataTransfer.files.length) return;
+      const file = e.dataTransfer.files[0];
+      if (!file.type.startsWith('image/')) {
+        showToast('Please drop an image file (PNG, WebP, GIF, JPG)', 'warning', 'PNGTuber');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result;
+        const ext = file.name.split('.').pop() || 'png';
+        if (typeof window !== 'undefined' && window.api && typeof window.api.savePngTuberImage === 'function') {
+          const res = await window.api.savePngTuberImage(slot, base64, ext);
+          if (res && res.success && res.url) {
+            applySlotImage(slot, res.url);
+            return;
+          }
+        }
+        applySlotImage(slot, base64);
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+
+  // Start Audio Engine and Blinking
+  startPngTuberAudioEngine();
+  schedulePngTuberBlink();
 }
 
 // Account Modal Workflow
@@ -4437,6 +5144,11 @@ if (typeof module !== 'undefined' && module.exports) {
     saveSettingsDebounced,
     saveCurrentSettings,
     clampBannerScale,
-    populateBannerSettings
+    populateBannerSettings,
+    clampPngTuberScale,
+    clampPngTuberThreshold,
+    clampPngTuberHoldDelay,
+    clampPngTuberBounce,
+    initPngTuberStudio
   };
 }

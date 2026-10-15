@@ -6,3 +6,4 @@ desktop/settings.json.bak
 desktop/backups/
 .deploy-cache.json
 *.log
+bedrock_server/
