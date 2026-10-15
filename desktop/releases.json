@@ -1,6 +1,24 @@
 {
-    "latest":  "1.5.7",
+    "latest":  "1.5.8",
     "releases":  [
+                     {
+                         "version":  "1.5.8",
+                         "releaseName":  "Shing Live v1.5.8 - Authentic Shing Chibi \u0026 Cozy Pixel Cat PNGTuber Studio",
+                         "releaseDate":  "2026-10-15",
+                         "type":  "feature",
+                         "summary":  "Complete replacement of Pop Cat with authentic Shing Chibi and Cozy Pixel Cat 4-frame avatars, robust image path resolution for Electron desktop and browser overlays, and refined responsive slider layouts.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.5.8.zip",
+                         "highlights":  [
+                                            "Shing Chibi 4-Frame Avatar: Signature anime streamer chibi with authentic twintails, pastel violet hoodie, and full idle, blink, talk, and talk-blink states",
+                                            "Cozy Pixel Cat 4-Frame Avatar: Authentic calico cat with strawberry beret, peach and violet patches, emerald eyes, and bell collar",
+                                            "Pop Cat Removal: Complete elimination of Pop Cat assets, presets, and options with automatic migration of legacy configurations",
+                                            "Robust Image Path Resolution: Fixed Electron file protocol asset resolution to eliminate broken preview images",
+                                            "Refined Studio Layout: Streamlined microphone input row and responsive two-column audio sliders preventing layout collisions"
+                                        ],
+                         "notes":  "Authentic Shing Chibi and Cozy Pixel Cat PNGTuber studio with Pop Cat removal and layout refinements.",
+                         "packageSize":  "4.16 MB",
+                         "checksum":  "1338321e30c062a5d1330814412261e015f5e080392cbe508740818ef96a2f84"
+                     },
                      {
                          "version":  "1.5.7",
                          "releaseName":  "Shing Live v1.5.7 - Audio-Reactive PNGTuber Studio",
