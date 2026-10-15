@@ -60,7 +60,7 @@ assert.ok(
 
 // Verify standalone fallback data
 assert.ok(rootBannerHtml.includes('shimmy_ming'), 'Root banner must contain default streamer name');
-assert.ok(rootBannerHtml.includes('Cozy Variety Streamer'), 'Root banner must contain default subtitle');
+assert.ok(rootBannerHtml.includes('Cute ang mag follow'), 'Root banner must contain default subtitle');
 
 // =========================================================================
 // Test 2: deploy.ps1 deployment sync verification

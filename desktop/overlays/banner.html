@@ -710,8 +710,8 @@
               <span class="badge-accent-line"></span>
               <span class="badge-text" id="banner-scene1-tag">OFFICIAL STREAMER</span>
             </div>
-            <h1 class="banner-name-text" id="banner-name-text">shimmy_ming</h1>
-            <div class="banner-subtitle-text" id="banner-subtitle-text">Cozy Variety Streamer</div>
+            <h1 class="banner-name-text" id="banner-name-text">I am shing</h1>
+            <div class="banner-subtitle-text" id="banner-subtitle-text">Cute ang mag follow</div>
             <div class="banner-divider"></div>
           </div>
 
@@ -721,12 +721,12 @@
               <span class="badge-accent-line"></span>
               <span class="badge-text" id="banner-status-badge">LIVE NOW</span>
             </div>
-            <div class="banner-bio-text" id="banner-bio-text">Welcome to the cozy corner! Streaming daily games, art, and chill chats.</div>
-            <div class="banner-schedule-row" id="banner-schedule-row">
+            <div class="banner-bio-text" id="banner-bio-text">Cute ang mag follow</div>
+            <div class="banner-schedule-row" id="banner-schedule-row" style="display: none;">
               <span class="schedule-clock-icon">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               </span>
-              <span class="banner-schedule-text" id="banner-schedule-text">Daily at 7:00 PM EST</span>
+              <span class="banner-schedule-text" id="banner-schedule-text"></span>
             </div>
           </div>
 
@@ -802,11 +802,11 @@ let currentBanner = {
   borderGlow: true,
   showAvatar: true,
   avatarUrl: '',
-  paragraphs: '',
-  name: 'shimmy_ming',
-  subtitle: 'Cozy Variety Streamer',
-  bio: 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.',
-  schedule: 'Daily at 7:00 PM EST',
+  paragraphs: 'I am shing\nCute ang mag follow',
+  name: 'I am shing',
+  subtitle: 'Cute ang mag follow',
+  bio: '',
+  schedule: '',
   statusBadge: 'LIVE NOW',
   socials: {
     twitch: 'shimmy_ming',
@@ -1100,10 +1100,10 @@ function applyBannerSettings(banner) {
   // Per paragraph line synchronization
   if (typeof banner.paragraphs === 'string' && banner.paragraphs.trim()) {
     const lines = banner.paragraphs.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    if (lines.length > 0 && lines[0] && nameEl) nameEl.textContent = lines[0];
-    if (lines.length > 1 && lines[1] && subtitleEl) subtitleEl.textContent = lines[1];
-    if (lines.length > 2 && lines[2] && scheduleEl) scheduleEl.textContent = lines[2];
-    if (lines.length > 3 && lines[3] && bioEl) bioEl.textContent = lines[3];
+    if (nameEl) nameEl.textContent = lines[0] || currentBanner.name || '';
+    if (subtitleEl) subtitleEl.textContent = lines[1] || currentBanner.subtitle || '';
+    if (scheduleEl) scheduleEl.textContent = lines[2] || currentBanner.schedule || '';
+    if (bioEl) bioEl.textContent = lines[3] || (lines.length > 1 ? lines[1] : (currentBanner.bio || ''));
   } else {
     if (typeof currentBanner.name === 'string' && nameEl) {
       nameEl.textContent = currentBanner.name;
@@ -1117,6 +1117,10 @@ function applyBannerSettings(banner) {
     if (typeof currentBanner.schedule === 'string' && scheduleEl) {
       scheduleEl.textContent = currentBanner.schedule;
     }
+  }
+  const scheduleRow = document.getElementById('banner-schedule-row');
+  if (scheduleRow && scheduleEl) {
+    scheduleRow.style.display = scheduleEl.textContent.trim() ? '' : 'none';
   }
   if (typeof currentBanner.statusBadge === 'string' && statusBadgeEl) {
     statusBadgeEl.textContent = currentBanner.statusBadge;

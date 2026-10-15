@@ -100,6 +100,15 @@ class OverlayServer {
     this.settings.banner.scale = this.clampBannerScale(this.settings.banner.scale);
     this.settings.banner.sceneDuration = this.clampBannerDuration(this.settings.banner.sceneDuration);
 
+    const oldDefaultParagraphs = 'shimmy_ming\nCozy Variety Streamer\nDaily at 7:00 PM EST\nWelcome to the cozy corner! Streaming daily games, art, and chill chats.';
+    if (this.settings.banner.paragraphs === oldDefaultParagraphs) {
+      this.settings.banner.paragraphs = 'I am shing\nCute ang mag follow';
+      if (this.settings.banner.name === 'shimmy_ming') this.settings.banner.name = 'I am shing';
+      if (this.settings.banner.subtitle === 'Cozy Variety Streamer') this.settings.banner.subtitle = 'Cute ang mag follow';
+      if (this.settings.banner.schedule === 'Daily at 7:00 PM EST') this.settings.banner.schedule = '';
+      if (this.settings.banner.bio === 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.') this.settings.banner.bio = '';
+    }
+
     const initialSec = Math.max(0, (Number(this.settings.timer.durationMin) || 30) * 60);
     this.timerState = {
       remainingSeconds: initialSec,
@@ -400,11 +409,11 @@ class OverlayServer {
         borderGlow: true,
         showAvatar: true,
         avatarUrl: '',
-        paragraphs: 'shimmy_ming\nCozy Variety Streamer\nDaily at 7:00 PM EST\nWelcome to the cozy corner! Streaming daily games, art, and chill chats.',
-        name: 'shimmy_ming',
-        subtitle: 'Cozy Variety Streamer',
-        bio: 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.',
-        schedule: 'Daily at 7:00 PM EST',
+        paragraphs: 'I am shing\nCute ang mag follow',
+        name: 'I am shing',
+        subtitle: 'Cute ang mag follow',
+        bio: '',
+        schedule: '',
         statusBadge: 'LIVE NOW',
         socials: {
           twitch: 'shimmy_ming',

@@ -4026,10 +4026,11 @@ document.addEventListener('DOMContentLoaded', () => {
         shineEffect: true,
         borderGlow: true,
         showAvatar: true,
-        name: appSettings.username || 'shimmy_ming',
-        subtitle: 'Cozy Variety Streamer',
-        bio: 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.',
-        schedule: 'Daily at 7:00 PM EST',
+        paragraphs: 'I am shing\nCute ang mag follow',
+        name: 'I am shing',
+        subtitle: 'Cute ang mag follow',
+        bio: '',
+        schedule: '',
         statusBadge: 'LIVE NOW',
         socials: {
           twitch: appSettings.username || 'shimmy_ming',
@@ -4194,7 +4195,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function syncParagraphsFromLineInputs() {
     const banner = ensureBannerSettings();
-    const fullText = [banner.name || '', banner.subtitle || '', banner.schedule || '', banner.bio || ''].join('\n');
+    const parts = [banner.name || '', banner.subtitle || '', banner.schedule || '', banner.bio || ''];
+    while (parts.length > 0 && !parts[parts.length - 1]) {
+      parts.pop();
+    }
+    const fullText = parts.join('\n');
     banner.paragraphs = fullText;
     if ($('banner-paragraphs-input')) {
       $('banner-paragraphs-input').value = fullText;
@@ -4205,22 +4210,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const banner = ensureBannerSettings();
     banner.paragraphs = e.target.value;
     const lines = e.target.value.split(/\r?\n/);
-    if (lines[0] !== undefined) {
-      banner.name = lines[0];
-      if ($('banner-name-input')) $('banner-name-input').value = lines[0];
-    }
-    if (lines[1] !== undefined) {
-      banner.subtitle = lines[1];
-      if ($('banner-subtitle-input')) $('banner-subtitle-input').value = lines[1];
-    }
-    if (lines[2] !== undefined) {
-      banner.schedule = lines[2];
-      if ($('banner-schedule-input')) $('banner-schedule-input').value = lines[2];
-    }
-    if (lines[3] !== undefined) {
-      banner.bio = lines[3];
-      if ($('banner-bio-input')) $('banner-bio-input').value = lines[3];
-    }
+    banner.name = lines[0] || '';
+    if ($('banner-name-input')) $('banner-name-input').value = banner.name;
+
+    banner.subtitle = lines[1] || '';
+    if ($('banner-subtitle-input')) $('banner-subtitle-input').value = banner.subtitle;
+
+    banner.schedule = lines[2] || '';
+    if ($('banner-schedule-input')) $('banner-schedule-input').value = banner.schedule;
+
+    banner.bio = lines[3] || '';
+    if ($('banner-bio-input')) $('banner-bio-input').value = banner.bio;
     saveSettingsDebounced();
   });
 

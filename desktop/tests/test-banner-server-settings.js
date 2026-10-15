@@ -28,8 +28,8 @@ async function run() {
     assert.strictEqual(repoSettings.banner.scale, 1.0, 'repo settings banner.scale must be 1.0');
     assert.strictEqual(repoSettings.banner.topper, 'bear', 'repo settings banner.topper must be bear');
     assert.strictEqual(repoSettings.banner.animation, 'float', 'repo settings banner.animation must be float');
-    assert.strictEqual(repoSettings.banner.name, 'shimmy_ming', 'repo settings banner.name must be shimmy_ming');
-    assert.strictEqual(repoSettings.banner.subtitle, 'Cozy Variety Streamer', 'repo settings banner.subtitle must match');
+    assert.strictEqual(repoSettings.banner.name, 'I am shing', 'repo settings banner.name must be I am shing');
+    assert.strictEqual(repoSettings.banner.subtitle, 'Cute ang mag follow', 'repo settings banner.subtitle must match');
     assert.ok(repoSettings.banner.socials, 'repo settings banner.socials must exist');
     assert.strictEqual(repoSettings.banner.socials.twitch, 'shimmy_ming');
     assert.strictEqual(repoSettings.banner.socials.tiktok, '@shimmy_ming');
@@ -62,10 +62,10 @@ async function run() {
     assert.strictEqual(defaults.banner.shineEffect, true, 'banner.shineEffect default must be true');
     assert.strictEqual(defaults.banner.borderGlow, true, 'banner.borderGlow default must be true');
     assert.strictEqual(defaults.banner.showAvatar, true, 'banner.showAvatar default must be true');
-    assert.strictEqual(defaults.banner.name, 'shimmy_ming', 'banner.name default must be shimmy_ming');
-    assert.strictEqual(defaults.banner.subtitle, 'Cozy Variety Streamer', 'banner.subtitle default must be Cozy Variety Streamer');
-    assert.strictEqual(defaults.banner.bio, 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.', 'banner.bio default matches spec');
-    assert.strictEqual(defaults.banner.schedule, 'Daily at 7:00 PM EST', 'banner.schedule default matches spec');
+    assert.strictEqual(defaults.banner.name, 'I am shing', 'banner.name default must be I am shing');
+    assert.strictEqual(defaults.banner.subtitle, 'Cute ang mag follow', 'banner.subtitle default must be Cute ang mag follow');
+    assert.strictEqual(defaults.banner.bio, '', 'banner.bio default matches');
+    assert.strictEqual(defaults.banner.schedule, '', 'banner.schedule default matches');
     assert.strictEqual(defaults.banner.statusBadge, 'LIVE NOW', 'banner.statusBadge default matches spec');
     assert.ok(defaults.banner.socials, 'banner.socials must exist');
     assert.strictEqual(defaults.banner.socials.twitch, 'shimmy_ming', 'socials.twitch must be shimmy_ming');
@@ -118,7 +118,7 @@ async function run() {
     assert.strictEqual(partialServer.settings.banner.enabled, true, 'Partial settings must populate enabled default');
     assert.strictEqual(partialServer.settings.banner.topper, 'bear', 'Partial settings must populate topper default');
     assert.strictEqual(partialServer.settings.banner.animation, 'float', 'Partial settings must populate animation default');
-    assert.strictEqual(partialServer.settings.banner.name, 'shimmy_ming', 'Partial settings must populate name default');
+    assert.strictEqual(partialServer.settings.banner.name, 'I am shing', 'Partial settings must populate name default');
     assert.ok(partialServer.settings.banner.socials, 'Partial settings must populate socials');
     assert.strictEqual(partialServer.settings.banner.socials.twitch, 'shimmy_ming', 'Partial settings must populate twitch');
 
@@ -146,7 +146,7 @@ async function run() {
     assert.strictEqual(apiSettingsRes.statusCode, 200, 'GET /api/settings must respond with 200');
     const apiSettingsJson = JSON.parse(apiSettingsRes.body);
     assert.ok(apiSettingsJson.banner, 'GET /api/settings response must contain banner');
-    assert.strictEqual(apiSettingsJson.banner.name, 'shimmy_ming');
+    assert.strictEqual(apiSettingsJson.banner.name, 'I am shing');
     assert.strictEqual(apiSettingsJson.banner.scale, 1.0);
 
     // 7. Test WebSocket connection receives banner in init and in settings:update
@@ -169,20 +169,20 @@ async function run() {
     const initMsg = wsMessages.find(m => m.type === 'init');
     assert.ok(initMsg, 'Client must receive init message');
     assert.ok(initMsg.settings.banner, 'init message settings must include banner');
-    assert.strictEqual(initMsg.settings.banner.name, 'shimmy_ming');
+    assert.strictEqual(initMsg.settings.banner.name, 'I am shing');
 
     // Test saveSettings triggers settings:update with clamped banner scale
     server.saveSettings({
       banner: {
-        name: 'UpdatedAki',
+        name: 'UpdatedStreamer',
         scale: 2.5 // Should clamp to 1.5
       }
     });
 
     await new Promise(resolve => setTimeout(resolve, 150));
-    const updateMsg = wsMessages.find(m => m.type === 'settings:update' && m.settings && m.settings.banner && m.settings.banner.name === 'UpdatedAki');
+    const updateMsg = wsMessages.find(m => m.type === 'settings:update' && m.settings && m.settings.banner && m.settings.banner.name === 'UpdatedStreamer');
     assert.ok(updateMsg, 'Client must receive settings:update payload with banner');
-    assert.strictEqual(updateMsg.settings.banner.name, 'UpdatedAki', 'settings:update must contain updated name');
+    assert.strictEqual(updateMsg.settings.banner.name, 'UpdatedStreamer', 'settings:update must contain updated name');
     assert.strictEqual(updateMsg.settings.banner.scale, 1.5, 'settings:update must contain clamped scale of 1.5');
 
     ws.close();
