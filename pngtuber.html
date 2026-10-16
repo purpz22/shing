@@ -186,11 +186,13 @@
   let config = {
     enabled: true,
     preset: 'shing',
-    mode: '4-frame',
+    mode: 'multi-frame',
     images: {
       idle: '/assets/pngtuber/shing_idle.png',
       blink: '/assets/pngtuber/shing_blink.png',
       talk: '/assets/pngtuber/shing_talk.png',
+      talkHalf: '/assets/pngtuber/shing_talk_half.png',
+      talkHalfBlink: '/assets/pngtuber/shing_talk_half_blink.png',
       talkBlink: '/assets/pngtuber/shing_talk_blink.png',
       happy: '/assets/pngtuber/shing_happy.png'
     },
@@ -208,18 +210,42 @@
 
   // Live runtime state
   let isTalking = false;
+  let isPaused = false;
   let isBlinking = false;
   let isHappy = false;
+  let mouthPhase = 0; // 0 = talk_half, 1 = talk_open
+  let flapIntervalTimer = null;
+  const TALK_FLAP_INTERVAL = 120; // 120ms conversational mouth-flap cadence
   let blinkTimer = null;
   let celebrateTimer = null;
   let happyTimer = null;
   let bubbleTimer = null;
+
+  function startFlapEngine() {
+    if (flapIntervalTimer) clearInterval(flapIntervalTimer);
+    flapIntervalTimer = setInterval(() => {
+      if (isTalking && !isPaused) {
+        mouthPhase = (mouthPhase === 0) ? 1 : 0;
+        updateDisplay();
+      }
+    }, TALK_FLAP_INTERVAL);
+  }
+
+  function stopFlapEngine() {
+    if (flapIntervalTimer) {
+      clearInterval(flapIntervalTimer);
+      flapIntervalTimer = null;
+    }
+    mouthPhase = 0;
+  }
 
   // Image cache with async pre-decoding to prevent frame-swap stutter on low-end PCs
   const preloadedImages = {
     idle: new Image(),
     blink: new Image(),
     talk: new Image(),
+    talkHalf: new Image(),
+    talkHalfBlink: new Image(),
     talkBlink: new Image(),
     happy: new Image()
   };
@@ -240,6 +266,8 @@
     preloadSingleImage(preloadedImages.idle, config.images.idle);
     preloadSingleImage(preloadedImages.blink, config.images.blink);
     preloadSingleImage(preloadedImages.talk, config.images.talk);
+    preloadSingleImage(preloadedImages.talkHalf, config.images.talkHalf);
+    preloadSingleImage(preloadedImages.talkHalfBlink, config.images.talkHalfBlink);
     preloadSingleImage(preloadedImages.talkBlink, config.images.talkBlink);
     preloadSingleImage(preloadedImages.happy, config.images.happy);
   }
@@ -248,17 +276,42 @@
     let raw = '';
     if (isHappy && config.images.happy) {
       raw = config.images.happy;
-    } else if (isTalking) {
-      if (isBlinking && config.images.talkBlink) {
-        raw = config.images.talkBlink;
-      } else {
-        raw = config.images.talk || config.images.idle || '/assets/pngtuber/shing_idle.png';
-      }
     } else {
-      if (isBlinking && config.images.blink) {
-        raw = config.images.blink;
+      const mode = config.mode || 'multi-frame';
+      if (isTalking || isPaused) {
+        if (mode === '2-frame') {
+          raw = config.images.talk || config.images.idle || '/assets/pngtuber/shing_idle.png';
+        } else if (mode === '4-frame') {
+          if (isBlinking && config.images.talkBlink) {
+            raw = config.images.talkBlink;
+          } else {
+            raw = config.images.talk || config.images.idle || '/assets/pngtuber/shing_idle.png';
+          }
+        } else {
+          // multi-frame mode:
+          const isHalf = isPaused || (mouthPhase === 0);
+          if (isHalf) {
+            if (isBlinking && config.images.talkHalfBlink) {
+              raw = config.images.talkHalfBlink;
+            } else if (isBlinking && config.images.talkBlink) {
+              raw = config.images.talkBlink;
+            } else {
+              raw = config.images.talkHalf || config.images.talk || config.images.idle || '/assets/pngtuber/shing_idle.png';
+            }
+          } else {
+            if (isBlinking && config.images.talkBlink) {
+              raw = config.images.talkBlink;
+            } else {
+              raw = config.images.talk || config.images.idle || '/assets/pngtuber/shing_idle.png';
+            }
+          }
+        }
       } else {
-        raw = config.images.idle || '/assets/pngtuber/shing_idle.png';
+        if (isBlinking && config.images.blink && mode !== '2-frame') {
+          raw = config.images.blink;
+        } else {
+          raw = config.images.idle || '/assets/pngtuber/shing_idle.png';
+        }
       }
     }
     return resolvePngTuberImgSrc(raw);
@@ -270,7 +323,7 @@
       avatarImg.src = targetSrc;
     }
 
-    if (isTalking) {
+    if (isTalking || isPaused) {
       avatarContainer.classList.add('is-talking');
     } else {
       avatarContainer.classList.remove('is-talking');
@@ -289,6 +342,16 @@
     if (config.images) {
       if (!config.images.idle || config.images.idle.includes('popcat')) config.images.idle = '/assets/pngtuber/shing_idle.png';
       if (!config.images.talk || config.images.talk.includes('popcat')) config.images.talk = '/assets/pngtuber/shing_talk.png';
+      if (!config.images.talkHalf || config.images.talkHalf.includes('popcat')) {
+        config.images.talkHalf = config.preset === 'pixelcat'
+          ? '/assets/pngtuber/pixelcat_talk_half.png'
+          : '/assets/pngtuber/shing_talk_half.png';
+      }
+      if (!config.images.talkHalfBlink || config.images.talkHalfBlink.includes('popcat')) {
+        config.images.talkHalfBlink = config.preset === 'pixelcat'
+          ? '/assets/pngtuber/pixelcat_talk_half_blink.png'
+          : '/assets/pngtuber/shing_talk_half_blink.png';
+      }
       if (config.images.blink && config.images.blink.includes('popcat')) config.images.blink = '/assets/pngtuber/shing_blink.png';
       if (config.images.talkBlink && config.images.talkBlink.includes('popcat')) config.images.talkBlink = '/assets/pngtuber/shing_talk_blink.png';
       if (!config.images.happy || config.images.happy.includes('popcat')) {
@@ -334,7 +397,8 @@
 
     blinkTimer = setTimeout(() => {
       // Only blink if blink frames are configured
-      const hasBlinkFrame = (isTalking && config.images.talkBlink) || (!isTalking && config.images.blink);
+      const hasBlinkFrame = ((isTalking || isPaused) && (config.images.talkBlink || config.images.talkHalfBlink)) ||
+                            (!isTalking && !isPaused && config.images.blink);
       if (hasBlinkFrame) {
         isBlinking = true;
         updateDisplay();
@@ -443,7 +507,18 @@
     }
 
     if (msg.type === 'pngtuber:state') {
+      const wasTalking = isTalking;
       isTalking = Boolean(msg.talking);
+      isPaused = Boolean(msg.paused);
+
+      if (isTalking && !isPaused) {
+        if (!wasTalking || !flapIntervalTimer) {
+          startFlapEngine();
+        }
+      } else if (!isTalking) {
+        stopFlapEngine();
+      }
+
       if (msg.state === 'happy') {
         triggerCelebration(msg.message || 'Thank you for the gift!', true);
       } else {
@@ -517,16 +592,25 @@
           const holdMs = Number(config.holdDelay) || 180;
 
           if (avg >= threshold) {
-            if (holdTimer) clearTimeout(holdTimer);
+            if (holdTimer) {
+              clearTimeout(holdTimer);
+              holdTimer = null;
+            }
+            isPaused = false;
             if (!isTalking) {
               isTalking = true;
-              updateDisplay();
+              startFlapEngine();
             }
+            updateDisplay();
           } else {
             if (isTalking && !holdTimer) {
+              isPaused = true;
+              updateDisplay();
               holdTimer = setTimeout(() => {
                 isTalking = false;
+                isPaused = false;
                 holdTimer = null;
+                stopFlapEngine();
                 updateDisplay();
               }, holdMs);
             }

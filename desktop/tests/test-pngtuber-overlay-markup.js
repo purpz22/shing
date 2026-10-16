@@ -35,6 +35,10 @@ assert.ok(overlayContent.includes('settings:update'), 'Must handle settings:upda
 assert.ok(overlayContent.includes('AudioContext') || overlayContent.includes('webkitAudioContext'), 'Must support local AudioContext fallback');
 assert.ok(overlayContent.includes('idle') && overlayContent.includes('talk') && overlayContent.includes('happy'), 'Must support idle, talk, blink, and happy gift reaction state switching');
 assert.ok(overlayContent.includes('showHappyFrame') && overlayContent.includes('isHappy'), 'Must trigger happy gift reaction on stream gifts');
+assert.ok(overlayContent.includes('talkHalf') && overlayContent.includes('talkHalfBlink'), 'Must preload and support talkHalf and talkHalfBlink frames');
+assert.ok(overlayContent.includes('mouthPhase') && overlayContent.includes('isPaused'), 'Must maintain mouthPhase and isPaused for conversational mouth flapping and resting mouth settle');
+assert.ok(overlayContent.includes('TALK_FLAP_INTERVAL') || overlayContent.includes('talkFlapInterval'), 'Must define conversational mouth-flap cadence interval');
+assert.ok(overlayContent.includes('multi-frame'), 'Must support multi-frame animation mode');
 assert.ok(overlayContent.includes('fftSize = 256'), 'Must use lightweight fftSize = 256 for low-end PC efficiency');
 assert.ok(!overlayContent.includes('filter: drop-shadow'), 'Must avoid GPU-heavy per-frame drop-shadow filter on animated avatar');
 
