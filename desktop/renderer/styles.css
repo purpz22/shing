@@ -3850,3 +3850,318 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
   border-radius: 999px;
   transition: width 0.1s linear;
 }
+
+/* ==========================================================================
+   PHONE SCREEN MIRROR STUDIO & WIRELESS CAST
+   ========================================================================== */
+
+.phone-studio-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 460px) 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .phone-studio-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.phone-stage-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.phone-telemetry-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.phone-preview-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  max-height: 520px;
+  background: #090810;
+  border-radius: var(--radius-md, 12px);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+#phone-studio-canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.phone-studio-waiting {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  background: radial-gradient(circle at center, rgba(30, 24, 52, 0.95), rgba(10, 8, 16, 0.98));
+  color: var(--text-main, #f8fafc);
+  z-index: 2;
+  transition: opacity 0.25s ease;
+}
+
+.phone-studio-waiting.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.waiting-phone-icon {
+  margin-bottom: 12px;
+  color: var(--primary, #a855f7);
+  animation: phonePulse 2.4s infinite ease-in-out;
+}
+
+@keyframes phonePulse {
+  0%, 100% { transform: translateY(0); opacity: 0.8; }
+  50% { transform: translateY(-4px); opacity: 1; filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.5)); }
+}
+
+.phone-studio-waiting h4 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: #fff;
+}
+
+.phone-studio-waiting p {
+  font-size: 12.5px;
+  color: var(--text-muted, #94a3b8);
+  margin: 0 0 18px 0;
+  line-height: 1.45;
+  max-width: 320px;
+}
+
+.waiting-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 300px;
+  text-align: left;
+}
+
+.waiting-step-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.waiting-step-item .step-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--primary, #a855f7);
+  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.phone-stage-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.phone-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.phone-status-pill.online {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
+
+.phone-status-pill.offline {
+  color: var(--text-muted, #94a3b8);
+}
+
+.phone-controls-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.phone-qr-card .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.beacon-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.phone-pairing-body {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.phone-qr-box {
+  width: 120px;
+  height: 120px;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.phone-qr-box svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.phone-pairing-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  flex: 1;
+}
+
+.device-info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.device-info-label {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.device-info-val {
+  font-size: 13px;
+  color: var(--text-main, #f8fafc);
+}
+
+.phone-ip-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.phone-ip-box label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, #94a3b8);
+}
+
+.settings-checkboxes-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* Overlay Card Preview for Phone Mirror */
+.phone-preview-box {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(168, 85, 247, 0.12), transparent);
+}
+
+.demo-phone-widget {
+  width: 58px;
+  height: 98px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.demo-phone-frame {
+  width: 100%;
+  height: 100%;
+  border: 2.5px solid #a855f7;
+  border-radius: 12px;
+  padding: 3px;
+  background: #141124;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.35);
+}
+
+.demo-phone-screen {
+  width: 100%;
+  height: 100%;
+  border-radius: 7px;
+  background: #090810;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.demo-phone-notch {
+  position: absolute;
+  top: 2px;
+  width: 16px;
+  height: 2.5px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
+}
+
+.demo-phone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: #c084fc;
+}
+
+.demo-phone-label {
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+

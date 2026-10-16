@@ -2008,6 +2008,9 @@ async function initSettings() {
   // Populate PNGTuber Avatar Studio & Audio Engine
   initPngTuberStudio();
 
+  // Populate Phone Cast Studio & WebSocket Relay
+  initPhoneCastStudio();
+
   // Populate Settings
   if (appSettings.theme) {
     $('setting-theme').value = appSettings.theme;
@@ -3439,6 +3442,339 @@ function initPngTuberStudio() {
   // Start Audio Engine and Blinking
   startPngTuberAudioEngine();
   schedulePngTuberBlink();
+}
+
+// ==========================================================================
+// PHONE SCREEN MIRROR STUDIO & WIRELESS CAST CONTROLLER
+// ==========================================================================
+
+function ensurePhoneSettings(custom) {
+  const p = (custom && typeof custom === 'object') ? custom : {};
+  return {
+    enabled: p.enabled !== false,
+    frameStyle: ['rounded', 'bezel', 'none'].includes(p.frameStyle) ? p.frameStyle : 'rounded',
+    orientation: ['portrait', 'landscape', 'auto'].includes(p.orientation) ? p.orientation : 'portrait',
+    autoRotate: p.autoRotate !== false,
+    showInfo: p.showInfo !== false,
+    streamAudio: p.streamAudio !== false
+  };
+}
+
+function populatePhoneSettings(settings) {
+  const cfg = ensurePhoneSettings(settings || (typeof appSettings !== 'undefined' ? appSettings.phone : null));
+  if (typeof document === 'undefined') return cfg;
+  if ($('phone-frame-style')) $('phone-frame-style').value = cfg.frameStyle;
+  if ($('phone-orientation-mode')) $('phone-orientation-mode').value = cfg.orientation;
+  if ($('phone-auto-rotate')) $('phone-auto-rotate').checked = cfg.autoRotate;
+  if ($('phone-show-info')) $('phone-show-info').checked = cfg.showInfo;
+  if ($('phone-stream-audio')) $('phone-stream-audio').checked = cfg.streamAudio;
+  return cfg;
+}
+
+let phoneCastWs = null;
+let phoneVideoDecoder = null;
+let phoneCastListenersAttached = false;
+let phoneFpsCount = 0;
+let phoneLastFpsTime = 0;
+let phoneAudioCtx = null;
+let phoneAudioMuted = false;
+
+function setPhoneCastUiConnected(name, width, height, fps) {
+  if (typeof document === 'undefined') return;
+  if ($('phone-status-pill')) {
+    $('phone-status-pill').className = 'phone-status-pill online';
+  }
+  if ($('phone-status-dot')) {
+    $('phone-status-dot').className = 'status-dot online';
+  }
+  if ($('phone-status-text')) {
+    $('phone-status-text').textContent = 'Connected';
+  }
+  if ($('phone-device-name')) {
+    $('phone-device-name').textContent = name || 'Android Phone';
+  }
+  if ($('phone-telemetry-fps') && fps) {
+    $('phone-telemetry-fps').textContent = `${fps} FPS`;
+  }
+  if ($('phone-telemetry-res') && width && height) {
+    $('phone-telemetry-res').textContent = `${width}x${height}`;
+  }
+  if ($('phone-disconnect-btn')) {
+    $('phone-disconnect-btn').classList.remove('hidden');
+  }
+  if ($('phone-studio-waiting')) {
+    $('phone-studio-waiting').classList.add('hidden');
+  }
+}
+
+function setPhoneCastUiDisconnected() {
+  if (typeof document === 'undefined') return;
+  if ($('phone-status-pill')) {
+    $('phone-status-pill').className = 'phone-status-pill offline';
+  }
+  if ($('phone-status-dot')) {
+    $('phone-status-dot').className = 'status-dot offline';
+  }
+  if ($('phone-status-text')) {
+    $('phone-status-text').textContent = 'Disconnected';
+  }
+  if ($('phone-device-name')) {
+    $('phone-device-name').textContent = 'No phone connected';
+  }
+  if ($('phone-telemetry-fps')) {
+    $('phone-telemetry-fps').textContent = '0 FPS';
+  }
+  if ($('phone-telemetry-res')) {
+    $('phone-telemetry-res').textContent = '0x0';
+  }
+  if ($('phone-telemetry-ms')) {
+    $('phone-telemetry-ms').textContent = '0 ms';
+  }
+  if ($('phone-disconnect-btn')) {
+    $('phone-disconnect-btn').classList.add('hidden');
+  }
+  if ($('phone-studio-waiting')) {
+    $('phone-studio-waiting').classList.remove('hidden');
+  }
+}
+
+async function updatePhoneCastServerStatus() {
+  if (typeof fetch !== 'function') return;
+  try {
+    const port = (typeof window !== 'undefined' && window.location && window.location.port) ? window.location.port : '3333';
+    const host = (typeof window !== 'undefined' && window.location && window.location.hostname) ? window.location.hostname : 'localhost';
+    const res = await fetch(`http://${host}:${port}/api/cast/status`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const localIp = data.localIp || host;
+    const wsPort = data.port || port;
+
+    if ($('phone-direct-ip')) $('phone-direct-ip').textContent = `${localIp}:${wsPort}`;
+    const wsUrl = `ws://${localIp}:${wsPort}/ws/cast`;
+    if ($('phone-cast-url')) $('phone-cast-url').value = wsUrl;
+    if ($('phone-copy-cast-url-btn')) $('phone-copy-cast-url-btn').setAttribute('data-url', wsUrl);
+
+    // Generate pairing QR code: shingcast://connect?ip=<IP>&port=<PORT>
+    const pairingUri = `shingcast://connect?ip=${encodeURIComponent(localIp)}&port=${encodeURIComponent(wsPort)}`;
+    const qrBox = $('phone-qr-box');
+    if (qrBox) {
+      let qrSvg = null;
+      if (typeof generateQrSvg === 'function') {
+        qrSvg = generateQrSvg(pairingUri, 110);
+      } else {
+        try {
+          const qr = require('./qr.js');
+          qrSvg = qr.generateQrSvg(pairingUri, 110);
+        } catch (e) {}
+      }
+      if (qrSvg) qrBox.innerHTML = qrSvg;
+    }
+
+    if (data.active) {
+      setPhoneCastUiConnected(data.deviceName || 'Android Device', data.width, data.height, data.fps);
+    } else {
+      setPhoneCastUiDisconnected();
+    }
+  } catch (e) {}
+}
+
+function handlePhoneVideoPacket(packetType, buf) {
+  if (typeof window === 'undefined' || typeof window.VideoDecoder === 'undefined') return;
+
+  const canvas = $('phone-studio-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const pts = view.getUint32(1, false) * 1000;
+  const nalData = buf.subarray(5);
+
+  if (packetType === 0x01) {
+    try {
+      if (phoneVideoDecoder && phoneVideoDecoder.state !== 'closed') {
+        phoneVideoDecoder.close();
+      }
+      phoneVideoDecoder = new VideoDecoder({
+        output: (frame) => {
+          if (canvas.width !== frame.displayWidth || canvas.height !== frame.displayHeight) {
+            canvas.width = frame.displayWidth;
+            canvas.height = frame.displayHeight;
+            if ($('phone-telemetry-res')) {
+              $('phone-telemetry-res').textContent = `${frame.displayWidth}x${frame.displayHeight}`;
+            }
+          }
+          ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
+          frame.close();
+
+          phoneFpsCount++;
+          const now = performance.now();
+          if (now - phoneLastFpsTime >= 1000) {
+            if ($('phone-telemetry-fps')) $('phone-telemetry-fps').textContent = `${phoneFpsCount} FPS`;
+            phoneFpsCount = 0;
+            phoneLastFpsTime = now;
+          }
+          if ($('phone-studio-waiting')) $('phone-studio-waiting').classList.add('hidden');
+        },
+        error: () => {}
+      });
+
+      phoneVideoDecoder.configure({
+        codec: 'avc1.640028',
+        description: nalData,
+        optimizeForLatency: true
+      });
+    } catch (e) {}
+    return;
+  }
+
+  if (phoneVideoDecoder && phoneVideoDecoder.state === 'configured') {
+    try {
+      const chunk = new EncodedVideoChunk({
+        type: packetType === 0x02 ? 'key' : 'delta',
+        timestamp: pts,
+        data: nalData
+      });
+      phoneVideoDecoder.decode(chunk);
+    } catch (e) {}
+  }
+}
+
+function connectPhoneCastPreviewWs() {
+  if (typeof WebSocket === 'undefined') return;
+  if (phoneCastWs && (phoneCastWs.readyState === WebSocket.OPEN || phoneCastWs.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+
+  const port = (typeof window !== 'undefined' && window.location && window.location.port) ? window.location.port : '3333';
+  const host = (typeof window !== 'undefined' && window.location && window.location.hostname) ? window.location.hostname : 'localhost';
+  try {
+    const ws = new WebSocket(`ws://${host}:${port}/ws/cast`);
+    ws.binaryType = 'arraybuffer';
+    phoneCastWs = ws;
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'cast:register', role: 'receiver' }));
+    };
+
+    ws.onmessage = async (e) => {
+      if (typeof e.data === 'string') {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === 'cast:dimensions' || msg.type === 'cast:started') {
+            setPhoneCastUiConnected(msg.deviceName || 'Android Device', msg.width || 1080, msg.height || 1920, msg.fps || 60);
+          } else if (msg.type === 'cast:stopped') {
+            setPhoneCastUiDisconnected();
+          }
+        } catch (err) {}
+        return;
+      }
+
+      const buf = new Uint8Array(e.data);
+      if (buf.length < 5) return;
+      const packetType = buf[0];
+
+      if (packetType === 0x01 || packetType === 0x02 || packetType === 0x03) {
+        handlePhoneVideoPacket(packetType, buf);
+      }
+    };
+
+    ws.onclose = () => {
+      setPhoneCastUiDisconnected();
+      setTimeout(() => {
+        if (typeof document !== 'undefined' && document.querySelector('.tab-pane#tab-phone')?.classList.contains('active')) {
+          connectPhoneCastPreviewWs();
+        }
+      }, 3000);
+    };
+  } catch (e) {}
+}
+
+function initPhoneCastStudio() {
+  populatePhoneSettings();
+
+  if (typeof document === 'undefined') return;
+
+  updatePhoneCastServerStatus();
+
+  if (phoneCastListenersAttached) return;
+  phoneCastListenersAttached = true;
+
+  $('phone-frame-style')?.addEventListener('change', e => {
+    const cfg = ensurePhoneSettings(appSettings.phone);
+    cfg.frameStyle = e.target.value;
+    appSettings.phone = cfg;
+    saveSettingsDebounced();
+  });
+
+  $('phone-orientation-mode')?.addEventListener('change', e => {
+    const cfg = ensurePhoneSettings(appSettings.phone);
+    cfg.orientation = e.target.value;
+    appSettings.phone = cfg;
+    saveSettingsDebounced();
+  });
+
+  $('phone-auto-rotate')?.addEventListener('change', e => {
+    const cfg = ensurePhoneSettings(appSettings.phone);
+    cfg.autoRotate = e.target.checked;
+    appSettings.phone = cfg;
+    saveSettingsDebounced();
+  });
+
+  $('phone-show-info')?.addEventListener('change', e => {
+    const cfg = ensurePhoneSettings(appSettings.phone);
+    cfg.showInfo = e.target.checked;
+    appSettings.phone = cfg;
+    saveSettingsDebounced();
+  });
+
+  $('phone-stream-audio')?.addEventListener('change', e => {
+    const cfg = ensurePhoneSettings(appSettings.phone);
+    cfg.streamAudio = e.target.checked;
+    appSettings.phone = cfg;
+    saveSettingsDebounced();
+  });
+
+  $('phone-toggle-audio-btn')?.addEventListener('click', () => {
+    phoneAudioMuted = !phoneAudioMuted;
+    if ($('phone-toggle-audio-btn')) {
+      $('phone-toggle-audio-btn').textContent = phoneAudioMuted ? 'Unmute Mirror Audio' : 'Mute Mirror Audio';
+    }
+    showToast(phoneAudioMuted ? 'Phone mirror audio muted' : 'Phone mirror audio unmuted', 'info', 'Phone Cast');
+  });
+
+  $('phone-fit-btn')?.addEventListener('click', () => {
+    const canvas = $('phone-studio-canvas');
+    if (!canvas) return;
+    const current = canvas.style.objectFit || 'contain';
+    canvas.style.objectFit = current === 'contain' ? 'cover' : 'contain';
+    showToast(`Display scale: ${canvas.style.objectFit}`, 'info', 'Phone Cast');
+  });
+
+  $('phone-snapshot-btn')?.addEventListener('click', () => {
+    const canvas = $('phone-studio-canvas');
+    if (!canvas) return;
+    try {
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `shing-phone-snapshot-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+      showToast('Snapshot saved to Downloads', 'success', 'Phone Cast');
+    } catch (e) {
+      showToast('Failed to capture snapshot', 'warning', 'Phone Cast');
+    }
+  });
+
+  $('phone-disconnect-btn')?.addEventListener('click', async () => {
+    try {
+      await fetch('http://localhost:3333/api/cast/stop', { method: 'POST' });
+      showToast('Phone disconnected', 'info', 'Phone Cast');
+      setPhoneCastUiDisconnected();
+    } catch (e) {}
+  });
+
+  connectPhoneCastPreviewWs();
 }
 
 // Account Modal Workflow
@@ -5378,6 +5714,9 @@ if (typeof module !== 'undefined' && module.exports) {
     clampPngTuberThreshold,
     clampPngTuberHoldDelay,
     clampPngTuberBounce,
-    initPngTuberStudio
+    initPngTuberStudio,
+    ensurePhoneSettings,
+    populatePhoneSettings,
+    initPhoneCastStudio
   };
 }

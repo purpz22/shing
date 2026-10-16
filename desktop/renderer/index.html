@@ -134,6 +134,11 @@
           <span class="nav-label">PNGTuber</span>
           <span class="star-toggle" data-fav="pngtuber" title="Pin to Favorites"></span>
         </button>
+        <button class="nav-item" data-tab="phone">
+          <span class="nav-icon" data-icon="phone"></span>
+          <span class="nav-label">Phone Cast</span>
+          <span class="star-toggle" data-fav="phone" title="Pin to Favorites"></span>
+        </button>
         <button class="nav-item" data-tab="settings">
           <span class="nav-icon" data-icon="settings"></span>
           <span class="nav-label">Settings</span>
@@ -455,6 +460,35 @@
               <button class="btn btn-primary copy-url-btn" data-url="http://localhost:3333/overlays/pngtuber.html">Copy URL</button>
               <button class="btn btn-secondary open-ext-btn" data-overlay="pngtuber">Preview</button>
               <button class="btn btn-secondary goto-tab-btn" data-tab="pngtuber">Studio</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phone Screen Mirror Card -->
+        <div class="overlay-card" data-goto="phone">
+          <div class="card-preview phone-preview-box">
+            <div class="demo-phone-widget">
+              <div class="demo-phone-frame">
+                <div class="demo-phone-screen">
+                  <div class="demo-phone-notch"></div>
+                  <div class="demo-phone-content">
+                    <span class="demo-phone-icon">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></svg>
+                    </span>
+                    <span class="demo-phone-label">Direct Mirror</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="demo-comp-badge">Zero Dev Mode</div>
+          </div>
+          <div class="card-info">
+            <h3>Phone Screen Mirror</h3>
+            <p>Direct wireless screen share from Android phone with 60 FPS hardware H.264 decoding and internal audio.</p>
+            <div class="card-actions">
+              <button class="btn btn-primary copy-url-btn" data-url="http://localhost:3333/overlays/phone.html">Copy URL</button>
+              <button class="btn btn-secondary open-ext-btn" data-overlay="phone">Preview</button>
+              <button class="btn btn-secondary goto-tab-btn" data-tab="phone">Studio</button>
             </div>
           </div>
         </div>
@@ -1807,6 +1841,167 @@
         </div>
       </div>
     </section>
+
+    <!-- 10. PHONE CAST STUDIO TAB -->
+    <section id="tab-phone" class="tab-pane">
+      <div class="section-header">
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+          <div>
+            <h2>Phone Screen Mirror Studio</h2>
+            <p>Direct wireless screen share from Android phone with 60 FPS hardware H.264 decoding and internal audio.</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div id="phone-status-pill" class="phone-status-pill offline">
+              <span class="status-dot offline" id="phone-status-dot"></span>
+              <span id="phone-status-text">Disconnected</span>
+            </div>
+            <button class="btn btn-secondary btn-sm hidden" id="phone-disconnect-btn">Disconnect</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="phone-studio-grid">
+        <!-- Left Column: Live Screen Mirror Canvas -->
+        <div class="phone-stage-panel card">
+          <div class="panel-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="panel-icon" data-icon="cast"></span>
+              <h3>Live Screen Preview</h3>
+            </div>
+            <div class="phone-telemetry-group">
+              <span class="badge" id="phone-telemetry-fps">0 FPS</span>
+              <span class="badge" id="phone-telemetry-res">0x0</span>
+              <span class="badge" id="phone-telemetry-ms">0 ms</span>
+            </div>
+          </div>
+
+          <div class="phone-preview-stage" id="phone-stage-container">
+            <canvas id="phone-studio-canvas" width="1080" height="1920"></canvas>
+            <div id="phone-studio-waiting" class="phone-studio-waiting">
+              <div class="waiting-phone-icon">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></svg>
+              </div>
+              <h4>No Phone Connected</h4>
+              <p>Launch Shing Cast on your Android phone to start screen mirroring automatically, or scan the QR code to pair.</p>
+              <div class="waiting-steps-list">
+                <div class="waiting-step-item">
+                  <span class="step-num">1</span>
+                  <span>Ensure your phone is on the same Wi-Fi network</span>
+                </div>
+                <div class="waiting-step-item">
+                  <span class="step-num">2</span>
+                  <span>Open Shing Cast and tap Auto Connect or Scan QR</span>
+                </div>
+                <div class="waiting-step-item">
+                  <span class="step-num">3</span>
+                  <span>Tap Start now on Android system capture dialog</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="phone-stage-controls">
+            <button class="btn btn-secondary btn-sm" id="phone-toggle-audio-btn">Mute Mirror Audio</button>
+            <button class="btn btn-secondary btn-sm" id="phone-fit-btn">Toggle Scale</button>
+            <button class="btn btn-secondary btn-sm" id="phone-snapshot-btn">Capture Snapshot</button>
+          </div>
+        </div>
+
+        <!-- Right Column: Controls, Pairing & OBS Setup -->
+        <div class="phone-controls-column">
+          <!-- Card 1: Wireless Pairing & Auto-Discovery -->
+          <div class="card phone-qr-card">
+            <div class="panel-header">
+              <h3>Wireless Pairing</h3>
+              <span class="beacon-badge">UDP Beacon Active</span>
+            </div>
+
+            <div class="phone-pairing-body">
+              <div id="phone-qr-box" class="phone-qr-box" title="Scan with Shing Cast Android app">
+                <!-- Inline SVG QR Code rendered dynamically -->
+              </div>
+              <div class="phone-pairing-details">
+                <div class="device-info-row">
+                  <span class="device-info-label">Connected Device:</span>
+                  <strong id="phone-device-name" class="device-info-val">No phone connected</strong>
+                </div>
+                <div class="device-info-row">
+                  <span class="device-info-label">Direct IP:</span>
+                  <span id="phone-direct-ip" class="device-info-val mono">--</span>
+                </div>
+                <div class="device-info-row">
+                  <span class="device-info-label">Discovery Beacon:</span>
+                  <span class="device-info-val mono">UDP 33334 (Auto-Detect)</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="phone-ip-box">
+              <label>Manual WebSocket URL</label>
+              <div class="input-with-btn">
+                <input type="text" readonly id="phone-cast-url" class="styled-input mono" value="ws://localhost:3333/ws/cast">
+                <button class="btn btn-secondary btn-sm copy-url-btn" data-url="ws://localhost:3333/ws/cast" id="phone-copy-cast-url-btn">Copy</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Overlay & Framing Settings -->
+          <div class="card phone-settings-card">
+            <div class="panel-header">
+              <h3>Overlay &amp; Frame Settings</h3>
+            </div>
+
+            <div class="settings-form-group">
+              <label for="phone-frame-style">Frame Style:</label>
+              <select id="phone-frame-style" class="styled-select">
+                <option value="rounded" selected>Rounded Corners (Default)</option>
+                <option value="bezel">Modern Phone Bezel</option>
+                <option value="none">Borderless / Raw Screen</option>
+              </select>
+            </div>
+
+            <div class="settings-form-group">
+              <label for="phone-orientation-mode">Orientation Mode:</label>
+              <select id="phone-orientation-mode" class="styled-select">
+                <option value="auto" selected>Auto Sensor (Follows Phone)</option>
+                <option value="portrait">Lock Portrait (9:16)</option>
+                <option value="landscape">Lock Landscape (16:9)</option>
+              </select>
+            </div>
+
+            <div class="settings-checkboxes-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="phone-auto-rotate" checked> Automatically rotate when phone flips
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="phone-show-info" checked> Show FPS &amp; resolution badge on preview
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="phone-stream-audio" checked> Stream phone internal audio to OBS
+              </label>
+            </div>
+          </div>
+
+          <!-- Card 3: OBS Studio Setup -->
+          <div class="card obs-card">
+            <div class="panel-header">
+              <h3>OBS Studio / TikTok LIVE Studio Setup</h3>
+            </div>
+            <p class="obs-card-desc">Add as a <strong>Browser Source</strong> with transparent background:</p>
+            <div class="obs-url-box">
+              <input type="text" readonly value="http://localhost:3333/overlays/phone.html" class="styled-input mono" id="phone-obs-url">
+              <button class="btn btn-primary btn-sm copy-url-btn" data-url="http://localhost:3333/overlays/phone.html">Copy URL</button>
+              <button class="btn btn-secondary btn-sm open-ext-btn" data-overlay="phone">Open Preview</button>
+            </div>
+            <div class="obs-specs-row">
+              <div class="obs-spec-item"><strong>Recommended Width:</strong> 1080 px (or 1920 px)</div>
+              <div class="obs-spec-item"><strong>Recommended Height:</strong> 1920 px (or 1080 px)</div>
+              <div class="obs-spec-item"><strong>FPS:</strong> 60</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -2061,6 +2256,7 @@
 </div>
 
 <script src="../assets/icons/icons.js"></script>
+<script src="qr.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

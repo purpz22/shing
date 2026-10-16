@@ -1180,6 +1180,21 @@ class OverlayServer {
     } catch (e) {}
   }
 
+  getLocalIpAddress() {
+    try {
+      const os = require('os');
+      const nets = os.networkInterfaces();
+      for (const name of Object.keys(nets)) {
+        for (const net of nets[name]) {
+          if (net.family === 'IPv4' && !net.internal) {
+            return net.address;
+          }
+        }
+      }
+    } catch (e) {}
+    return '127.0.0.1';
+  }
+
   stop() {
     if (this.streamTimerTicker) {
       clearInterval(this.streamTimerTicker);
@@ -1558,6 +1573,7 @@ class OverlayServer {
     }
 
     if (pathname === '/api/cast/status') {
+      const localIp = this.getLocalIpAddress();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({
         active: Boolean(this.castState.active),
@@ -1567,7 +1583,10 @@ class OverlayServer {
         fps: this.castState.fps || 60,
         sendersCount: this.castSenders.size,
         receiversCount: this.castReceivers.size,
-        startedAt: this.castState.startedAt
+        startedAt: this.castState.startedAt,
+        localIp: localIp,
+        port: this.port,
+        wsUrl: `ws://${localIp}:${this.port}/ws/cast`
       }));
     }
 
