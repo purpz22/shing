@@ -58,7 +58,7 @@ fun MainCastScreen(
 
     var host by remember { mutableStateOf(initialHost) }
     var portText by remember { mutableStateOf(initialPort.toString()) }
-    var is1080p by remember { mutableStateOf(true) }
+    var is1080p by remember { mutableStateOf(false) }
     var enableAudio by remember { mutableStateOf(true) }
     var orientationMode by remember { mutableStateOf(initialOrientationMode) }
     var isDiscovering by remember { mutableStateOf(false) }
@@ -225,13 +225,13 @@ fun MainCastScreen(
                 ) {
                     Column {
                         Text(
-                            text = if (is1080p) "1080p Full HD (60 FPS)" else "720p HD (60 FPS)",
+                            text = if (is1080p) "1080p Full HD (60 FPS)" else "720p HD (60 FPS - Cool & Smooth)",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFFF8FAFC)
                         )
                         Text(
-                            text = if (is1080p) "Crisp gaming visuals (6 Mbps)" else "Lower battery usage (3.5 Mbps)",
+                            text = if (is1080p) "Maximum sharpness (4.5 Mbps - uses more battery/heat)" else "Recommended for gaming (3.0 Mbps - low CPU & cool)",
                             fontSize = 12.sp,
                             color = Color(0xFF94A3B8)
                         )

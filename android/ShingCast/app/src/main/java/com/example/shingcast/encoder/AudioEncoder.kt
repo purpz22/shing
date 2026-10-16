@@ -77,7 +77,7 @@ class AudioEncoder(
 
     private fun readAudioLoop() {
         try {
-            Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
+            Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
         } catch (ignored: Exception) {}
 
         val record = audioRecord ?: return

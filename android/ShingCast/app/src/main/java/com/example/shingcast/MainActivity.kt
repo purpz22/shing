@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
 
     private var targetHost by mutableStateOf("192.168.1.100")
     private var targetPort by mutableStateOf(3333)
-    private var targetIs1080p by mutableStateOf(true)
+    private var targetIs1080p by mutableStateOf(false)
     private var targetEnableAudio by mutableStateOf(true)
     private var targetOrientationMode by mutableStateOf("landscape")
     private var isCurrentlyStreaming by mutableStateOf(false)

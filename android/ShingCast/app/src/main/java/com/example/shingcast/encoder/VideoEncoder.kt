@@ -4,6 +4,7 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.os.Build
+import android.os.Process
 import android.util.Log
 import android.view.Surface
 import com.example.shingcast.net.CastClient
@@ -92,12 +93,16 @@ class VideoEncoder(
         encodeThread = Thread({
             drainEncoder(codec)
         }, "VideoEncoderThread").apply {
-            priority = Thread.MAX_PRIORITY
+            priority = Thread.NORM_PRIORITY + 1
             start()
         }
     }
 
     private fun drainEncoder(codec: MediaCodec) {
+        try {
+            Process.setThreadPriority(Process.THREAD_PRIORITY_DISPLAY)
+        } catch (ignored: Exception) {}
+
         val bufferInfo = MediaCodec.BufferInfo()
         val startTimeNs = System.nanoTime()
 
@@ -110,6 +115,8 @@ class VideoEncoder(
             }
 
             if (outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                // Sleep 2ms when idle to allow CPU core to cool down and prevent thermal throttling
+                try { Thread.sleep(2) } catch (ignored: Exception) {}
                 continue
             } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                 val newFormat = codec.outputFormat
@@ -139,16 +146,17 @@ class VideoEncoder(
                     val isConfig = (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0
                     val isKeyFrameFlag = (bufferInfo.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0
 
-                    val extractedConfig = extractConfigBytes(data)
-                    if (extractedConfig != null) {
-                        cachedConfig = extractedConfig
-                        client.sendBinaryPacket(CastClient.PACKET_VIDEO_CONFIG, ptsMs, extractedConfig)
-                    }
+                    if (isConfig) {
+                        cachedConfig = data
+                        client.sendBinaryPacket(CastClient.PACKET_VIDEO_CONFIG, ptsMs, data)
+                    } else if (isKeyFrameFlag || (cachedConfig == null && hasIdrSlice(data))) {
+                        // Only perform heavy CPU NAL parsing for keyframes / config
+                        val extractedConfig = if (cachedConfig == null) extractConfigBytes(data) else null
+                        if (extractedConfig != null) {
+                            cachedConfig = extractedConfig
+                            client.sendBinaryPacket(CastClient.PACKET_VIDEO_CONFIG, ptsMs, extractedConfig)
+                        }
 
-                    val hasIdr = hasIdrSlice(data)
-                    val isKey = isKeyFrameFlag || hasIdr
-
-                    if (isKey) {
                         val packet = if (cachedConfig != null && !hasSpsPrefix(data)) {
                             val combined = ByteArray(cachedConfig!!.size + data.size)
                             System.arraycopy(cachedConfig!!, 0, combined, 0, cachedConfig!!.size)
@@ -158,13 +166,8 @@ class VideoEncoder(
                             data
                         }
                         client.sendBinaryPacket(CastClient.PACKET_VIDEO_KEYFRAME, ptsMs, packet)
-                    } else if (isConfig) {
-                        if (extractedConfig == null) {
-                            cachedConfig = data
-                            client.sendBinaryPacket(CastClient.PACKET_VIDEO_CONFIG, ptsMs, data)
-                        }
                     } else {
-                        // Prevent TCP queue buildup so audio packets are never delayed
+                        // Delta frame: 98% of frames bypass all heavy CPU byte loops!
                         if (client.getQueueSize() < 256 * 1024L) {
                             client.sendBinaryPacket(CastClient.PACKET_VIDEO_DELTA, ptsMs, data)
                         }

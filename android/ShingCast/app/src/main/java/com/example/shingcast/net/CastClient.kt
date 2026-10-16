@@ -98,14 +98,15 @@ class CastClient(
 
         try {
             val totalSize = 5 + length
-            val buffer = ByteBuffer.allocate(totalSize).order(ByteOrder.BIG_ENDIAN)
-            buffer.put(type)
-            buffer.putInt((ptsMs and 0xFFFFFFFFL).toInt())
-            buffer.put(data, offset, length)
-            buffer.flip()
+            val buffer = ByteArray(totalSize)
+            buffer[0] = type
+            buffer[1] = ((ptsMs shr 24) and 0xFF).toByte()
+            buffer[2] = ((ptsMs shr 16) and 0xFF).toByte()
+            buffer[3] = ((ptsMs shr 8) and 0xFF).toByte()
+            buffer[4] = (ptsMs and 0xFF).toByte()
+            System.arraycopy(data, offset, buffer, 5, length)
 
-            val byteString = buffer.array().toByteString(0, totalSize)
-            ws.send(byteString)
+            ws.send(buffer.toByteString(0, totalSize))
         } catch (e: Exception) {
             Log.w(TAG, "Failed to send binary packet: ${e.message}")
         }

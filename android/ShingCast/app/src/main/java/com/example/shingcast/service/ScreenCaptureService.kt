@@ -152,8 +152,9 @@ class ScreenCaptureService : Service() {
         castClient = client
         client.connect()
 
-        // 4. Start Hardware Video Encoder
-        val encoder = VideoEncoder(width, height, fps, 6_000_000, client)
+        // 4. Start Hardware Video Encoder (Optimized bitrates for cool device thermals)
+        val bitrate = if (isFullHd) 4_500_000 else 3_000_000
+        val encoder = VideoEncoder(width, height, fps, bitrate, client)
         encoder.prepare()
         videoEncoder = encoder
         encoder.start()
@@ -292,7 +293,8 @@ class ScreenCaptureService : Service() {
 
         // Spin up new video encoder with rotated dimensions
         val client = castClient ?: return
-        val newEncoder = VideoEncoder(newWidth, newHeight, currentFps, 6_000_000, client)
+        val rotBitrate = if (isFullHd) 4_500_000 else 3_000_000
+        val newEncoder = VideoEncoder(newWidth, newHeight, currentFps, rotBitrate, client)
         try {
             newEncoder.prepare()
             videoEncoder = newEncoder
