@@ -169,6 +169,30 @@ Extend `pngtuber.images` and add optional cadence configuration:
 3. **Backward Compatibility**:
    - If custom avatar sets omit `talkHalf` or `talkHalfBlink`, gracefully fallback to standard 2-frame or 4-frame behavior without errors.
 
+### D. Builder Architecture Decisions & Protocol Contracts
+1. **Asset Pipeline & Zero External Runtime Dependencies**:
+   - Pre-generate and check in static PNG assets (`shing_talk_half.png`, `shing_talk_half_blink.png`, `pixelcat_talk_half.png`, `pixelcat_talk_half_blink.png`) into `desktop/assets/pngtuber/`.
+   - The desktop app and OBS overlay consume static PNG files directly; no native image processing C++ bindings (Sharp, node-canvas) are added to production dependencies.
+2. **Dashboard UI 6-Slot Grid**:
+   - The Studio Avatar Slots UI features 6 visible upload dropzones:
+     - 1. Idle (Closed Mouth)
+     - 2. Blink Idle (Closed Eyes)
+     - 3. Talking Parted (Half-Open Mouth)
+     - 4. Talking Full (Open Mouth)
+     - 5. Talking Blink (Open Mouth Blink)
+     - 6. Happy Gift (Reaction)
+   - For custom user uploads, `talkHalfBlink` automatically falls back to `talkBlink` (or `talkHalf`) if not provided, avoiding UI clutter while supporting full 7-frame capabilities for built-in presets.
+3. **WebSocket State Protocol (`pngtuber:state`)**:
+   - Speech Active: `{ talking: true, paused: false, state: 'talk' }`
+   - Speech Pause / Hold Delay: `{ talking: true, paused: true, state: 'paused' }`
+   - Silence / Return to Idle: `{ talking: false, paused: false, state: 'idle' }`
+   - The overlay server validates and broadcasts `paused` (boolean). OBS browser sources listen to `paused` to settle on `talk_half` during phrase pauses without dropping the speaking bounce.
+4. **Dashboard Mode Toggle (3 Options)**:
+   - Expand the mode pill toggle to 3 options: `[ 2-Frame ] [ 4-Frame ] [ Multi-Frame ]`.
+   - `2-frame`: Forces 2 poses (idle, talk).
+   - `4-frame`: Traditional 4 poses (idle, blink, talk, talkBlink).
+   - `multi-frame`: Active conversational mouth-flap cycle (`talk_half` <-> `talk`) + resting mouth pause settle. Default is `multi-frame`.
+
 ---
 
 ## 5. Non-Goals
