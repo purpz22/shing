@@ -3,7 +3,7 @@
     "releases":  [
                      {
                          "version":  "1.6.0",
-                         "releaseName":  "Shing Live v1.6.0 - Conversational Multi-Frame PNGTuber & Resting Mouth Pause Settle",
+                         "releaseName":  "Shing Live v1.6.0 - Conversational Multi-Frame PNGTuber \u0026 Resting Mouth Pause Settle",
                          "releaseDate":  "2026-10-16",
                          "type":  "feature",
                          "summary":  "Multi-frame conversational talking animation engine for PNGTuber avatar with 120ms tempo mouth flapping (parted lips to wide open), quiet/soft-spoken streamer voice presence threshold trigger, resting mouth pause settle during conversational speech pauses, blink superposition across all states, 3-mode selector (2-Frame, 4-Frame, Multi-Frame), and 6-slot customization grid.",
@@ -14,11 +14,11 @@
                                             "Soft-Spoken Streamer Tuning: Activated by voice presence above calibrated threshold rather than volume amplitude scaling, ensuring consistent animation for quiet voices",
                                             "Blink Superposition: Independent blink timers overlay seamlessly across idle, parted talking, wide open talking, and pause states",
                                             "6-Slot Studio Upload Grid: Full support for custom avatar frames across idle, blink, talkHalf, talk, talkBlink, and happy gift reaction",
-                                            "3-Mode Selector: Switch between 2-Frame (classic open/close), 4-Frame (+ blink), and Multi-Frame (+ conversational flapping & pause settle) with live stage preview"
+                                            "3-Mode Selector: Switch between 2-Frame (classic open/close), 4-Frame (+ blink), and Multi-Frame (+ conversational flapping \u0026 pause settle) with live stage preview"
                                         ],
                          "notes":  "Conversational multi-frame PNGTuber with resting mouth pause settle and 6-slot customization grid.",
-                         "packageSize":  "4.46 MB",
-                         "checksum":  "77a066b1d830c2c31718f38d356f91722cb15c48b1116c4f74abcf35eecad001"
+                         "packageSize":  "4.58 MB",
+                         "checksum":  "cd611aed035bf36f9a3123e47a9ce2d13d84707c31ac20775288060e4562222d"
                      },
                      {
                          "version":  "1.5.9",
