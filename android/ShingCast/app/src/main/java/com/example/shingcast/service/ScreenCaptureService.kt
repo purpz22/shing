@@ -13,8 +13,12 @@ import android.hardware.display.VirtualDisplay
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.util.DisplayMetrics
 import android.util.Log
+import android.view.Display
 import androidx.core.app.NotificationCompat
 import com.example.shingcast.MainActivity
 import com.example.shingcast.encoder.AudioEncoder
@@ -36,6 +40,7 @@ class ScreenCaptureService : Service() {
         const val EXTRA_DENSITY = "EXTRA_DENSITY"
         const val EXTRA_FPS = "EXTRA_FPS"
         const val EXTRA_AUDIO = "EXTRA_AUDIO"
+        const val EXTRA_ORIENTATION_MODE = "EXTRA_ORIENTATION_MODE"
 
         private const val NOTIFICATION_CHANNEL_ID = "shing_cast_streaming_channel"
         private const val NOTIFICATION_ID = 40401
@@ -50,6 +55,14 @@ class ScreenCaptureService : Service() {
     private var videoEncoder: VideoEncoder? = null
     private var audioEncoder: AudioEncoder? = null
     private var castClient: CastClient? = null
+
+    private var orientationMode = "auto"
+    private var currentWidth = 1080
+    private var currentHeight = 1920
+    private var currentDensity = 420
+    private var currentFps = 60
+    private var isFullHd = true
+    private var displayListener: DisplayManager.DisplayListener? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -79,12 +92,20 @@ class ScreenCaptureService : Service() {
         val density = intent.getIntExtra(EXTRA_DENSITY, 420)
         val fps = intent.getIntExtra(EXTRA_FPS, 60)
         val enableAudio = intent.getBooleanExtra(EXTRA_AUDIO, true)
+        val mode = intent.getStringExtra(EXTRA_ORIENTATION_MODE) ?: "auto"
 
         if (resultData == null) {
             Log.e(TAG, "Missing MediaProjection resultData intent")
             stopSelf()
             return
         }
+
+        orientationMode = mode
+        currentWidth = width
+        currentHeight = height
+        currentDensity = density
+        currentFps = fps
+        isFullHd = width >= 1080 || height >= 1080
 
         // 1. Promote to Foreground Service before MediaProjection capture
         val notification = buildOngoingNotification(host, port)
@@ -145,7 +166,25 @@ class ScreenCaptureService : Service() {
         )
         virtualDisplay = vd
 
-        // 6. Start Internal Game Audio Capture
+        // 6. Dynamic Display Rotation Listener (for Auto Sensor mode)
+        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
+        if (displayManager != null && orientationMode == "auto") {
+            displayListener = object : DisplayManager.DisplayListener {
+                override fun onDisplayAdded(displayId: Int) {}
+                override fun onDisplayRemoved(displayId: Int) {}
+                override fun onDisplayChanged(displayId: Int) {
+                    if (displayId == Display.DEFAULT_DISPLAY) {
+                        handleDisplayOrientationChange(displayManager)
+                    }
+                }
+            }
+            displayManager.registerDisplayListener(
+                displayListener,
+                Handler(Looper.getMainLooper())
+            )
+        }
+
+        // 7. Start Internal Game Audio Capture
         if (enableAudio) {
             val aEncoder = AudioEncoder(mp, client)
             audioEncoder = aEncoder
@@ -153,12 +192,90 @@ class ScreenCaptureService : Service() {
         }
 
         isStreaming = true
-        Log.d(TAG, "Shing Cast stream started successfully to $host:$port (${width}x${height} @ ${fps}FPS)")
+        Log.d(TAG, "Shing Cast stream started successfully to $host:$port (${width}x${height} @ ${fps}FPS, mode=$orientationMode)")
+    }
+
+    private fun handleDisplayOrientationChange(displayManager: DisplayManager) {
+        if (!isStreaming || mediaProjection == null) return
+
+        val display = displayManager.getDisplay(Display.DEFAULT_DISPLAY) ?: return
+        val metrics = DisplayMetrics()
+        @Suppress("DEPRECATION")
+        display.getRealMetrics(metrics)
+
+        val isPhysicalLandscape = metrics.widthPixels > metrics.heightPixels
+        val activeIsLandscape = currentWidth > currentHeight
+
+        if (isPhysicalLandscape == activeIsLandscape) {
+            return
+        }
+
+        Log.d(TAG, "Display rotation detected: isLandscape=$isPhysicalLandscape (${metrics.widthPixels}x${metrics.heightPixels})")
+
+        val newWidth: Int
+        val newHeight: Int
+
+        if (isPhysicalLandscape) {
+            newWidth = if (isFullHd) 1920 else 1280
+            newHeight = if (isFullHd) 1080 else 720
+        } else {
+            newWidth = if (isFullHd) 1080 else 720
+            newHeight = if (isFullHd) 1920 else 1280
+        }
+
+        currentWidth = newWidth
+        currentHeight = newHeight
+
+        // Stop previous video encoder
+        try { videoEncoder?.stop() } catch (ignored: Exception) {}
+
+        // Notify desktop server and overlays of new resolution
+        castClient?.updateResolution(newWidth, newHeight)
+
+        // Spin up new video encoder with rotated dimensions
+        val client = castClient ?: return
+        val newEncoder = VideoEncoder(newWidth, newHeight, currentFps, 6_000_000, client)
+        try {
+            newEncoder.prepare()
+            videoEncoder = newEncoder
+            newEncoder.start()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start new encoder on rotation: ${e.message}", e)
+            return
+        }
+
+        // Resize VirtualDisplay to match new dimensions
+        try {
+            virtualDisplay?.resize(newWidth, newHeight, currentDensity)
+            virtualDisplay?.surface = newEncoder.inputSurface
+            Log.d(TAG, "VirtualDisplay successfully resized to ${newWidth}x${newHeight}")
+        } catch (e: Exception) {
+            Log.w(TAG, "VirtualDisplay resize failed, recreating: ${e.message}")
+            try { virtualDisplay?.release() } catch (ignored: Exception) {}
+            virtualDisplay = mediaProjection?.createVirtualDisplay(
+                "ShingCastVirtualDisplay",
+                newWidth,
+                newHeight,
+                currentDensity,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                newEncoder.inputSurface,
+                null,
+                null
+            )
+        }
     }
 
     private fun stopStreaming() {
         if (!isStreaming && mediaProjection == null) return
         Log.d(TAG, "Stopping Shing Cast stream")
+
+        if (displayListener != null) {
+            try {
+                val displayManager = getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
+                displayManager?.unregisterDisplayListener(displayListener)
+            } catch (ignored: Exception) {}
+            displayListener = null
+        }
 
         try { audioEncoder?.stop() } catch (ignored: Exception) {}
         audioEncoder = null

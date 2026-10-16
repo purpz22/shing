@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
     private var targetPort by mutableStateOf(3333)
     private var targetIs1080p by mutableStateOf(true)
     private var targetEnableAudio by mutableStateOf(true)
+    private var targetOrientationMode by mutableStateOf("auto")
     private var isCurrentlyStreaming by mutableStateOf(false)
 
     private val screenCaptureLauncher = registerForActivityResult(
@@ -66,6 +67,7 @@ class MainActivity : ComponentActivity() {
         val prefs = getSharedPreferences("ShingCastPrefs", Context.MODE_PRIVATE)
         targetHost = prefs.getString("last_host", "192.168.1.100") ?: "192.168.1.100"
         targetPort = prefs.getInt("last_port", 3333)
+        targetOrientationMode = prefs.getString("last_orientation_mode", "auto") ?: "auto"
 
         // Parse pairing URI if launched from QR code: shingcast://connect?ip=<IP>&port=<PORT>
         handleIncomingIntent(intent)
@@ -81,15 +83,18 @@ class MainActivity : ComponentActivity() {
                         isStreaming = isCurrentlyStreaming || ScreenCaptureService.isStreaming,
                         initialHost = targetHost,
                         initialPort = targetPort,
-                        onStartCast = { host, port, is1080p, audio ->
+                        initialOrientationMode = targetOrientationMode,
+                        onStartCast = { host, port, is1080p, audio, orientationMode ->
                             targetHost = host
                             targetPort = port
                             targetIs1080p = is1080p
                             targetEnableAudio = audio
+                            targetOrientationMode = orientationMode
 
                             prefs.edit()
                                 .putString("last_host", host)
                                 .putInt("last_port", port)
+                                .putString("last_orientation_mode", orientationMode)
                                 .apply()
 
                             checkPermissionsAndStart()
@@ -159,26 +164,32 @@ class MainActivity : ComponentActivity() {
         val screenHeight = metrics.heightPixels
         val density = metrics.densityDpi
 
-        // Calculate aspect-ratio aligned dimensions (1080p or 720p base)
+        // Determine initial dimensions based on orientation mode
+        val isPhysicalLandscape = screenWidth > screenHeight
+        val shouldBeLandscape = when (targetOrientationMode) {
+            "landscape" -> true
+            "portrait" -> false
+            else -> isPhysicalLandscape
+        }
+
         val targetWidth: Int
         val targetHeight: Int
-        val isPortrait = screenHeight >= screenWidth
 
         if (targetIs1080p) {
-            if (isPortrait) {
-                targetWidth = 1080
-                targetHeight = ((1080.0 * screenHeight / screenWidth).toInt() / 16) * 16
-            } else {
+            if (shouldBeLandscape) {
+                targetWidth = 1920
                 targetHeight = 1080
-                targetWidth = ((1080.0 * screenWidth / screenHeight).toInt() / 16) * 16
+            } else {
+                targetWidth = 1080
+                targetHeight = 1920
             }
         } else {
-            if (isPortrait) {
-                targetWidth = 720
-                targetHeight = ((720.0 * screenHeight / screenWidth).toInt() / 16) * 16
-            } else {
+            if (shouldBeLandscape) {
+                targetWidth = 1280
                 targetHeight = 720
-                targetWidth = ((720.0 * screenWidth / screenHeight).toInt() / 16) * 16
+            } else {
+                targetWidth = 720
+                targetHeight = 1280
             }
         }
 
@@ -193,6 +204,7 @@ class MainActivity : ComponentActivity() {
             putExtra(ScreenCaptureService.EXTRA_DENSITY, density)
             putExtra(ScreenCaptureService.EXTRA_FPS, 60)
             putExtra(ScreenCaptureService.EXTRA_AUDIO, targetEnableAudio)
+            putExtra(ScreenCaptureService.EXTRA_ORIENTATION_MODE, targetOrientationMode)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

@@ -2,6 +2,7 @@ package com.example.shingcast.ui.main
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,7 +49,8 @@ fun MainCastScreen(
     isStreaming: Boolean,
     initialHost: String,
     initialPort: Int,
-    onStartCast: (host: String, port: Int, is1080p: Boolean, enableAudio: Boolean) -> Unit,
+    initialOrientationMode: String = "auto",
+    onStartCast: (host: String, port: Int, is1080p: Boolean, enableAudio: Boolean, orientationMode: String) -> Unit,
     onStopCast: () -> Unit
 ) {
     val context = LocalContext.current
@@ -58,6 +60,7 @@ fun MainCastScreen(
     var portText by remember { mutableStateOf(initialPort.toString()) }
     var is1080p by remember { mutableStateOf(true) }
     var enableAudio by remember { mutableStateOf(true) }
+    var orientationMode by remember { mutableStateOf(initialOrientationMode) }
     var isDiscovering by remember { mutableStateOf(false) }
     var discoveryStatus by remember { mutableStateOf<String?>(null) }
 
@@ -265,6 +268,57 @@ fun MainCastScreen(
                         enabled = !isStreaming
                     )
                 }
+
+                // Orientation Mode Selector
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column {
+                        Text(
+                            text = "Orientation Mode",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFF8FAFC)
+                        )
+                        Text(
+                            text = when (orientationMode) {
+                                "landscape" -> "Locked to Landscape 16:9 (Mobile Legends, Wild Rift, COD Mobile)"
+                                "portrait" -> "Locked to Portrait 9:16 (TikTok, Reels, vertical apps)"
+                                else -> "Auto Sensor (adapts dynamically when phone rotates)"
+                            },
+                            fontSize = 12.sp,
+                            color = Color(0xFF94A3B8)
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            "auto" to "Auto Sensor",
+                            "landscape" to "Landscape 16:9",
+                            "portrait" to "Portrait 9:16"
+                        ).forEach { (mode, label) ->
+                            val isSelected = orientationMode == mode
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) Color(0xFFA855F7) else Color(0xFF262338))
+                                    .clickable(enabled = !isStreaming) { orientationMode = mode }
+                                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) Color.White else Color(0xFFCBD5E1),
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -275,7 +329,7 @@ fun MainCastScreen(
                     onStopCast()
                 } else {
                     val port = portText.toIntOrNull() ?: 3333
-                    onStartCast(host, port, is1080p, enableAudio)
+                    onStartCast(host, port, is1080p, enableAudio, orientationMode)
                 }
             },
             modifier = Modifier
@@ -322,7 +376,12 @@ fun MainCastScreen(
                 }
                 Text(
                     text = if (isStreaming) {
-                        "Target: ws://$host:${portText}/ws/cast (${if (is1080p) "1080p" else "720p"} @ 60 FPS)"
+                        val modeLabel = when (orientationMode) {
+                            "landscape" -> "Landscape 16:9"
+                            "portrait" -> "Portrait 9:16"
+                            else -> "Auto Sensor"
+                        }
+                        "Target: ws://$host:${portText}/ws/cast (${if (is1080p) "1080p" else "720p"} @ 60 FPS, $modeLabel)"
                     } else {
                         "Tap Start Wireless Cast and select Start now on the Android system prompt to begin mirroring."
                     },

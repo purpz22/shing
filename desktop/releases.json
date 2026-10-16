@@ -1,6 +1,24 @@
 {
-    "latest":  "1.6.3",
+    "latest":  "1.6.4",
     "releases":  [
+                     {
+                         "version":  "1.6.4",
+                         "releaseName":  "Shing Live v1.6.4 - Dynamic Landscape Auto-Rotate, Audio Unaligned Fix \u0026 16:9 Gaming Mode",
+                         "releaseDate":  "2026-10-16",
+                         "type":  "feature",
+                         "summary":  "Fixed phone screen landscape letterboxing for Mobile Legends and horizontal games with dynamic DisplayListener sensor rotation, introduced 3-way Orientation Mode selector in Android app, eliminated unaligned 16-bit PCM audio decoding crash via DataView, and added adaptive 16:9 landscape stage preview.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.6.4.zip",
+                         "highlights":  [
+                                            "Dynamic Display Rotation: Automatically detects device rotation changes via DisplayManager.DisplayListener and hot-reconfigures VideoEncoder and VirtualDisplay without disconnecting",
+                                            "Orientation Mode Selector: Added 3-way segmented control in Shing Cast app: Auto Sensor, Landscape 16:9 (Gaming), and Portrait 9:16 (Feed)",
+                                            "Internal Game Audio Fix: Eliminated 5-byte unaligned Int16Array RangeError crash by reading 16-bit PCM little-endian samples with DataView across OBS overlays and desktop dashboard",
+                                            "Dynamic Stage and Overlay Aspect Ratio: Desktop live preview stage and phone.html overlay adapt fluidly to 16:9 landscape or 9:16 portrait when phone orientation changes",
+                                            "Full Screen Borderless OBS Capture: phone-frame-none expands to full viewport without letterboxing"
+                                        ],
+                         "notes":  "Critical update fixing phone audio playback and landscape gaming screen aspect ratio for Mobile Legends.",
+                         "packageSize":  "4.6 MB",
+                         "checksum":  "cafc1efce25161c23312fecb9814017af60743291a8fc28b9ba67b19e1f81da1"
+                     },
                      {
                          "version":  "1.6.3",
                          "releaseName":  "Shing Live v1.6.3 - Shing Cast Hardware Video Fix \u0026 WebCodecs Auto-Healing",

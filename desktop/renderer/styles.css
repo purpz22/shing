@@ -3893,6 +3893,17 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
   align-items: center;
   justify-content: center;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  transition: aspect-ratio 0.25s ease, max-height 0.25s ease;
+}
+
+.phone-preview-stage.orientation-portrait {
+  aspect-ratio: 9 / 16;
+  max-height: 520px;
+}
+
+.phone-preview-stage.orientation-landscape {
+  aspect-ratio: 16 / 9;
+  max-height: 440px;
 }
 
 #phone-studio-canvas {

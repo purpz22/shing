@@ -17,8 +17,8 @@ import java.util.concurrent.TimeUnit
 class CastClient(
     private val host: String,
     private val port: Int,
-    private val width: Int,
-    private val height: Int,
+    var width: Int,
+    var height: Int,
     private val fps: Int,
     private val onConnectionStateChanged: (Boolean, String?) -> Unit
 ) {
@@ -106,6 +106,29 @@ class CastClient(
             ws.send(byteString)
         } catch (e: Exception) {
             Log.w(TAG, "Failed to send binary packet: ${e.message}")
+        }
+    }
+
+    fun updateResolution(newWidth: Int, newHeight: Int) {
+        this.width = newWidth
+        this.height = newHeight
+        val ws = webSocket ?: return
+        if (!isConnected) return
+
+        try {
+            val deviceName = "${Build.MANUFACTURER} ${Build.MODEL}".trim()
+            val updateMsg = JSONObject().apply {
+                put("type", "cast:register")
+                put("role", "sender")
+                put("deviceName", deviceName)
+                put("width", newWidth)
+                put("height", newHeight)
+                put("fps", fps)
+            }
+            ws.send(updateMsg.toString())
+            Log.d(TAG, "Sent updated resolution to server: ${newWidth}x${newHeight}")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to send updated resolution: ${e.message}")
         }
     }
 

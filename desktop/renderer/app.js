@@ -3501,6 +3501,9 @@ function setPhoneCastUiConnected(name, width, height, fps) {
   if ($('phone-telemetry-res') && width && height) {
     $('phone-telemetry-res').textContent = `${width}x${height}`;
   }
+  if (width && height) {
+    updatePhoneStageOrientation(width, height);
+  }
   if ($('phone-disconnect-btn')) {
     $('phone-disconnect-btn').classList.remove('hidden');
   }
@@ -3590,6 +3593,19 @@ function startsWithSpsPrefix(data) {
   return false;
 }
 
+function updatePhoneStageOrientation(width, height) {
+  if (typeof document === 'undefined') return;
+  const container = $('phone-stage-container');
+  if (!container || !width || !height) return;
+  if (width > height) {
+    container.classList.remove('orientation-portrait');
+    container.classList.add('orientation-landscape');
+  } else {
+    container.classList.remove('orientation-landscape');
+    container.classList.add('orientation-portrait');
+  }
+}
+
 function playStudioAudio(pcmData) {
   try {
     if (!phoneAudioCtx) {
@@ -3599,20 +3615,21 @@ function playStudioAudio(pcmData) {
       phoneNextAudioTime = phoneAudioCtx.currentTime;
     }
     if (phoneAudioCtx.state === 'suspended') {
-      phoneAudioCtx.resume();
+      phoneAudioCtx.resume().catch(() => {});
     }
 
-    const int16 = new Int16Array(pcmData.buffer, pcmData.byteOffset, Math.floor(pcmData.byteLength / 2));
-    const numSamples = Math.floor(int16.length / 2);
+    // Safely parse 16-bit PCM stereo with DataView to prevent odd byte offset errors
+    const numSamples = Math.floor(pcmData.byteLength / 4);
     if (numSamples <= 0) return;
 
+    const view = new DataView(pcmData.buffer, pcmData.byteOffset, pcmData.byteLength);
     const audioBuffer = phoneAudioCtx.createBuffer(2, numSamples, 48000);
     const left = audioBuffer.getChannelData(0);
     const right = audioBuffer.getChannelData(1);
 
     for (let i = 0; i < numSamples; i++) {
-      left[i] = int16[i * 2] / 32768.0;
-      right[i] = int16[i * 2 + 1] / 32768.0;
+      left[i] = view.getInt16(i * 4, true) / 32768.0;
+      right[i] = view.getInt16(i * 4 + 2, true) / 32768.0;
     }
 
     const source = phoneAudioCtx.createBufferSource();
@@ -3623,7 +3640,9 @@ function playStudioAudio(pcmData) {
     if (phoneNextAudioTime < currentTime) phoneNextAudioTime = currentTime;
     source.start(phoneNextAudioTime);
     phoneNextAudioTime += audioBuffer.duration;
-  } catch (e) {}
+  } catch (e) {
+    console.warn('Studio audio playback error:', e);
+  }
 }
 
 let phoneDecoderMode = 'annexb';
@@ -3748,6 +3767,7 @@ function initStudioVideoDecoder() {
         if (canvas.width !== frame.displayWidth || canvas.height !== frame.displayHeight) {
           canvas.width = frame.displayWidth;
           canvas.height = frame.displayHeight;
+          updatePhoneStageOrientation(frame.displayWidth, frame.displayHeight);
           if ($('phone-telemetry-res')) {
             $('phone-telemetry-res').textContent = `${frame.displayWidth}x${frame.displayHeight}`;
           }
@@ -4048,6 +4068,12 @@ function initPhoneCastStudio() {
       showToast('Phone disconnected', 'info', 'Phone Cast');
       setPhoneCastUiDisconnected();
     } catch (e) {}
+  });
+
+  document.addEventListener('click', () => {
+    if (phoneAudioCtx && phoneAudioCtx.state === 'suspended') {
+      phoneAudioCtx.resume().catch(() => {});
+    }
   });
 
   connectPhoneCastPreviewWs();

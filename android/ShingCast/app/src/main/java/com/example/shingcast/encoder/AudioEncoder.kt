@@ -81,6 +81,9 @@ class AudioEncoder(
             if (readBytes > 0) {
                 val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
                 client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, buffer, 0, readBytes)
+            } else if (readBytes < 0) {
+                Log.w(TAG, "AudioRecord read error code: $readBytes")
+                try { Thread.sleep(20) } catch (ignored: Exception) {}
             }
         }
     }
