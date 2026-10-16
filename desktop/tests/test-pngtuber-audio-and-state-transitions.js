@@ -13,10 +13,12 @@ const assetFiles = [
   'shing_blink.png',
   'shing_talk.png',
   'shing_talk_blink.png',
+  'shing_happy.png',
   'pixelcat_idle.png',
   'pixelcat_blink.png',
   'pixelcat_talk.png',
-  'pixelcat_talk_blink.png'
+  'pixelcat_talk_blink.png',
+  'pixelcat_happy.png'
 ];
 
 for (const filename of assetFiles) {
@@ -24,6 +26,7 @@ for (const filename of assetFiles) {
   assert.ok(fs.existsSync(filePath), `Asset ${filename} must exist on disk`);
   const buf = fs.readFileSync(filePath);
   assert.ok(buf.length > 500, `Asset ${filename} must be non-empty valid graphic`);
+  assert.ok(buf.length < 100 * 1024, `Asset ${filename} must be lightweight (<100KB) for low-end PCs`);
   // Verify PNG Magic bytes: 89 50 4E 47 0D 0A 1A 0A
   assert.strictEqual(buf[0], 0x89);
   assert.strictEqual(buf[1], 0x50);
@@ -31,9 +34,21 @@ for (const filename of assetFiles) {
   assert.strictEqual(buf[3], 0x47);
 }
 
+// Verify distinct frames (idle !== blink, idle !== talk, idle !== happy)
+const idleBuf = fs.readFileSync(path.join(assetsDir, 'shing_idle.png'));
+const blinkBuf = fs.readFileSync(path.join(assetsDir, 'shing_blink.png'));
+const talkBuf = fs.readFileSync(path.join(assetsDir, 'shing_talk.png'));
+const happyBuf = fs.readFileSync(path.join(assetsDir, 'shing_happy.png'));
+assert.strictEqual(idleBuf.equals(blinkBuf), false, 'shing_idle.png and shing_blink.png must be distinct images');
+assert.strictEqual(idleBuf.equals(talkBuf), false, 'shing_idle.png and shing_talk.png must be distinct images');
+assert.strictEqual(idleBuf.equals(happyBuf), false, 'shing_idle.png and shing_happy.png must be distinct images');
+
 // 2. Pure State Transition Engine
-function resolveFrame(cfg, isTalking, isBlinking) {
+function resolveFrame(cfg, isTalking, isBlinking, isHappy = false) {
   const imgs = cfg.images || {};
+  if (isHappy && imgs.happy) {
+    return imgs.happy;
+  }
   if (isTalking) {
     if (isBlinking && imgs.talkBlink) return imgs.talkBlink;
     return imgs.talk || imgs.idle || '';
@@ -43,21 +58,24 @@ function resolveFrame(cfg, isTalking, isBlinking) {
   }
 }
 
-// 2a. Test Shing Chibi (4-Frame Mode)
+// 2a. Test Shing Chibi (5-Frame Mode with Happy Gift Reaction)
 const shingConfig = {
   mode: '4-frame',
   images: {
     idle: '/assets/pngtuber/shing_idle.png',
     blink: '/assets/pngtuber/shing_blink.png',
     talk: '/assets/pngtuber/shing_talk.png',
-    talkBlink: '/assets/pngtuber/shing_talk_blink.png'
+    talkBlink: '/assets/pngtuber/shing_talk_blink.png',
+    happy: '/assets/pngtuber/shing_happy.png'
   }
 };
 
-assert.strictEqual(resolveFrame(shingConfig, false, false), '/assets/pngtuber/shing_idle.png');
-assert.strictEqual(resolveFrame(shingConfig, true, false), '/assets/pngtuber/shing_talk.png');
-assert.strictEqual(resolveFrame(shingConfig, false, true), '/assets/pngtuber/shing_blink.png');
-assert.strictEqual(resolveFrame(shingConfig, true, true), '/assets/pngtuber/shing_talk_blink.png');
+assert.strictEqual(resolveFrame(shingConfig, false, false, false), '/assets/pngtuber/shing_idle.png');
+assert.strictEqual(resolveFrame(shingConfig, true, false, false), '/assets/pngtuber/shing_talk.png');
+assert.strictEqual(resolveFrame(shingConfig, false, true, false), '/assets/pngtuber/shing_blink.png');
+assert.strictEqual(resolveFrame(shingConfig, true, true, false), '/assets/pngtuber/shing_talk_blink.png');
+assert.strictEqual(resolveFrame(shingConfig, false, false, true), '/assets/pngtuber/shing_happy.png');
+assert.strictEqual(resolveFrame(shingConfig, true, true, true), '/assets/pngtuber/shing_happy.png');
 
 // 2b. Test 4-Frame Mode (Full Avatar)
 const fourFrameConfig = {

@@ -484,19 +484,21 @@ function main() {
   const outDir = path.join(__dirname, '..', 'assets', 'pngtuber');
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
-  console.log('Generating Shing Chibi & Cozy Pixel Cat PNGTuber assets in:', outDir);
+  console.log('Checking PNGTuber assets in:', outDir);
 
-  // 1. Shing Chibi (Preset: shing)
-  const shingIdle = buildShingSprite('open', 'neutral');
-  const shingBlink = buildShingSprite('closed', 'neutral');
-  const shingTalk = buildShingSprite('open', 'open');
-  const shingTalkBlink = buildShingSprite('closed', 'open');
+  // 1. Only generate fallback Shing Chibi if shing_idle.png is missing
+  if (!fs.existsSync(path.join(outDir, 'shing_idle.png'))) {
+    const shingIdle = buildShingSprite('open', 'neutral');
+    const shingBlink = buildShingSprite('closed', 'neutral');
+    const shingTalk = buildShingSprite('open', 'open');
+    const shingTalkBlink = buildShingSprite('closed', 'open');
 
-  fs.writeFileSync(path.join(outDir, 'shing_idle.png'), bakeSpriteToPng(shingIdle, SHING_PALETTE, 12, 32, 32));
-  fs.writeFileSync(path.join(outDir, 'shing_blink.png'), bakeSpriteToPng(shingBlink, SHING_PALETTE, 12, 32, 32));
-  fs.writeFileSync(path.join(outDir, 'shing_talk.png'), bakeSpriteToPng(shingTalk, SHING_PALETTE, 12, 32, 32));
-  fs.writeFileSync(path.join(outDir, 'shing_talk_blink.png'), bakeSpriteToPng(shingTalkBlink, SHING_PALETTE, 12, 32, 32));
-  console.log('Baked Shing Chibi frames (shing_*.png)');
+    fs.writeFileSync(path.join(outDir, 'shing_idle.png'), bakeSpriteToPng(shingIdle, SHING_PALETTE, 12, 32, 32));
+    fs.writeFileSync(path.join(outDir, 'shing_blink.png'), bakeSpriteToPng(shingBlink, SHING_PALETTE, 12, 32, 32));
+    fs.writeFileSync(path.join(outDir, 'shing_talk.png'), bakeSpriteToPng(shingTalk, SHING_PALETTE, 12, 32, 32));
+    fs.writeFileSync(path.join(outDir, 'shing_talk_blink.png'), bakeSpriteToPng(shingTalkBlink, SHING_PALETTE, 12, 32, 32));
+    fs.writeFileSync(path.join(outDir, 'shing_happy.png'), bakeSpriteToPng(shingTalkBlink, SHING_PALETTE, 12, 32, 32));
+  }
 
   // 2. Cozy Pixel Cat (Preset: pixelcat)
   const catIdle = buildCatSprite('open', 'closed');
@@ -508,6 +510,7 @@ function main() {
   fs.writeFileSync(path.join(outDir, 'pixelcat_blink.png'), bakeSpriteToPng(catBlink, CAT_PALETTE, 12, 32, 32));
   fs.writeFileSync(path.join(outDir, 'pixelcat_talk.png'), bakeSpriteToPng(catTalk, CAT_PALETTE, 12, 32, 32));
   fs.writeFileSync(path.join(outDir, 'pixelcat_talk_blink.png'), bakeSpriteToPng(catTalkBlink, CAT_PALETTE, 12, 32, 32));
+  fs.writeFileSync(path.join(outDir, 'pixelcat_happy.png'), bakeSpriteToPng(catTalkBlink, CAT_PALETTE, 12, 32, 32));
   console.log('Baked Cozy Pixel Cat frames (pixelcat_*.png)');
 
   // Remove old popcat files if present
@@ -515,7 +518,6 @@ function main() {
   const popOpen = path.join(outDir, 'popcat_open.png');
   if (fs.existsSync(popClosed)) fs.unlinkSync(popClosed);
   if (fs.existsSync(popOpen)) fs.unlinkSync(popOpen);
-  console.log('Removed popcat files!');
 }
 
 main();

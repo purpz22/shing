@@ -53,6 +53,7 @@ async function run() {
   assert.strictEqual(defaults.pngtuber.images.talk, '/assets/pngtuber/shing_talk.png');
   assert.strictEqual(defaults.pngtuber.images.blink, '/assets/pngtuber/shing_blink.png');
   assert.strictEqual(defaults.pngtuber.images.talkBlink, '/assets/pngtuber/shing_talk_blink.png');
+  assert.strictEqual(defaults.pngtuber.images.happy, '/assets/pngtuber/shing_happy.png');
   assert.strictEqual(defaults.pngtuber.threshold, 22);
   assert.strictEqual(defaults.pngtuber.holdDelay, 180);
   assert.strictEqual(defaults.pngtuber.bounceStyle, 'veadotube');
@@ -64,6 +65,7 @@ async function run() {
   const legacyLoaded = server.loadSettings();
   assert.strictEqual(legacyLoaded.pngtuber.preset, 'shing');
   assert.strictEqual(legacyLoaded.pngtuber.images.idle, '/assets/pngtuber/shing_idle.png');
+  assert.strictEqual(legacyLoaded.pngtuber.images.happy, '/assets/pngtuber/shing_happy.png');
 
   // 3. Test Clamping upon saveSettings
   server.saveSettings({

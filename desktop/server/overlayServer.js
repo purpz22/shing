@@ -303,6 +303,11 @@ class OverlayServer {
         if (result.pngtuber.images.talkBlink && result.pngtuber.images.talkBlink.includes('popcat')) {
           result.pngtuber.images.talkBlink = '/assets/pngtuber/shing_talk_blink.png';
         }
+        if (!result.pngtuber.images.happy || result.pngtuber.images.happy.includes('popcat')) {
+          result.pngtuber.images.happy = result.pngtuber.preset === 'pixelcat'
+            ? '/assets/pngtuber/pixelcat_happy.png'
+            : '/assets/pngtuber/shing_happy.png';
+        }
       }
     }
     return result;
@@ -518,7 +523,8 @@ class OverlayServer {
           idle: '/assets/pngtuber/shing_idle.png',
           blink: '/assets/pngtuber/shing_blink.png',
           talk: '/assets/pngtuber/shing_talk.png',
-          talkBlink: '/assets/pngtuber/shing_talk_blink.png'
+          talkBlink: '/assets/pngtuber/shing_talk_blink.png',
+          happy: '/assets/pngtuber/shing_happy.png'
         },
         threshold: 22,
         holdDelay: 180,

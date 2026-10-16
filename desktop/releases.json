@@ -1,6 +1,25 @@
 {
-    "latest":  "1.5.8",
+    "latest":  "1.5.9",
     "releases":  [
+                     {
+                         "version":  "1.5.9",
+                         "releaseName":  "Shing Live v1.5.9 - 5-Frame Shing PNGTuber Portrait, Happy Gift Reaction \u0026 Low-End PC Optimization",
+                         "releaseDate":  "2026-10-16",
+                         "type":  "feature",
+                         "summary":  "Authentic Shing anime streamer portrait PNGTuber with 5 pixel-locked transparent expression frames (idle, blink, talk, talk-blink, and happy gift reaction), automatic 3.5s gift reaction triggers with beaming smile and blush, dedicated 5th studio avatar slot, and deep performance optimizations for low-end PCs and laptops.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.5.9.zip",
+                         "highlights":  [
+                                            "Shing Anime Streamer Portrait: Pixel-locked transparent 5-frame portrait featuring red hair in a side bun, white pom-pom earrings, and cozy turtleneck sweater",
+                                            "Happy Gift Reaction: Avatar automatically reacts to TikTok Live gifts with a beaming smile, rosy blush, celebration jump, and thank-you speech bubble for 3.5 seconds",
+                                            "5th Studio Avatar Slot: Added dedicated Happy Gift frame drag-and-drop slot and instant Test Gift Happy simulation button in PNGTuber Studio",
+                                            "Low-End PC GPU Optimization: Removed expensive per-frame CSS drop-shadow filters on animated avatar container to prevent integrated GPU redraw stalls",
+                                            "Ultra-Lightweight 25Hz Audio Engine: Reduced Web Audio FFT size to 256 and throttled audio polling to 25Hz with integer-change DOM guards to reduce CPU usage",
+                                            "Async Image Pre-Decoding: Pre-decodes all avatar frames asynchronously upfront to guarantee 0ms frame-swap stutter during live streams"
+                                        ],
+                         "notes":  "5-frame Shing anime streamer portrait PNGTuber avatar with happy gift reactions and low-end PC optimizations.",
+                         "packageSize":  "4.42 MB",
+                         "checksum":  "64e3087dd9c23c13ef831b6fa5e6cfc01b82295ee4862133b9ee715b9be6a153"
+                     },
                      {
                          "version":  "1.5.8",
                          "releaseName":  "Shing Live v1.5.8 - Authentic Shing Chibi \u0026 Cozy Pixel Cat PNGTuber Studio",

@@ -34,7 +34,7 @@ assert.ok(html.includes('id="pngtuber-threshold-slider"'), 'Must have sensitivit
 assert.ok(html.includes('id="pngtuber-hold-slider"'), 'Must have hold delay slider');
 assert.ok(html.includes('id="pngtuber-mic-select"'), 'Must have microphone device dropdown');
 
-// 4. Presets & 4-Frame Slots
+// 4. Presets & 5-Frame Slots (Including Happy Gift Reaction)
 assert.ok(html.includes('data-preset="shing"'), 'Must have Shing Chibi preset button');
 assert.ok(!html.includes('data-preset="popcat"'), 'Must not have Pop Cat preset button');
 assert.ok(html.includes('data-preset="pixelcat"'), 'Must have Cozy Pixel Cat preset button');
@@ -43,6 +43,8 @@ assert.ok(html.includes('data-slot="idle"'), 'Must have Idle state slot');
 assert.ok(html.includes('data-slot="blink"'), 'Must have Blink state slot');
 assert.ok(html.includes('data-slot="talk"'), 'Must have Talking state slot');
 assert.ok(html.includes('data-slot="talkBlink"'), 'Must have Talking Blink state slot');
+assert.ok(html.includes('data-slot="happy"'), 'Must have Happy Gift state slot');
+assert.ok(html.includes('id="pngtuber-test-happy-btn"'), 'Must have Test Gift Happy button');
 
 // 5. CSS Styles
 assert.ok(css.includes('.pngtuber-studio-grid'), 'CSS must define .pngtuber-studio-grid');
@@ -50,9 +52,11 @@ assert.ok(css.includes('.vu-meter-track'), 'CSS must define .vu-meter-track');
 assert.ok(css.includes('.vu-meter-fill'), 'CSS must define .vu-meter-fill');
 assert.ok(css.includes('.stage-viewport'), 'CSS must define .stage-viewport');
 assert.ok(css.includes('.avatar-slots-grid'), 'CSS must define .avatar-slots-grid');
+assert.ok(css.includes('.badge-status-happy'), 'CSS must define .badge-status-happy');
 
 // 6. JavaScript Bindings & Audio Logic
 assert.ok(js.includes('initPngTuberStudio'), 'app.js must define initPngTuberStudio');
+assert.ok(js.includes('triggerStageHappy'), 'app.js must define triggerStageHappy');
 assert.ok(js.includes('clampPngTuberScale'), 'app.js must define clampPngTuberScale');
 assert.ok(js.includes('clampPngTuberThreshold'), 'app.js must define clampPngTuberThreshold');
 assert.ok(js.includes('pngtuber:state'), 'app.js must synchronize pngtuber:state over WebSocket');

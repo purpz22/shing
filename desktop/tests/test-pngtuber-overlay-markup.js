@@ -33,7 +33,10 @@ assert.ok(overlayContent.includes('transform: translate3d') || overlayContent.in
 assert.ok(overlayContent.includes('pngtuber:state'), 'Must listen to pngtuber:state WebSocket messages');
 assert.ok(overlayContent.includes('settings:update'), 'Must handle settings:update without reload');
 assert.ok(overlayContent.includes('AudioContext') || overlayContent.includes('webkitAudioContext'), 'Must support local AudioContext fallback');
-assert.ok(overlayContent.includes('idle') && overlayContent.includes('talk'), 'Must support 2-frame and 4-frame state switching');
+assert.ok(overlayContent.includes('idle') && overlayContent.includes('talk') && overlayContent.includes('happy'), 'Must support idle, talk, blink, and happy gift reaction state switching');
+assert.ok(overlayContent.includes('showHappyFrame') && overlayContent.includes('isHappy'), 'Must trigger happy gift reaction on stream gifts');
+assert.ok(overlayContent.includes('fftSize = 256'), 'Must use lightweight fftSize = 256 for low-end PC efficiency');
+assert.ok(!overlayContent.includes('filter: drop-shadow'), 'Must avoid GPU-heavy per-frame drop-shadow filter on animated avatar');
 
 // 4. Zero Emojis Check
 const emojiRegex = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;

@@ -136,6 +136,8 @@ function initStudioWS() {
           if (data.timer) updateTimerUI(data.timer);
         } else if (data.type === 'timer:deduct' || data.type === 'timer:bonus') {
           updateTimerUI({ remainingSeconds: data.remainingSeconds, isRunning: true });
+        } else if (data.type === 'gift' || data.type === 'pngtuber:happy') {
+          if (typeof triggerStageHappy === 'function') triggerStageHappy(3500);
         }
       } catch (e) {}
     };
@@ -1070,6 +1072,7 @@ if (typeof window.api !== 'undefined' && window.api.onTikTokEvent) {
     } else if (data.type === 'gift') {
       sessionStats.coins += (data.coins || data.diamonds || 1) * (data.count || 1);
       updateHUD();
+      if (typeof triggerStageHappy === 'function') triggerStageHappy(3500);
     } else if (data.type === 'like') {
       sessionStats.likes += (data.count || 1);
       updateHUD();
@@ -2562,7 +2565,8 @@ function ensurePngTuberSettings() {
         idle: '/assets/pngtuber/shing_idle.png',
         blink: '/assets/pngtuber/shing_blink.png',
         talk: '/assets/pngtuber/shing_talk.png',
-        talkBlink: '/assets/pngtuber/shing_talk_blink.png'
+        talkBlink: '/assets/pngtuber/shing_talk_blink.png',
+        happy: '/assets/pngtuber/shing_happy.png'
       },
       threshold: 22,
       holdDelay: 180,
@@ -2594,6 +2598,11 @@ function ensurePngTuberSettings() {
       }
       if (target.pngtuber.images.talkBlink && target.pngtuber.images.talkBlink.includes('popcat')) {
         target.pngtuber.images.talkBlink = '/assets/pngtuber/shing_talk_blink.png';
+      }
+      if (!target.pngtuber.images.happy || target.pngtuber.images.happy.includes('popcat')) {
+        target.pngtuber.images.happy = target.pngtuber.preset === 'pixelcat'
+          ? '/assets/pngtuber/pixelcat_happy.png'
+          : '/assets/pngtuber/shing_happy.png';
       }
     }
   }
@@ -2629,10 +2638,13 @@ let pngtuberMicStream = null;
 let pngtuberHoldTimer = null;
 let pngtuberBlinkTimer = null;
 let pngtuberSimulateTimer = null;
+let pngtuberHappyTimer = null;
 let pngtuberIsTalking = false;
 let pngtuberIsBlinking = false;
+let pngtuberIsHappy = false;
 let pngtuberMicMuted = false;
 let pngtuberSmoothedVol = 0;
+let pngtuberLastRenderedPct = -1;
 let pngtuberAnimFrame = null;
 let pngtuberListenersAttached = false;
 let isDraggingThreshold = false;
@@ -2640,7 +2652,9 @@ let isDraggingThreshold = false;
 function resolveStageFrame() {
   const cfg = ensurePngTuberSettings();
   let raw = '';
-  if (pngtuberIsTalking) {
+  if (pngtuberIsHappy && cfg.images && cfg.images.happy) {
+    raw = cfg.images.happy;
+  } else if (pngtuberIsTalking) {
     if (pngtuberIsBlinking && cfg.images && cfg.images.talkBlink) raw = cfg.images.talkBlink;
     else raw = (cfg.images && cfg.images.talk) || (cfg.images && cfg.images.idle) || '/assets/pngtuber/shing_idle.png';
   } else {
@@ -2665,7 +2679,7 @@ function updateLiveStageAvatar() {
   }
 
   if (stageWrap) {
-    if (pngtuberIsTalking) {
+    if (pngtuberIsTalking || pngtuberIsHappy) {
       stageWrap.classList.add('is-talking');
     } else {
       stageWrap.classList.remove('is-talking');
@@ -2673,7 +2687,10 @@ function updateLiveStageAvatar() {
   }
 
   if (stageBadge) {
-    if (pngtuberIsTalking) {
+    if (pngtuberIsHappy) {
+      stageBadge.className = 'badge-status-happy';
+      stageBadge.textContent = 'HAPPY GIFT';
+    } else if (pngtuberIsTalking) {
       stageBadge.className = 'badge-status-talking';
       stageBadge.textContent = 'TALKING';
     } else if (pngtuberIsBlinking) {
@@ -2684,6 +2701,19 @@ function updateLiveStageAvatar() {
       stageBadge.textContent = 'IDLE';
     }
   }
+}
+
+function triggerStageHappy(durationMs = 3500) {
+  const cfg = ensurePngTuberSettings();
+  if (!cfg.reactToGifts) return;
+  pngtuberIsHappy = true;
+  updateLiveStageAvatar();
+  if (pngtuberHappyTimer) clearTimeout(pngtuberHappyTimer);
+  pngtuberHappyTimer = setTimeout(() => {
+    pngtuberIsHappy = false;
+    pngtuberHappyTimer = null;
+    updateLiveStageAvatar();
+  }, durationMs);
 }
 
 function broadcastPngTuberState(talking, volume, state) {
@@ -2800,6 +2830,17 @@ function populatePngTuberSettings() {
     }
   }
 
+  if ($('slot-img-happy')) {
+    if (imgs.happy) {
+      $('slot-img-happy').src = resolvePngTuberImgSrc(imgs.happy);
+      $('slot-img-happy').classList.remove('hidden');
+      $('slot-ph-happy')?.classList.add('hidden');
+    } else {
+      $('slot-img-happy').classList.add('hidden');
+      $('slot-ph-happy')?.classList.remove('hidden');
+    }
+  }
+
   // Live Stage Viewport Styling
   const stageWrap = $('pngtuber-stage-avatar-wrap');
   if (stageWrap) {
@@ -2869,7 +2910,7 @@ async function startPngTuberAudioEngine() {
 
     const source = pngtuberAudioCtx.createMediaStreamSource(stream);
     pngtuberAnalyser = pngtuberAudioCtx.createAnalyser();
-    pngtuberAnalyser.fftSize = 512;
+    pngtuberAnalyser.fftSize = 256;
     pngtuberAnalyser.smoothingTimeConstant = 0.2;
     source.connect(pngtuberAnalyser);
 
@@ -2885,8 +2926,8 @@ async function startPngTuberAudioEngine() {
 }
 
 function runAudioAnalysisLoop() {
-  if (pngtuberAnimFrame) cancelAnimationFrame(pngtuberAnimFrame);
-  const freqData = new Uint8Array(pngtuberAnalyser ? pngtuberAnalyser.frequencyBinCount : 256);
+  if (pngtuberAnimFrame) clearInterval(pngtuberAnimFrame);
+  const freqData = new Uint8Array(pngtuberAnalyser ? pngtuberAnalyser.frequencyBinCount : 128);
 
   function analyze() {
     let rawVol = 0;
@@ -2906,19 +2947,23 @@ function runAudioAnalysisLoop() {
     if (currentVol > pngtuberSmoothedVol) {
       pngtuberSmoothedVol = currentVol;
     } else {
-      pngtuberSmoothedVol = pngtuberSmoothedVol * 0.85 + currentVol * 0.15;
+      pngtuberSmoothedVol = pngtuberSmoothedVol * 0.80 + currentVol * 0.20;
     }
 
     if (pngtuberSmoothedVol < 0.5) pngtuberSmoothedVol = 0;
 
     const pct = Math.min(100, Math.round(pngtuberSmoothedVol));
-    const vuFill = $('pngtuber-vu-fill');
-    const vuText = $('pngtuber-vu-level-text');
-    const demoVu = $('ov-demo-pngtuber-vu');
+    // Only mutate DOM when integer percentage changes to minimize CPU/layout cost on low-end PCs
+    if (pct !== pngtuberLastRenderedPct) {
+      pngtuberLastRenderedPct = pct;
+      const vuFill = $('pngtuber-vu-fill');
+      const vuText = $('pngtuber-vu-level-text');
+      const demoVu = $('ov-demo-pngtuber-vu');
 
-    if (vuFill) vuFill.style.width = pct + '%';
-    if (vuText) vuText.textContent = pct + '%';
-    if (demoVu) demoVu.style.width = pct + '%';
+      if (vuFill) vuFill.style.width = pct + '%';
+      if (vuText) vuText.textContent = pct + '%';
+      if (demoVu) demoVu.style.width = pct + '%';
+    }
 
     const threshold = Number(cfg.threshold) || 22;
     const holdMs = Number(cfg.holdDelay) || 180;
@@ -2943,10 +2988,10 @@ function runAudioAnalysisLoop() {
         }, holdMs);
       }
     }
-
-    pngtuberAnimFrame = requestAnimationFrame(analyze);
   }
 
+  // Lightweight 25Hz polling loop (40ms) instead of 60-144Hz rAF for low-end laptop efficiency
+  pngtuberAnimFrame = setInterval(analyze, 40);
   analyze();
 }
 
@@ -2991,6 +3036,8 @@ function handleResetSlot(slot) {
     cfg.images.blink = `/assets/pngtuber/${prefix}_blink.png`;
   } else if (slot === 'talkBlink') {
     cfg.images.talkBlink = `/assets/pngtuber/${prefix}_talk_blink.png`;
+  } else if (slot === 'happy') {
+    cfg.images.happy = `/assets/pngtuber/${prefix}_happy.png`;
   } else {
     cfg.images[slot] = '';
   }
@@ -3041,7 +3088,8 @@ function initPngTuberStudio() {
           idle: '/assets/pngtuber/shing_idle.png',
           blink: '/assets/pngtuber/shing_blink.png',
           talk: '/assets/pngtuber/shing_talk.png',
-          talkBlink: '/assets/pngtuber/shing_talk_blink.png'
+          talkBlink: '/assets/pngtuber/shing_talk_blink.png',
+          happy: '/assets/pngtuber/shing_happy.png'
         };
         cfg.mode = '4-frame';
       } else if (preset === 'pixelcat') {
@@ -3049,7 +3097,8 @@ function initPngTuberStudio() {
           idle: '/assets/pngtuber/pixelcat_idle.png',
           blink: '/assets/pngtuber/pixelcat_blink.png',
           talk: '/assets/pngtuber/pixelcat_talk.png',
-          talkBlink: '/assets/pngtuber/pixelcat_talk_blink.png'
+          talkBlink: '/assets/pngtuber/pixelcat_talk_blink.png',
+          happy: '/assets/pngtuber/pixelcat_happy.png'
         };
         cfg.mode = '4-frame';
       }
@@ -3208,6 +3257,17 @@ function initPngTuberStudio() {
     }, 2000);
   });
 
+  $('pngtuber-test-happy-btn')?.addEventListener('click', () => {
+    triggerStageHappy(3500);
+    broadcastPngTuberState(false, 0, 'happy');
+    if (typeof window !== 'undefined' && window.api && typeof window.api.simulateEvent === 'function') {
+      try {
+        window.api.simulateEvent('gift', { user: 'Cute Fan', giftName: 'Rose' });
+      } catch (e) {}
+    }
+    showToast('Triggered Happy Gift Reaction (Big Smile & Blush)!', 'success', 'PNGTuber');
+  });
+
   // 8. Slot Browse & Reset Buttons
   document.querySelectorAll('.slot-browse-btn').forEach(btn => {
     btn.addEventListener('click', () => handleBrowseSlot(btn.dataset.slot));
@@ -3218,7 +3278,7 @@ function initPngTuberStudio() {
   });
 
   // 9. Slot Drag and Drop
-  ['idle', 'blink', 'talk', 'talkBlink'].forEach(slot => {
+  ['idle', 'blink', 'talk', 'talkBlink', 'happy'].forEach(slot => {
     const dropzone = $(`slot-drop-${slot}`);
     if (!dropzone) return;
     dropzone.addEventListener('dragover', e => {

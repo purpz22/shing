@@ -3229,7 +3229,8 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
   height: auto;
   object-fit: contain;
   display: block;
-  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.4));
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .stage-avatar-wrap.pixel-art img {
@@ -3285,7 +3286,6 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
   letter-spacing: 0.5px;
   padding: 3px 10px;
   border-radius: 999px;
-  backdrop-filter: blur(8px);
 }
 
 .badge-status-talking {
@@ -3297,7 +3297,6 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
   letter-spacing: 0.5px;
   padding: 3px 10px;
   border-radius: 999px;
-  backdrop-filter: blur(8px);
   box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
 }
 
@@ -3310,7 +3309,18 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
   letter-spacing: 0.5px;
   padding: 3px 10px;
   border-radius: 999px;
-  backdrop-filter: blur(8px);
+}
+
+.badge-status-happy {
+  background: rgba(244, 63, 94, 0.28);
+  border: 1px solid rgba(251, 113, 133, 0.75);
+  color: #fda4af;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.35);
 }
 
 .badge-fps {
@@ -3619,17 +3629,23 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
   color: #fff;
 }
 
-/* 4 State Slots Grid */
+/* 5 State Slots Grid */
 .avatar-slots-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
   margin-top: 12px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
   .avatar-slots-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .avatar-slots-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

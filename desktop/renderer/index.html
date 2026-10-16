@@ -1568,6 +1568,9 @@
               <button id="pngtuber-test-talk-btn" class="btn btn-secondary btn-sm" title="Simulate speaking for 2 seconds">
                 <span>Simulate Speech</span>
               </button>
+              <button id="pngtuber-test-happy-btn" class="btn btn-secondary btn-sm" title="Simulate receiving a gift (Happy smile &amp; blush)">
+                <span>Test Gift Happy</span>
+              </button>
               <div class="vu-status-note" id="pngtuber-mic-status-note">Microphone Active &amp; Calibrated</div>
             </div>
           </div>
@@ -1591,7 +1594,7 @@
                 </div>
                 <div class="preset-info">
                   <div class="preset-name">Shing Chibi</div>
-                  <div class="preset-desc">Cute anime streamer chibi</div>
+                  <div class="preset-desc">Cute anime streamer portrait</div>
                 </div>
               </button>
               <button class="preset-choice-btn" data-preset="pixelcat">
@@ -1615,7 +1618,7 @@
             </div>
           </div>
 
-          <!-- 4 State Slots Grid -->
+          <!-- 5 State Slots Grid -->
           <div class="card slots-card">
             <div class="panel-header">
               <h3>Avatar State Frames</h3>
@@ -1627,7 +1630,7 @@
               <div class="avatar-slot-box" data-slot="idle">
                 <div class="slot-badge">Neutral Idle</div>
                 <div class="slot-thumb-dropzone" id="slot-drop-idle">
-                  <img id="slot-img-idle" src="../assets/pngtuber/shing_idle.png" alt="Idle Frame">
+                  <img id="slot-img-idle" src="../assets/pngtuber/shing_idle.png" alt="Idle Frame" decoding="async">
                   <div class="slot-overlay-prompt">Drop Image</div>
                 </div>
                 <div class="slot-meta">
@@ -1644,8 +1647,8 @@
               <div class="avatar-slot-box" data-slot="blink">
                 <div class="slot-badge">Blink Idle</div>
                 <div class="slot-thumb-dropzone" id="slot-drop-blink">
-                  <img id="slot-img-blink" src="" alt="Blink Frame" class="hidden">
-                  <div class="slot-empty-placeholder" id="slot-ph-blink">
+                  <img id="slot-img-blink" src="../assets/pngtuber/shing_blink.png" alt="Blink Frame" decoding="async">
+                  <div class="slot-empty-placeholder hidden" id="slot-ph-blink">
                     <span>(Fallback to Idle)</span>
                   </div>
                   <div class="slot-overlay-prompt">Drop Image</div>
@@ -1664,7 +1667,7 @@
               <div class="avatar-slot-box" data-slot="talk">
                 <div class="slot-badge">Talking</div>
                 <div class="slot-thumb-dropzone" id="slot-drop-talk">
-                  <img id="slot-img-talk" src="../assets/pngtuber/shing_talk.png" alt="Talking Frame">
+                  <img id="slot-img-talk" src="../assets/pngtuber/shing_talk.png" alt="Talking Frame" decoding="async">
                   <div class="slot-overlay-prompt">Drop Image</div>
                 </div>
                 <div class="slot-meta">
@@ -1681,8 +1684,8 @@
               <div class="avatar-slot-box" data-slot="talkBlink">
                 <div class="slot-badge">Talking Blink</div>
                 <div class="slot-thumb-dropzone" id="slot-drop-talkBlink">
-                  <img id="slot-img-talkBlink" src="" alt="Talking Blink Frame" class="hidden">
-                  <div class="slot-empty-placeholder" id="slot-ph-talkBlink">
+                  <img id="slot-img-talkBlink" src="../assets/pngtuber/shing_talk_blink.png" alt="Talking Blink Frame" decoding="async">
+                  <div class="slot-empty-placeholder hidden" id="slot-ph-talkBlink">
                     <span>(Fallback to Talk)</span>
                   </div>
                   <div class="slot-overlay-prompt">Drop Image</div>
@@ -1694,6 +1697,26 @@
                 <div class="slot-btn-row">
                   <button class="btn btn-secondary btn-xs slot-browse-btn" data-slot="talkBlink">Browse</button>
                   <button class="btn btn-secondary btn-xs slot-clear-btn" data-slot="talkBlink">Clear</button>
+                </div>
+              </div>
+
+              <!-- Slot 5: Happy (Gift Reaction) -->
+              <div class="avatar-slot-box" data-slot="happy">
+                <div class="slot-badge">Happy Gift</div>
+                <div class="slot-thumb-dropzone" id="slot-drop-happy">
+                  <img id="slot-img-happy" src="../assets/pngtuber/shing_happy.png" alt="Happy Gift Frame" decoding="async">
+                  <div class="slot-empty-placeholder hidden" id="slot-ph-happy">
+                    <span>(Fallback to Talk)</span>
+                  </div>
+                  <div class="slot-overlay-prompt">Drop Image</div>
+                </div>
+                <div class="slot-meta">
+                  <div class="slot-state-title">Big Smile &amp; Blush</div>
+                  <div class="slot-state-sub">When gift received</div>
+                </div>
+                <div class="slot-btn-row">
+                  <button class="btn btn-secondary btn-xs slot-browse-btn" data-slot="happy">Browse</button>
+                  <button class="btn btn-secondary btn-xs slot-reset-btn" data-slot="happy">Reset</button>
                 </div>
               </div>
             </div>
