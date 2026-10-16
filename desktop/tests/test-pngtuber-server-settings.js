@@ -48,9 +48,11 @@ async function run() {
   assert.ok(defaults.pngtuber, 'defaults.pngtuber should exist');
   assert.strictEqual(defaults.pngtuber.enabled, true);
   assert.strictEqual(defaults.pngtuber.preset, 'shing');
-  assert.strictEqual(defaults.pngtuber.mode, '4-frame');
+  assert.strictEqual(defaults.pngtuber.mode, 'multi-frame');
   assert.strictEqual(defaults.pngtuber.images.idle, '/assets/pngtuber/shing_idle.png');
   assert.strictEqual(defaults.pngtuber.images.talk, '/assets/pngtuber/shing_talk.png');
+  assert.strictEqual(defaults.pngtuber.images.talkHalf, '/assets/pngtuber/shing_talk_half.png');
+  assert.strictEqual(defaults.pngtuber.images.talkHalfBlink, '/assets/pngtuber/shing_talk_half_blink.png');
   assert.strictEqual(defaults.pngtuber.images.blink, '/assets/pngtuber/shing_blink.png');
   assert.strictEqual(defaults.pngtuber.images.talkBlink, '/assets/pngtuber/shing_talk_blink.png');
   assert.strictEqual(defaults.pngtuber.images.happy, '/assets/pngtuber/shing_happy.png');
@@ -108,18 +110,20 @@ async function run() {
   ws.send(JSON.stringify({
     type: 'pngtuber:state',
     talking: true,
+    paused: true,
     volume: 78,
-    state: 'talk'
+    state: 'paused'
   }));
 
   await new Promise(resolve => setTimeout(resolve, 150));
   const stateMsg = wsMessages.find(m => m.type === 'pngtuber:state' && m.talking === true);
   assert.ok(stateMsg, 'Client must receive broadcast pngtuber:state message');
   assert.strictEqual(stateMsg.volume, 78);
-  assert.strictEqual(stateMsg.state, 'talk');
+  assert.strictEqual(stateMsg.paused, true);
+  assert.strictEqual(stateMsg.state, 'paused');
 
   // Verify HTTP POST /api/pngtuber/state
-  const postData = JSON.stringify({ talking: false, volume: 5, state: 'idle' });
+  const postData = JSON.stringify({ talking: true, paused: true, volume: 15, state: 'paused' });
   await new Promise((resolve, reject) => {
     const req = http.request({
       hostname: 'localhost',
@@ -140,10 +144,11 @@ async function run() {
   });
 
   await new Promise(resolve => setTimeout(resolve, 150));
-  const httpStateMsg = wsMessages.find(m => m.type === 'pngtuber:state' && m.talking === false);
+  const httpStateMsg = wsMessages.find(m => m.type === 'pngtuber:state' && m.volume === 15);
   assert.ok(httpStateMsg, 'Client must receive HTTP triggered pngtuber:state message');
-  assert.strictEqual(httpStateMsg.volume, 5);
-  assert.strictEqual(httpStateMsg.state, 'idle');
+  assert.strictEqual(httpStateMsg.talking, true);
+  assert.strictEqual(httpStateMsg.paused, true);
+  assert.strictEqual(httpStateMsg.state, 'paused');
 
   ws.close();
   server.stop();

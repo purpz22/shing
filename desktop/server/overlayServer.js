@@ -308,6 +308,16 @@ class OverlayServer {
             ? '/assets/pngtuber/pixelcat_happy.png'
             : '/assets/pngtuber/shing_happy.png';
         }
+        if (!result.pngtuber.images.talkHalf || result.pngtuber.images.talkHalf.includes('popcat')) {
+          result.pngtuber.images.talkHalf = result.pngtuber.preset === 'pixelcat'
+            ? '/assets/pngtuber/pixelcat_talk_half.png'
+            : '/assets/pngtuber/shing_talk_half.png';
+        }
+        if (!result.pngtuber.images.talkHalfBlink || result.pngtuber.images.talkHalfBlink.includes('popcat')) {
+          result.pngtuber.images.talkHalfBlink = result.pngtuber.preset === 'pixelcat'
+            ? '/assets/pngtuber/pixelcat_talk_half_blink.png'
+            : '/assets/pngtuber/shing_talk_half_blink.png';
+        }
       }
     }
     return result;
@@ -518,11 +528,13 @@ class OverlayServer {
       pngtuber: {
         enabled: true,
         preset: 'shing',
-        mode: '4-frame',
+        mode: 'multi-frame',
         images: {
           idle: '/assets/pngtuber/shing_idle.png',
           blink: '/assets/pngtuber/shing_blink.png',
           talk: '/assets/pngtuber/shing_talk.png',
+          talkHalf: '/assets/pngtuber/shing_talk_half.png',
+          talkHalfBlink: '/assets/pngtuber/shing_talk_half_blink.png',
           talkBlink: '/assets/pngtuber/shing_talk_blink.png',
           happy: '/assets/pngtuber/shing_happy.png'
         },
@@ -1364,8 +1376,9 @@ class OverlayServer {
             const state = {
               type: 'pngtuber:state',
               talking: Boolean(parsed.talking),
+              paused: Boolean(parsed.paused),
               volume: Math.max(0, Math.min(100, Number(parsed.volume) || 0)),
-              state: parsed.state || (parsed.talking ? 'talk' : 'idle')
+              state: parsed.state || (parsed.talking ? (parsed.paused ? 'paused' : 'talk') : 'idle')
             };
             this.broadcast(state);
             res.writeHead(200, { 'Content-Type': 'application/json' });
