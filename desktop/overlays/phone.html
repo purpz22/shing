@@ -670,8 +670,11 @@
         btnToggleAudio.addEventListener('click', () => {
           isAudioMuted = !isAudioMuted;
           btnToggleAudio.textContent = isAudioMuted ? 'Muted' : 'Unmute Audio';
-          if (!isAudioMuted && audioCtx && audioCtx.state === 'suspended') {
-            audioCtx.resume().catch(() => {});
+          if (!isAudioMuted && audioCtx) {
+            if (audioCtx.state === 'suspended') {
+              audioCtx.resume().catch(() => {});
+            }
+            nextAudioTime = audioCtx.currentTime;
           }
         });
       }
@@ -873,6 +876,10 @@
         return false;
       }
 
+      let scheduledAudioSources = [];
+      const AUDIO_LEAD_TIME = 0.020; // 20ms lead time for smooth playback
+      const MAX_AUDIO_LATENCY = 0.060; // 60ms maximum latency allowance
+
       function playAudioChunk(pcmData) {
         try {
           if (!audioCtx) {
@@ -883,6 +890,8 @@
           }
           if (audioCtx.state === 'suspended') {
             audioCtx.resume().catch(() => {});
+            nextAudioTime = audioCtx.currentTime;
+            return;
           }
 
           // Use DataView to safely read 16-bit PCM at unaligned byte offsets
@@ -899,14 +908,34 @@
             right[i] = view.getInt16(i * 4 + 2, true) / 32768.0;
           }
 
+          const currentTime = audioCtx.currentTime;
+
+          // Latency Drift Self-Healing:
+          // If nextAudioTime fell behind (underrun) OR has drifted more than 60ms ahead (lag accumulation)
+          if (nextAudioTime < currentTime || nextAudioTime > currentTime + MAX_AUDIO_LATENCY) {
+            if (scheduledAudioSources.length > 0) {
+              for (let i = 0; i < scheduledAudioSources.length; i++) {
+                try {
+                  scheduledAudioSources[i].stop();
+                  scheduledAudioSources[i].disconnect();
+                } catch (e) {}
+              }
+              scheduledAudioSources = [];
+            }
+            nextAudioTime = currentTime + AUDIO_LEAD_TIME;
+          }
+
           const source = audioCtx.createBufferSource();
           source.buffer = audioBuffer;
           source.connect(audioCtx.destination);
-
-          const currentTime = audioCtx.currentTime;
-          if (nextAudioTime < currentTime) nextAudioTime = currentTime;
           source.start(nextAudioTime);
           nextAudioTime += audioBuffer.duration;
+
+          scheduledAudioSources.push(source);
+          source.onended = () => {
+            const idx = scheduledAudioSources.indexOf(source);
+            if (idx !== -1) scheduledAudioSources.splice(idx, 1);
+          };
         } catch (e) {
           console.warn('Audio playback error:', e);
         }
@@ -915,12 +944,16 @@
       // Unlock AudioContext on user interaction for Chrome autoplay policy
       window.addEventListener('click', () => {
         if (audioCtx && audioCtx.state === 'suspended') {
-          audioCtx.resume().catch(() => {});
+          audioCtx.resume().then(() => {
+            nextAudioTime = audioCtx.currentTime;
+          }).catch(() => {});
         }
       });
       window.addEventListener('keydown', () => {
         if (audioCtx && audioCtx.state === 'suspended') {
-          audioCtx.resume().catch(() => {});
+          audioCtx.resume().then(() => {
+            nextAudioTime = audioCtx.currentTime;
+          }).catch(() => {});
         }
       });
 

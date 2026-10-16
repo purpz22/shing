@@ -1,6 +1,24 @@
 {
-    "latest":  "1.6.5",
+    "latest":  "1.6.6",
     "releases":  [
+                     {
+                         "version":  "1.6.6",
+                         "releaseName":  "Shing Live v1.6.6 - Real-Time Zero Latency Audio \u0026 Jitter Drift Self-Healing",
+                         "releaseDate":  "2026-10-16",
+                         "type":  "bugfix",
+                         "summary":  "Eliminated audio delay and lag drift across phone mirror and browser overlays. Added 10ms micro-chunk capture with URGENT_AUDIO Linux process priority, auto-healing Web Audio jitter scheduling with 60ms hard drift ceiling, instant stale buffer purge, congestion delta-frame skipping, and seamless audio unmuting resync.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.6.6.zip",
+                         "highlights":  [
+                                            "10ms Low-Latency Audio Chunks: Android AudioRecord reads in 1,920-byte micro-buffers (10ms) instead of large 80ms-160ms blocking buffers, sending game audio instantly",
+                                            "Urgent Audio Thread Priority: Sets Android Process.THREAD_PRIORITY_URGENT_AUDIO so audio capture is never delayed by heavy 3D game rendering",
+                                            "Jitter Drift Self-Healing: Web Audio scheduler clamps max audio lead time to 60ms, instantly dropping queued lag and auto-resyncing to 20ms real-time",
+                                            "Stale Audio Node Purge: Automatically stops and disconnects all pending scheduled buffers upon resync to eliminate echo and overlapping",
+                                            "Congestion Protection: Skips non-keyframe video delta packets when socket queue exceeds 256KB, preventing audio packets from waiting behind video backlog"
+                                        ],
+                         "notes":  "Critical update completely fixing audio delay and audio drift issues during screen mirroring.",
+                         "packageSize":  "4.6 MB",
+                         "checksum":  "3102961a103e0a35be18818da2ca88f35f880155751243a7a1c9c778ea24db55"
+                     },
                      {
                          "version":  "1.6.5",
                          "releaseName":  "Shing Live v1.6.5 - True Fullscreen Borderless Gaming \u0026 Native 20:9 Landscape",

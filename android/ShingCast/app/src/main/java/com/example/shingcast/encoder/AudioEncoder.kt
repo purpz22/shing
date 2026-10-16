@@ -7,6 +7,7 @@ import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioRecord
 import android.media.projection.MediaProjection
 import android.os.Build
+import android.os.Process
 import android.util.Log
 import com.example.shingcast.net.CastClient
 
@@ -19,6 +20,9 @@ class AudioEncoder(
         private const val SAMPLE_RATE = 48000
         private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_STEREO
         private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
+        // 10ms of 48kHz 16-bit stereo PCM = 480 stereo samples * 4 bytes/sample = 1920 bytes
+        // Reading in 10ms chunks minimizes capture delay and delivers real-time audio
+        private const val CHUNK_SIZE_BYTES = 1920
     }
 
     private var audioRecord: AudioRecord? = null
@@ -48,11 +52,12 @@ class AudioEncoder(
                 .build()
 
             val minBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)
-            val bufferSize = (minBufferSize * 2).coerceAtLeast(4096)
+            // OS circular ring buffer kept generous (16KB+) to avoid underflow
+            val hardwareBufferSize = (minBufferSize * 4).coerceAtLeast(16384)
 
             audioRecord = AudioRecord.Builder()
                 .setAudioFormat(audioFormat)
-                .setBufferSizeInBytes(bufferSize)
+                .setBufferSizeInBytes(hardwareBufferSize)
                 .setAudioPlaybackCaptureConfig(config)
                 .build()
 
@@ -60,20 +65,23 @@ class AudioEncoder(
             isRecording = true
 
             recordingThread = Thread({
-                readAudioLoop(bufferSize)
+                readAudioLoop()
             }, "AudioRecordThread").apply {
-                priority = Thread.NORM_PRIORITY + 2
                 start()
             }
-            Log.d(TAG, "Internal game audio capture started successfully at 48kHz stereo")
+            Log.d(TAG, "Internal game audio capture started successfully at 48kHz stereo (10ms low-latency chunks)")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start internal audio capture: ${e.message}", e)
         }
     }
 
-    private fun readAudioLoop(bufferSize: Int) {
+    private fun readAudioLoop() {
+        try {
+            Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
+        } catch (ignored: Exception) {}
+
         val record = audioRecord ?: return
-        val buffer = ByteArray(bufferSize)
+        val buffer = ByteArray(CHUNK_SIZE_BYTES)
         val startTimeNs = System.nanoTime()
 
         while (isRecording) {
@@ -83,7 +91,7 @@ class AudioEncoder(
                 client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, buffer, 0, readBytes)
             } else if (readBytes < 0) {
                 Log.w(TAG, "AudioRecord read error code: $readBytes")
-                try { Thread.sleep(20) } catch (ignored: Exception) {}
+                try { Thread.sleep(10) } catch (ignored: Exception) {}
             }
         }
     }

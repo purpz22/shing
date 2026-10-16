@@ -164,7 +164,10 @@ class VideoEncoder(
                             client.sendBinaryPacket(CastClient.PACKET_VIDEO_CONFIG, ptsMs, data)
                         }
                     } else {
-                        client.sendBinaryPacket(CastClient.PACKET_VIDEO_DELTA, ptsMs, data)
+                        // Prevent TCP queue buildup so audio packets are never delayed
+                        if (client.getQueueSize() < 256 * 1024L) {
+                            client.sendBinaryPacket(CastClient.PACKET_VIDEO_DELTA, ptsMs, data)
+                        }
                     }
                 }
 

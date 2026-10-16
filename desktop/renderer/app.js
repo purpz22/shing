@@ -3606,6 +3606,10 @@ function updatePhoneStageOrientation(width, height) {
   }
 }
 
+let phoneScheduledAudioSources = [];
+const STUDIO_AUDIO_LEAD_TIME = 0.020;
+const STUDIO_MAX_AUDIO_LATENCY = 0.060;
+
 function playStudioAudio(pcmData) {
   try {
     if (!phoneAudioCtx) {
@@ -3616,6 +3620,8 @@ function playStudioAudio(pcmData) {
     }
     if (phoneAudioCtx.state === 'suspended') {
       phoneAudioCtx.resume().catch(() => {});
+      phoneNextAudioTime = phoneAudioCtx.currentTime;
+      return;
     }
 
     // Safely parse 16-bit PCM stereo with DataView to prevent odd byte offset errors
@@ -3632,14 +3638,33 @@ function playStudioAudio(pcmData) {
       right[i] = view.getInt16(i * 4 + 2, true) / 32768.0;
     }
 
+    const currentTime = phoneAudioCtx.currentTime;
+
+    // Latency Drift Self-Healing: clamp buffer lead time to prevent delay accumulation
+    if (phoneNextAudioTime < currentTime || phoneNextAudioTime > currentTime + STUDIO_MAX_AUDIO_LATENCY) {
+      if (phoneScheduledAudioSources.length > 0) {
+        for (let i = 0; i < phoneScheduledAudioSources.length; i++) {
+          try {
+            phoneScheduledAudioSources[i].stop();
+            phoneScheduledAudioSources[i].disconnect();
+          } catch (e) {}
+        }
+        phoneScheduledAudioSources = [];
+      }
+      phoneNextAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
+    }
+
     const source = phoneAudioCtx.createBufferSource();
     source.buffer = audioBuffer;
     source.connect(phoneAudioCtx.destination);
-
-    const currentTime = phoneAudioCtx.currentTime;
-    if (phoneNextAudioTime < currentTime) phoneNextAudioTime = currentTime;
     source.start(phoneNextAudioTime);
     phoneNextAudioTime += audioBuffer.duration;
+
+    phoneScheduledAudioSources.push(source);
+    source.onended = () => {
+      const idx = phoneScheduledAudioSources.indexOf(source);
+      if (idx !== -1) phoneScheduledAudioSources.splice(idx, 1);
+    };
   } catch (e) {
     console.warn('Studio audio playback error:', e);
   }
@@ -4035,6 +4060,12 @@ function initPhoneCastStudio() {
     phoneAudioMuted = !phoneAudioMuted;
     if ($('phone-toggle-audio-btn')) {
       $('phone-toggle-audio-btn').textContent = phoneAudioMuted ? 'Unmute Mirror Audio' : 'Mute Mirror Audio';
+    }
+    if (!phoneAudioMuted && phoneAudioCtx) {
+      if (phoneAudioCtx.state === 'suspended') {
+        phoneAudioCtx.resume().catch(() => {});
+      }
+      phoneNextAudioTime = phoneAudioCtx.currentTime;
     }
     showToast(phoneAudioMuted ? 'Phone mirror audio muted' : 'Phone mirror audio unmuted', 'info', 'Phone Cast');
   });

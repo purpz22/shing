@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.shingcast"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.6.5"
+        versionCode = 6
+        versionName = "1.6.6"
     }
 
     buildTypes {

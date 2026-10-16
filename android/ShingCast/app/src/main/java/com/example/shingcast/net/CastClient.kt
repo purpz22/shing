@@ -90,6 +90,8 @@ class CastClient(
         })
     }
 
+    fun getQueueSize(): Long = webSocket?.queueSize() ?: 0L
+
     fun sendBinaryPacket(type: Byte, ptsMs: Long, data: ByteArray, offset: Int = 0, length: Int = data.size) {
         val ws = webSocket ?: return
         if (!isConnected) return
