@@ -1,6 +1,25 @@
 {
-    "latest":  "1.5.9",
+    "latest":  "1.6.0",
     "releases":  [
+                     {
+                         "version":  "1.6.0",
+                         "releaseName":  "Shing Live v1.6.0 - Conversational Multi-Frame PNGTuber & Resting Mouth Pause Settle",
+                         "releaseDate":  "2026-10-16",
+                         "type":  "feature",
+                         "summary":  "Multi-frame conversational talking animation engine for PNGTuber avatar with 120ms tempo mouth flapping (parted lips to wide open), quiet/soft-spoken streamer voice presence threshold trigger, resting mouth pause settle during conversational speech pauses, blink superposition across all states, 3-mode selector (2-Frame, 4-Frame, Multi-Frame), and 6-slot customization grid.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.6.0.zip",
+                         "highlights":  [
+                                            "Conversational Mouth Flapping: Smooth alternating cadence between parted lips (talkHalf) and wide open (talk) at 120ms intervals during speech",
+                                            "Resting Mouth Pause Settle: Automatically settles on parted mouth (talkHalf) during speech pauses within holdDelay before returning to idle on silence",
+                                            "Soft-Spoken Streamer Tuning: Activated by voice presence above calibrated threshold rather than volume amplitude scaling, ensuring consistent animation for quiet voices",
+                                            "Blink Superposition: Independent blink timers overlay seamlessly across idle, parted talking, wide open talking, and pause states",
+                                            "6-Slot Studio Upload Grid: Full support for custom avatar frames across idle, blink, talkHalf, talk, talkBlink, and happy gift reaction",
+                                            "3-Mode Selector: Switch between 2-Frame (classic open/close), 4-Frame (+ blink), and Multi-Frame (+ conversational flapping & pause settle) with live stage preview"
+                                        ],
+                         "notes":  "Conversational multi-frame PNGTuber with resting mouth pause settle and 6-slot customization grid.",
+                         "packageSize":  "4.46 MB",
+                         "checksum":  "77a066b1d830c2c31718f38d356f91722cb15c48b1116c4f74abcf35eecad001"
+                     },
                      {
                          "version":  "1.5.9",
                          "releaseName":  "Shing Live v1.5.9 - 5-Frame Shing PNGTuber Portrait, Happy Gift Reaction \u0026 Low-End PC Optimization",
