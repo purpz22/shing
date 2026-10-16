@@ -1,6 +1,24 @@
 {
-    "latest":  "1.6.8",
+    "latest":  "1.6.9",
     "releases":  [
+                     {
+                         "version":  "1.6.9",
+                         "releaseName":  "Shing Live v1.6.9 - Natural Conversational Mouth Flap \u0026 Parted Anime Lips",
+                         "releaseDate":  "2026-10-16",
+                         "type":  "improvement",
+                         "summary":  "Completely redesigned PNGTuber mouth animations with organic conversational cadence, natural parted-lips mid-syllable frames, volume-weighted aperture, dynamic syllable dwell timing (100ms-180ms), and smooth micro-pause holds.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.6.9.zip",
+                         "highlights":  [
+                                            "Organic Parted Anime Mouth: Replaced flat mouth slit with beautifully illustrated parted speaking mouth with visible white teeth, oral cavity, and tongue",
+                                            "Conversational Syllable Cadence: Replaced rigid 120ms robotic metronome with natural human syllable rhythms (135ms-180ms on open vowels, 100ms-130ms on parted consonants)",
+                                            "Volume-Weighted Aperture: Speech intensity dynamically controls mouth aperture, softening on whispers and opening fully on stressed vowels",
+                                            "Graceful Pause Holds: Pausing mid-sentence smoothly holds the parted lips posture during hold delay before closing to idle",
+                                            "Full Synchronization: Synchronized new mouth engine across desktop studio preview and standalone browser overlay"
+                                        ],
+                         "notes":  "Major visual upgrade making PNGTuber avatars speak expressively and naturally.",
+                         "packageSize":  "4.76 MB",
+                         "checksum":  "2236984011efaaddc6dec9a1c997afdb3621c12cfa4234e8c05ef1f5c9215a92"
+                     },
                      {
                          "version":  "1.6.8",
                          "releaseName":  "Shing Live v1.6.8 - Overlay-Only Audio Routing \u0026 Double-Audio Echo Fix",

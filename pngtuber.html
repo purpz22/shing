@@ -213,28 +213,69 @@
   let isPaused = false;
   let isBlinking = false;
   let isHappy = false;
-  let mouthPhase = 0; // 0 = talk_half, 1 = talk_open
-  let flapIntervalTimer = null;
-  const TALK_FLAP_INTERVAL = 120; // 120ms conversational mouth-flap cadence
+  let mouthPhase = 0; // 0 = talk_half, 1 = talk_open, 2 = soft closure
+  let flapTimeoutTimer = null;
+  let flapStepCount = 0;
+  let liveSpeechVolume = 0;
   let blinkTimer = null;
   let celebrateTimer = null;
   let happyTimer = null;
   let bubbleTimer = null;
 
-  function startFlapEngine() {
-    if (flapIntervalTimer) clearInterval(flapIntervalTimer);
-    flapIntervalTimer = setInterval(() => {
-      if (isTalking && !isPaused) {
-        mouthPhase = (mouthPhase === 0) ? 1 : 0;
-        updateDisplay();
+  function scheduleNextFlap() {
+    if (!isTalking || isPaused) {
+      flapTimeoutTimer = null;
+      return;
+    }
+    const mode = config.mode || 'multi-frame';
+    if (mode === '2-frame' || mode === '4-frame') {
+      mouthPhase = 1;
+      updateDisplay();
+      return;
+    }
+
+    const threshold = Number(config.threshold) || 22;
+    const isLoud = liveSpeechVolume >= (threshold + 14);
+
+    if (mouthPhase === 1) {
+      flapStepCount++;
+      if (flapStepCount % 5 === 0 && !isLoud) {
+        mouthPhase = 2; // subtle consonant closure
+      } else {
+        mouthPhase = 0; // parted
       }
-    }, TALK_FLAP_INTERVAL);
+    } else if (mouthPhase === 2) {
+      mouthPhase = isLoud ? 1 : 0;
+    } else {
+      mouthPhase = 1;
+    }
+
+    updateDisplay();
+
+    let dwellMs = 125;
+    if (mouthPhase === 1) {
+      dwellMs = isLoud ? (155 + Math.floor(Math.random() * 35)) : (135 + Math.floor(Math.random() * 25));
+    } else if (mouthPhase === 2) {
+      dwellMs = 70 + Math.floor(Math.random() * 20);
+    } else {
+      dwellMs = 110 + Math.floor(Math.random() * 25);
+    }
+
+    flapTimeoutTimer = setTimeout(scheduleNextFlap, dwellMs);
+  }
+
+  function startFlapEngine() {
+    if (flapTimeoutTimer) return;
+    mouthPhase = 1;
+    flapStepCount = 0;
+    updateDisplay();
+    scheduleNextFlap();
   }
 
   function stopFlapEngine() {
-    if (flapIntervalTimer) {
-      clearInterval(flapIntervalTimer);
-      flapIntervalTimer = null;
+    if (flapTimeoutTimer) {
+      clearTimeout(flapTimeoutTimer);
+      flapTimeoutTimer = null;
     }
     mouthPhase = 0;
   }
@@ -289,8 +330,23 @@
           }
         } else {
           // multi-frame mode:
-          const isHalf = isPaused || (mouthPhase === 0);
-          if (isHalf) {
+          let isHalf = false;
+          let isClosed = false;
+          if (isPaused) {
+            isHalf = true;
+          } else if (mouthPhase === 2) {
+            isClosed = true;
+          } else if (mouthPhase === 0) {
+            isHalf = true;
+          }
+
+          if (isClosed) {
+            if (isBlinking && config.images.blink) {
+              raw = config.images.blink;
+            } else {
+              raw = config.images.idle || '/assets/pngtuber/shing_idle.png';
+            }
+          } else if (isHalf) {
             if (isBlinking && config.images.talkHalfBlink) {
               raw = config.images.talkHalfBlink;
             } else if (isBlinking && config.images.talkBlink) {
@@ -510,9 +566,12 @@
       const wasTalking = isTalking;
       isTalking = Boolean(msg.talking);
       isPaused = Boolean(msg.paused);
+      if (typeof msg.volume === 'number') {
+        liveSpeechVolume = msg.volume;
+      }
 
       if (isTalking && !isPaused) {
-        if (!wasTalking || !flapIntervalTimer) {
+        if (!wasTalking || !flapTimeoutTimer) {
           startFlapEngine();
         }
       } else if (!isTalking) {
@@ -588,6 +647,7 @@
             sum += dataArray[i];
           }
           const avg = (sum / dataArray.length) / 255 * 100;
+          liveSpeechVolume = avg;
           const threshold = Number(config.threshold) || 22;
           const holdMs = Number(config.holdDelay) || 180;
 

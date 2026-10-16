@@ -2670,23 +2670,68 @@ let pngtuberAnimFrame = null;
 let pngtuberListenersAttached = false;
 let isDraggingThreshold = false;
 
+let pngtuberFlapCount = 0;
+
+function scheduleNextStageFlap() {
+  if (!pngtuberIsTalking || pngtuberIsPaused) {
+    pngtuberStageFlapTimer = null;
+    return;
+  }
+  const cfg = ensurePngTuberSettings();
+  if (cfg.mode === '2-frame' || cfg.mode === '4-frame') {
+    pngtuberMouthPhase = 1;
+    updateLiveStageAvatar();
+    return;
+  }
+
+  const threshold = Number(cfg.threshold) || 22;
+  const isLoud = pngtuberSmoothedVol >= (threshold + 14);
+
+  if (pngtuberMouthPhase === 1) {
+    pngtuberFlapCount++;
+    if (pngtuberFlapCount % 5 === 0 && !isLoud) {
+      pngtuberMouthPhase = 2; // subtle consonant closure
+    } else {
+      pngtuberMouthPhase = 0; // parted
+    }
+  } else if (pngtuberMouthPhase === 2) {
+    pngtuberMouthPhase = isLoud ? 1 : 0;
+  } else {
+    pngtuberMouthPhase = 1;
+  }
+
+  updateLiveStageAvatar();
+
+  let dwellMs = 125;
+  if (pngtuberMouthPhase === 1) {
+    dwellMs = isLoud ? (155 + Math.floor(Math.random() * 35)) : (135 + Math.floor(Math.random() * 25));
+  } else if (pngtuberMouthPhase === 2) {
+    dwellMs = 70 + Math.floor(Math.random() * 20);
+  } else {
+    dwellMs = 110 + Math.floor(Math.random() * 25);
+  }
+
+  pngtuberStageFlapTimer = setTimeout(scheduleNextStageFlap, dwellMs);
+}
+
 function startPngTuberStageFlap() {
   const cfg = ensurePngTuberSettings();
   if (cfg.mode === '2-frame' || cfg.mode === '4-frame') {
     pngtuberMouthPhase = 1;
+    updateLiveStageAvatar();
     return;
   }
   if (!pngtuberStageFlapTimer) {
-    pngtuberStageFlapTimer = setInterval(() => {
-      pngtuberMouthPhase = pngtuberMouthPhase === 0 ? 1 : 0;
-      updateLiveStageAvatar();
-    }, 120);
+    pngtuberMouthPhase = 1;
+    pngtuberFlapCount = 0;
+    updateLiveStageAvatar();
+    scheduleNextStageFlap();
   }
 }
 
 function stopPngTuberStageFlap() {
   if (pngtuberStageFlapTimer) {
-    clearInterval(pngtuberStageFlapTimer);
+    clearTimeout(pngtuberStageFlapTimer);
     pngtuberStageFlapTimer = null;
   }
   pngtuberMouthPhase = 0;
@@ -2710,8 +2755,23 @@ function resolveStageFrame() {
         }
       } else {
         // Multi-Frame Conversational Engine
-        const isHalf = pngtuberIsPaused || (pngtuberMouthPhase === 0);
-        if (isHalf) {
+        let isHalf = false;
+        let isClosed = false;
+        if (pngtuberIsPaused) {
+          isHalf = true;
+        } else if (pngtuberMouthPhase === 2) {
+          isClosed = true;
+        } else if (pngtuberMouthPhase === 0) {
+          isHalf = true;
+        }
+
+        if (isClosed) {
+          if (pngtuberIsBlinking && cfg.images && cfg.images.blink) {
+            raw = cfg.images.blink;
+          } else {
+            raw = (cfg.images && cfg.images.idle) || '/assets/pngtuber/shing_idle.png';
+          }
+        } else if (isHalf) {
           if (pngtuberIsBlinking && cfg.images && cfg.images.talkHalfBlink) {
             raw = cfg.images.talkHalfBlink;
           } else if (pngtuberIsBlinking && cfg.images && cfg.images.talkBlink) {
