@@ -132,6 +132,7 @@ class OverlayServer {
       startedAt: null
     };
     this.lastCastConfigPacket = null;
+    this.lastCastKeyframePacket = null;
     this.udpDiscoverySocket = null;
 
     const initialSec = Math.max(0, (Number(this.settings.timer.durationMin) || 30) * 60);
@@ -1096,8 +1097,13 @@ class OverlayServer {
       } else if (data.role === 'receiver') {
         this.castReceivers.add(ws);
         ws.send(JSON.stringify(Object.assign({ type: 'cast:state' }, this.castState)));
-        if (this.castState.active && this.lastCastConfigPacket) {
-          try { ws.send(this.lastCastConfigPacket); } catch (e) {}
+        if (this.castState.active) {
+          if (this.lastCastConfigPacket) {
+            try { ws.send(this.lastCastConfigPacket); } catch (e) {}
+          }
+          if (this.lastCastKeyframePacket) {
+            try { ws.send(this.lastCastKeyframePacket); } catch (e) {}
+          }
         }
       }
       return;
@@ -1119,8 +1125,12 @@ class OverlayServer {
       }
     }
 
-    if (buf.length >= 5 && buf[0] === 0x01) {
-      this.lastCastConfigPacket = Buffer.from(buf);
+    if (buf.length >= 5) {
+      if (buf[0] === 0x01) {
+        this.lastCastConfigPacket = Buffer.from(buf);
+      } else if (buf[0] === 0x02) {
+        this.lastCastKeyframePacket = Buffer.from(buf);
+      }
     }
 
     for (const rx of this.castReceivers) {
@@ -1136,6 +1146,7 @@ class OverlayServer {
       if (this.castSenders.size === 0) {
         this.castState.active = false;
         this.lastCastConfigPacket = null;
+        this.lastCastKeyframePacket = null;
         this.broadcastCastState();
       }
     }
@@ -1168,7 +1179,7 @@ class OverlayServer {
             type: 'SHING_CAST_BEACON',
             server: 'Shing Live',
             port: this.port,
-            version: '1.6.2'
+            version: '1.6.3'
           }));
           socket.send(res, 0, res.length, rinfo.port, rinfo.address, () => {});
         }
@@ -1570,6 +1581,25 @@ class OverlayServer {
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ success: true }));
+    }
+
+    if (pathname === '/shingcast.apk' || pathname === '/api/cast/apk' || pathname === '/download/shingcast.apk') {
+      const candidates = [
+        path.join(this.baseDir, 'assets', 'ShingCast-debug.apk'),
+        path.resolve(this.baseDir, '..', 'android', 'ShingCast-debug.apk')
+      ];
+      for (const apkPath of candidates) {
+        if (fs.existsSync(apkPath)) {
+          res.writeHead(200, {
+            'Content-Type': 'application/vnd.android.package-archive',
+            'Content-Disposition': 'attachment; filename="ShingCast-v1.6.3.apk"',
+            'Access-Control-Allow-Origin': '*'
+          });
+          return fs.createReadStream(apkPath).pipe(res);
+        }
+      }
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      return res.end('APK Not Found');
     }
 
     if (pathname === '/api/cast/status') {

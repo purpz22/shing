@@ -117,12 +117,18 @@ class VideoEncoder(
                     outputBuffer.get(data)
 
                     val isConfig = (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0
-                    val isKeyFrame = (bufferInfo.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0
+                    val isKeyFrameFlag = (bufferInfo.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0
 
-                    if (isConfig) {
-                        cachedConfig = data
-                        client.sendBinaryPacket(CastClient.PACKET_VIDEO_CONFIG, ptsMs, data)
-                    } else if (isKeyFrame) {
+                    val extractedConfig = extractConfigBytes(data)
+                    if (extractedConfig != null) {
+                        cachedConfig = extractedConfig
+                        client.sendBinaryPacket(CastClient.PACKET_VIDEO_CONFIG, ptsMs, extractedConfig)
+                    }
+
+                    val hasIdr = hasIdrSlice(data)
+                    val isKey = isKeyFrameFlag || hasIdr
+
+                    if (isKey) {
                         val packet = if (cachedConfig != null && !hasSpsPrefix(data)) {
                             val combined = ByteArray(cachedConfig!!.size + data.size)
                             System.arraycopy(cachedConfig!!, 0, combined, 0, cachedConfig!!.size)
@@ -132,6 +138,11 @@ class VideoEncoder(
                             data
                         }
                         client.sendBinaryPacket(CastClient.PACKET_VIDEO_KEYFRAME, ptsMs, packet)
+                    } else if (isConfig) {
+                        if (extractedConfig == null) {
+                            cachedConfig = data
+                            client.sendBinaryPacket(CastClient.PACKET_VIDEO_CONFIG, ptsMs, data)
+                        }
                     } else {
                         client.sendBinaryPacket(CastClient.PACKET_VIDEO_DELTA, ptsMs, data)
                     }
@@ -169,14 +180,73 @@ class VideoEncoder(
         Log.d(TAG, "VideoEncoder stopped and released")
     }
 
-    private fun hasSpsPrefix(data: ByteArray): Boolean {
-        if (data.size < 5) return false
-        if (data[0] == 0.toByte() && data[1] == 0.toByte() && data[2] == 0.toByte() && data[3] == 1.toByte()) {
-            val nalType = (data[4].toInt() and 0x1F)
-            return nalType == 7
+    private fun getStartCodeLen(data: ByteArray, index: Int): Int {
+        val len = data.size
+        if (index + 2 < len && data[index] == 0.toByte() && data[index + 1] == 0.toByte() && data[index + 2] == 1.toByte()) {
+            return 3
         }
-        if (data[0] == 0.toByte() && data[1] == 0.toByte() && data[2] == 1.toByte()) {
-            val nalType = (data[3].toInt() and 0x1F)
+        if (index + 3 < len && data[index] == 0.toByte() && data[index + 1] == 0.toByte() && data[index + 2] == 0.toByte() && data[index + 3] == 1.toByte()) {
+            return 4
+        }
+        return 0
+    }
+
+    private fun extractConfigBytes(data: ByteArray): ByteArray? {
+        var spsStart = -1
+        var nextSliceStart = -1
+        var i = 0
+        val len = data.size
+
+        while (i < len - 3) {
+            val codeLen = getStartCodeLen(data, i)
+            if (codeLen > 0) {
+                if (i + codeLen < len) {
+                    val nalType = data[i + codeLen].toInt() and 0x1F
+                    if (nalType == 7 && spsStart == -1) {
+                        spsStart = i
+                    } else if ((nalType == 1 || nalType == 5) && spsStart != -1) {
+                        nextSliceStart = i
+                        break
+                    }
+                }
+                i += codeLen
+            } else {
+                i++
+            }
+        }
+
+        if (spsStart != -1) {
+            val end = if (nextSliceStart != -1) nextSliceStart else len
+            val config = ByteArray(end - spsStart)
+            System.arraycopy(data, spsStart, config, 0, config.size)
+            return config
+        }
+        return null
+    }
+
+    private fun hasIdrSlice(data: ByteArray): Boolean {
+        var i = 0
+        val len = data.size
+        while (i < len - 3) {
+            val codeLen = getStartCodeLen(data, i)
+            if (codeLen > 0) {
+                if (i + codeLen < len) {
+                    val nalType = data[i + codeLen].toInt() and 0x1F
+                    if (nalType == 5) return true
+                }
+                i += codeLen
+            } else {
+                i++
+            }
+        }
+        return false
+    }
+
+    private fun hasSpsPrefix(data: ByteArray): Boolean {
+        if (data.size < 4) return false
+        val codeLen = getStartCodeLen(data, 0)
+        if (codeLen > 0 && codeLen < data.size) {
+            val nalType = data[codeLen].toInt() and 0x1F
             return nalType == 7
         }
         return false

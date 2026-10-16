@@ -39,6 +39,8 @@ $icoFile = Join-Path $stagingDir "assets/app-icon.ico"
 if (Test-Path $icoFile) { Remove-Item $icoFile -Force }
 $pngFile = Join-Path $stagingDir "assets/app-icon.png"
 if (Test-Path $pngFile) { Remove-Item $pngFile -Force }
+# Remove APK binaries from desktop update archive so update package remains lightweight
+Get-ChildItem -Path $stagingDir -Recurse -Filter "*.apk" | Remove-Item -Force
 
 Write-Host "Compressing components to $zipName..."
 Compress-Archive -Path "$stagingDir\*" -DestinationPath $zipPath -Force

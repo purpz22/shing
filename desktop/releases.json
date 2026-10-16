@@ -1,6 +1,23 @@
 {
-    "latest":  "1.6.2",
+    "latest":  "1.6.3",
     "releases":  [
+                     {
+                         "version":  "1.6.3",
+                         "releaseName":  "Shing Live v1.6.3 - Shing Cast Hardware Video Fix \u0026 WebCodecs Auto-Healing",
+                         "releaseDate":  "2026-10-16",
+                         "type":  "feature",
+                         "summary":  "Resolved the phone screen mirroring issue by eliminating Chromium WebCodecs Annex B format conflicts, adding dynamic SPS parameter parsing, ISO AVCDecoderConfigurationRecord fallback, combined SPS/IDR buffer extraction, and instant keyframe caching for late-joining OBS sources.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.6.3.zip",
+                         "highlights":  [
+                                            "WebCodecs Specification Compliance: Eliminated Annex B raw description conflict in Chromium VideoDecoder and implemented auto-healing dual-mode (Annex B + AVCC fallback)",
+                                            "Dynamic SPS Parameter Extraction: Dynamically parses profile_idc, constraint flags, and level_idc into accurate codec strings (e.g. avc1.42c028, avc1.640028)",
+                                            "Android Combined Buffer Detection: VideoEncoder detects combined SPS and IDR slice buffers and caches inline parameter sets for all Android chipsets",
+                                            "Zero-Latency OBS Join: OverlayServer caches last keyframe and configuration packets to render video on frame 0 when adding browser source"
+                                        ],
+                         "notes":  "Critical fix for Shing Cast screen mirroring rendering with WebCodecs hardware decoding.",
+                         "packageSize":  "4.6 MB",
+                         "checksum":  "11a885b191208380ac7706038490e025e8ee0e284536cf7f0335b40e03b02eed"
+                     },
                      {
                          "version":  "1.6.2",
                          "releaseName":  "Shing Live v1.6.2 - Shing Cast Zero-Latency Protocol Sync \u0026 Live Phone Stream",

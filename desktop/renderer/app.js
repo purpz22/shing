@@ -3555,6 +3555,7 @@ async function updatePhoneCastServerStatus() {
     const wsUrl = `ws://${localIp}:${wsPort}/ws/cast`;
     if ($('phone-cast-url')) $('phone-cast-url').value = wsUrl;
     if ($('phone-copy-cast-url-btn')) $('phone-copy-cast-url-btn').setAttribute('data-url', wsUrl);
+    if ($('phone-apk-download-btn')) $('phone-apk-download-btn').href = `http://${localIp}:${port}/shingcast.apk`;
 
     // Generate pairing QR code: shingcast://connect?ip=<IP>&port=<PORT>
     const pairingUri = `shingcast://connect?ip=${encodeURIComponent(localIp)}&port=${encodeURIComponent(wsPort)}`;
@@ -3625,69 +3626,213 @@ function playStudioAudio(pcmData) {
   } catch (e) {}
 }
 
-function ensureStudioDecoderConfigured(descriptionBytes = null) {
+let phoneDecoderMode = 'annexb';
+let cachedPhoneSpsInfo = null;
+
+function extractStudioSpsInfo(nalData) {
+  if (!nalData || nalData.length < 8) return null;
+  let sps = null;
+  let pps = null;
+  let i = 0;
+  const nals = [];
+  while (i < nalData.length - 2) {
+    let startLen = 0;
+    if (nalData[i] === 0 && nalData[i + 1] === 0) {
+      if (nalData[i + 2] === 1) startLen = 3;
+      else if (nalData[i + 2] === 0 && nalData[i + 3] === 1) startLen = 4;
+    }
+    if (startLen > 0) {
+      nals.push({ startPos: i, nalStart: i + startLen });
+      i += startLen;
+    } else {
+      i++;
+    }
+  }
+  for (let idx = 0; idx < nals.length; idx++) {
+    const start = nals[idx].nalStart;
+    const end = (idx + 1 < nals.length) ? nals[idx + 1].startPos : nalData.length;
+    const nalUnit = nalData.subarray(start, end);
+    const type = nalUnit[0] & 0x1F;
+    if (type === 7 && !sps) sps = nalUnit;
+    if (type === 8 && !pps) pps = nalUnit;
+  }
+
+  let codec = 'avc1.42002A';
+  if (sps && sps.length >= 4) {
+    const p = sps[1].toString(16).padStart(2, '0');
+    const c = sps[2].toString(16).padStart(2, '0');
+    const l = sps[3].toString(16).padStart(2, '0');
+    codec = `avc1.${p}${c}${l}`;
+  }
+
+  return { sps, pps, codec };
+}
+
+function buildStudioAvccRecord(sps, pps) {
+  if (!sps || !pps) return null;
+  const buffer = new Uint8Array(11 + sps.length + pps.length);
+  buffer[0] = 1;
+  buffer[1] = sps[1];
+  buffer[2] = sps[2];
+  buffer[3] = sps[3];
+  buffer[4] = 0xFF;
+  buffer[5] = 0xE1;
+  buffer[6] = (sps.length >> 8) & 0xFF;
+  buffer[7] = sps.length & 0xFF;
+  buffer.set(sps, 8);
+  const ppsOffset = 8 + sps.length;
+  buffer[ppsOffset] = 1;
+  buffer[ppsOffset + 1] = (pps.length >> 8) & 0xFF;
+  buffer[ppsOffset + 2] = pps.length & 0xFF;
+  buffer.set(pps, ppsOffset + 3);
+  return buffer;
+}
+
+function studioAnnexbToAvccChunk(data) {
+  const nals = [];
+  let i = 0;
+  while (i < data.length - 2) {
+    let startLen = 0;
+    if (data[i] === 0 && data[i + 1] === 0) {
+      if (data[i + 2] === 1) startLen = 3;
+      else if (data[i + 2] === 0 && data[i + 3] === 1) startLen = 4;
+    }
+    if (startLen > 0) {
+      nals.push({ startPos: i, nalStart: i + startLen });
+      i += startLen;
+    } else {
+      i++;
+    }
+  }
+  if (nals.length === 0) return data;
+  let totalLen = 0;
+  const slices = [];
+  for (let idx = 0; idx < nals.length; idx++) {
+    const start = nals[idx].nalStart;
+    const end = (idx + 1 < nals.length) ? nals[idx + 1].startPos : data.length;
+    const len = end - start;
+    if (len > 0) {
+      slices.push({ start, end, len });
+      totalLen += 4 + len;
+    }
+  }
+  const avcc = new Uint8Array(totalLen);
+  let outPos = 0;
+  const view = new DataView(avcc.buffer);
+  for (const s of slices) {
+    view.setUint32(outPos, s.len, false);
+    outPos += 4;
+    avcc.set(data.subarray(s.start, s.end), outPos);
+    outPos += s.len;
+  }
+  return avcc;
+}
+
+function initStudioVideoDecoder() {
   const canvas = $('phone-studio-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  if (!phoneVideoDecoder || phoneVideoDecoder.state === 'closed') {
-    try {
-      phoneVideoDecoder = new VideoDecoder({
-        output: (frame) => {
-          if (canvas.width !== frame.displayWidth || canvas.height !== frame.displayHeight) {
-            canvas.width = frame.displayWidth;
-            canvas.height = frame.displayHeight;
-            if ($('phone-telemetry-res')) {
-              $('phone-telemetry-res').textContent = `${frame.displayWidth}x${frame.displayHeight}`;
-            }
-          }
-          ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
-          frame.close();
-
-          phoneFpsCount++;
-          const now = performance.now();
-          if (now - phoneLastFpsTime >= 1000) {
-            if ($('phone-telemetry-fps')) $('phone-telemetry-fps').textContent = `${phoneFpsCount} FPS`;
-            phoneFpsCount = 0;
-            phoneLastFpsTime = now;
-          }
-          if ($('phone-studio-waiting')) $('phone-studio-waiting').classList.add('hidden');
-        },
-        error: (err) => {
-          console.warn('Phone studio VideoDecoder decode error:', err);
-        }
-      });
-    } catch (e) {
-      return;
-    }
+  if (typeof VideoDecoder === 'undefined') {
+    return;
   }
 
-  if (phoneVideoDecoder && phoneVideoDecoder.state === 'unconfigured') {
-    try {
-      if (descriptionBytes && descriptionBytes.length > 0) {
-        phoneVideoDecoder.configure({
-          codec: 'avc1.640028',
-          description: descriptionBytes,
-          optimizeForLatency: true
-        });
-      } else {
-        phoneVideoDecoder.configure({
-          codec: 'avc1.640028',
-          optimizeForLatency: true
-        });
+  try {
+    if (phoneVideoDecoder && phoneVideoDecoder.state !== 'closed') {
+      try { phoneVideoDecoder.close(); } catch (e) {}
+    }
+
+    phoneVideoDecoder = new VideoDecoder({
+      output: (frame) => {
+        if (canvas.width !== frame.displayWidth || canvas.height !== frame.displayHeight) {
+          canvas.width = frame.displayWidth;
+          canvas.height = frame.displayHeight;
+          if ($('phone-telemetry-res')) {
+            $('phone-telemetry-res').textContent = `${frame.displayWidth}x${frame.displayHeight}`;
+          }
+        }
+        ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
+        frame.close();
+
+        phoneFpsCount++;
+        const now = performance.now();
+        if (now - phoneLastFpsTime >= 1000) {
+          if ($('phone-telemetry-fps')) $('phone-telemetry-fps').textContent = `${phoneFpsCount} FPS`;
+          phoneFpsCount = 0;
+          phoneLastFpsTime = now;
+        }
+        if ($('phone-studio-waiting')) {
+          $('phone-studio-waiting').classList.add('hidden');
+          $('phone-studio-waiting').style.display = 'none';
+        }
+      },
+      error: (err) => {
+        console.warn(`Phone studio VideoDecoder error in mode ${phoneDecoderMode}:`, err);
+        if (phoneDecoderMode === 'annexb' && cachedPhoneSpsInfo && cachedPhoneSpsInfo.sps && cachedPhoneSpsInfo.pps) {
+          phoneDecoderMode = 'avcc';
+          initStudioVideoDecoder();
+          const avccRecord = buildStudioAvccRecord(cachedPhoneSpsInfo.sps, cachedPhoneSpsInfo.pps);
+          if (avccRecord && phoneVideoDecoder) {
+            try {
+              phoneVideoDecoder.configure({
+                codec: cachedPhoneSpsInfo.codec || 'avc1.42002A',
+                description: avccRecord,
+                optimizeForLatency: true
+              });
+            } catch (e) {}
+          }
+        }
       }
-    } catch (e1) {
+    });
+  } catch (e) {}
+}
+
+function setupStudioDecoder(spsInfo) {
+  if (!phoneVideoDecoder || phoneVideoDecoder.state === 'closed') {
+    initStudioVideoDecoder();
+  }
+  if (!phoneVideoDecoder) return;
+
+  const codec = (spsInfo && spsInfo.codec) || 'avc1.42002A';
+
+  // 1. Try native Annex B mode (Chromium 94+)
+  try {
+    phoneVideoDecoder.configure({
+      codec: codec,
+      avc: { format: 'annexb' },
+      optimizeForLatency: true
+    });
+    phoneDecoderMode = 'annexb';
+    return;
+  } catch (e) {
+    console.warn('Studio Annex B configure failed, trying AVCC:', e);
+  }
+
+  // 2. Fallback to AVCC mode
+  if (spsInfo && spsInfo.sps && spsInfo.pps) {
+    const avccRecord = buildStudioAvccRecord(spsInfo.sps, spsInfo.pps);
+    if (avccRecord) {
       try {
         phoneVideoDecoder.configure({
-          codec: 'avc1.42E01F',
+          codec: codec,
+          description: avccRecord,
           optimizeForLatency: true
         });
-      } catch (e2) {
-        console.warn('Phone studio configure fallback failed:', e2);
-      }
+        phoneDecoderMode = 'avcc';
+        return;
+      } catch (e2) {}
     }
   }
+
+  // 3. Fallback to Baseline
+  try {
+    phoneVideoDecoder.configure({
+      codec: 'avc1.42002A',
+      optimizeForLatency: true
+    });
+    phoneDecoderMode = 'annexb';
+  } catch (e3) {}
 }
 
 function handlePhoneVideoPacket(packetType, buf) {
@@ -3701,30 +3846,57 @@ function handlePhoneVideoPacket(packetType, buf) {
 
   if (packetType === 0x01) {
     cachedPhoneConfig = nalData;
-    if (phoneVideoDecoder && phoneVideoDecoder.state !== 'closed') {
-      try { phoneVideoDecoder.close(); } catch (e) {}
+    const spsInfo = extractStudioSpsInfo(nalData);
+    if (spsInfo) {
+      cachedPhoneSpsInfo = spsInfo;
+      setupStudioDecoder(spsInfo);
     }
-    ensureStudioDecoderConfigured(nalData);
     return;
   }
 
   if (packetType === 0x02 || packetType === 0x03) {
-    ensureStudioDecoderConfigured(cachedPhoneConfig);
+    const isKey = packetType === 0x02;
+
+    if (!phoneVideoDecoder || phoneVideoDecoder.state !== 'configured') {
+      if (cachedPhoneConfig) {
+        const spsInfo = extractStudioSpsInfo(cachedPhoneConfig);
+        if (spsInfo) {
+          cachedPhoneSpsInfo = spsInfo;
+          setupStudioDecoder(spsInfo);
+        }
+      } else {
+        const spsInfo = extractStudioSpsInfo(nalData);
+        if (spsInfo && spsInfo.sps) {
+          cachedPhoneConfig = nalData;
+          cachedPhoneSpsInfo = spsInfo;
+          setupStudioDecoder(spsInfo);
+        }
+      }
+    }
+
     if (!phoneVideoDecoder || phoneVideoDecoder.state !== 'configured') return;
 
     let frameBytes = nalData;
-    if (packetType === 0x02 && cachedPhoneConfig && !startsWithSpsPrefix(nalData)) {
-      const combined = new Uint8Array(cachedPhoneConfig.length + nalData.length);
-      combined.set(cachedPhoneConfig, 0);
-      combined.set(nalData, cachedPhoneConfig.length);
-      frameBytes = combined;
+    if (isKey && cachedPhoneConfig && !startsWithSpsPrefix(nalData)) {
+      const existingSps = extractStudioSpsInfo(nalData);
+      if (!existingSps || !existingSps.sps) {
+        const combined = new Uint8Array(cachedPhoneConfig.length + nalData.length);
+        combined.set(cachedPhoneConfig, 0);
+        combined.set(nalData, cachedPhoneConfig.length);
+        frameBytes = combined;
+      }
+    }
+
+    let chunkData = frameBytes;
+    if (phoneDecoderMode === 'avcc') {
+      chunkData = studioAnnexbToAvccChunk(frameBytes);
     }
 
     try {
       const chunk = new EncodedVideoChunk({
-        type: packetType === 0x02 ? 'key' : 'delta',
+        type: isKey ? 'key' : 'delta',
         timestamp: ptsUs || Math.round(performance.now() * 1000),
-        data: frameBytes
+        data: chunkData
       });
       phoneVideoDecoder.decode(chunk);
     } catch (e) {

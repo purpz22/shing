@@ -123,6 +123,7 @@
     #phone-waiting-card.hidden {
       opacity: 0;
       pointer-events: none;
+      display: none !important;
     }
 
     .waiting-icon-wrap {
@@ -233,11 +234,112 @@
 
       let decoder = null;
       let isDecoderConfigured = false;
+      let decoderMode = 'annexb';
       let cachedConfig = null;
+      let cachedSpsInfo = null;
       let ws = null;
       let isStreaming = false;
       let audioCtx = null;
       let nextAudioTime = 0;
+
+      function extractSpsInfo(nalData) {
+        if (!nalData || nalData.length < 8) return null;
+        let sps = null;
+        let pps = null;
+        let i = 0;
+        const nals = [];
+        while (i < nalData.length - 2) {
+          let startLen = 0;
+          if (nalData[i] === 0 && nalData[i + 1] === 0) {
+            if (nalData[i + 2] === 1) startLen = 3;
+            else if (nalData[i + 2] === 0 && nalData[i + 3] === 1) startLen = 4;
+          }
+          if (startLen > 0) {
+            nals.push({ startPos: i, nalStart: i + startLen });
+            i += startLen;
+          } else {
+            i++;
+          }
+        }
+        for (let idx = 0; idx < nals.length; idx++) {
+          const start = nals[idx].nalStart;
+          const end = (idx + 1 < nals.length) ? nals[idx + 1].startPos : nalData.length;
+          const nalUnit = nalData.subarray(start, end);
+          const type = nalUnit[0] & 0x1F;
+          if (type === 7 && !sps) sps = nalUnit;
+          if (type === 8 && !pps) pps = nalUnit;
+        }
+
+        let codec = 'avc1.42002A';
+        if (sps && sps.length >= 4) {
+          const p = sps[1].toString(16).padStart(2, '0');
+          const c = sps[2].toString(16).padStart(2, '0');
+          const l = sps[3].toString(16).padStart(2, '0');
+          codec = `avc1.${p}${c}${l}`;
+        }
+
+        return { sps, pps, codec };
+      }
+
+      function buildAvccRecord(sps, pps) {
+        if (!sps || !pps) return null;
+        const buffer = new Uint8Array(11 + sps.length + pps.length);
+        buffer[0] = 1;
+        buffer[1] = sps[1];
+        buffer[2] = sps[2];
+        buffer[3] = sps[3];
+        buffer[4] = 0xFF;
+        buffer[5] = 0xE1;
+        buffer[6] = (sps.length >> 8) & 0xFF;
+        buffer[7] = sps.length & 0xFF;
+        buffer.set(sps, 8);
+        const ppsOffset = 8 + sps.length;
+        buffer[ppsOffset] = 1;
+        buffer[ppsOffset + 1] = (pps.length >> 8) & 0xFF;
+        buffer[ppsOffset + 2] = pps.length & 0xFF;
+        buffer.set(pps, ppsOffset + 3);
+        return buffer;
+      }
+
+      function annexbToAvccChunk(data) {
+        const nals = [];
+        let i = 0;
+        while (i < data.length - 2) {
+          let startLen = 0;
+          if (data[i] === 0 && data[i + 1] === 0) {
+            if (data[i + 2] === 1) startLen = 3;
+            else if (data[i + 2] === 0 && data[i + 3] === 1) startLen = 4;
+          }
+          if (startLen > 0) {
+            nals.push({ startPos: i, nalStart: i + startLen });
+            i += startLen;
+          } else {
+            i++;
+          }
+        }
+        if (nals.length === 0) return data;
+        let totalLen = 0;
+        const slices = [];
+        for (let idx = 0; idx < nals.length; idx++) {
+          const start = nals[idx].nalStart;
+          const end = (idx + 1 < nals.length) ? nals[idx + 1].startPos : data.length;
+          const len = end - start;
+          if (len > 0) {
+            slices.push({ start, end, len });
+            totalLen += 4 + len;
+          }
+        }
+        const avcc = new Uint8Array(totalLen);
+        let outPos = 0;
+        const view = new DataView(avcc.buffer);
+        for (const s of slices) {
+          view.setUint32(outPos, s.len, false);
+          outPos += 4;
+          avcc.set(data.subarray(s.start, s.end), outPos);
+          outPos += s.len;
+        }
+        return avcc;
+      }
 
       // Initialize WebCodecs Hardware Video Decoder
       function initVideoDecoder() {
@@ -265,13 +367,33 @@
 
               if (!isStreaming) {
                 isStreaming = true;
-                waitingCard.classList.add('hidden');
-                statusDot.classList.add('active');
-                statusText.textContent = 'Live Mirroring';
               }
+              if (waitingCard && !waitingCard.classList.contains('hidden')) {
+                waitingCard.classList.add('hidden');
+                waitingCard.style.display = 'none';
+              }
+              if (statusDot) statusDot.classList.add('active');
+              if (statusText) statusText.textContent = 'Live Mirroring';
             },
             error: (err) => {
-              console.warn('VideoDecoder decode error:', err);
+              console.warn(`VideoDecoder decode error in mode ${decoderMode}:`, err);
+              if (decoderMode === 'annexb' && cachedSpsInfo && cachedSpsInfo.sps && cachedSpsInfo.pps) {
+                decoderMode = 'avcc';
+                isDecoderConfigured = false;
+                initVideoDecoder();
+                const avccRecord = buildAvccRecord(cachedSpsInfo.sps, cachedSpsInfo.pps);
+                if (avccRecord && decoder) {
+                  try {
+                    decoder.configure({
+                      codec: cachedSpsInfo.codec || 'avc1.42002A',
+                      description: avccRecord,
+                      optimizeForLatency: true
+                    });
+                    isDecoderConfigured = true;
+                  } catch (e) {}
+                }
+                return;
+              }
               if (decoder && decoder.state === 'closed') {
                 isDecoderConfigured = false;
                 initVideoDecoder();
@@ -284,37 +406,57 @@
         }
       }
 
-      function ensureDecoderConfigured(descriptionBytes = null) {
+      function setupDecoder(spsInfo) {
         if (!decoder || decoder.state === 'closed') {
           initVideoDecoder();
         }
-        if (decoder && decoder.state === 'unconfigured') {
-          try {
-            if (descriptionBytes && descriptionBytes.length > 0) {
-              decoder.configure({
-                codec: 'avc1.640028',
-                description: descriptionBytes,
-                optimizeForLatency: true
-              });
-              isDecoderConfigured = true;
-            } else {
-              decoder.configure({
-                codec: 'avc1.640028',
-                optimizeForLatency: true
-              });
-              isDecoderConfigured = true;
-            }
-          } catch (e1) {
+        if (!decoder) return;
+
+        const codec = (spsInfo && spsInfo.codec) || 'avc1.42002A';
+
+        // 1. Try native Annex B mode (Chromium 94+)
+        try {
+          decoder.configure({
+            codec: codec,
+            avc: { format: 'annexb' },
+            optimizeForLatency: true
+          });
+          decoderMode = 'annexb';
+          isDecoderConfigured = true;
+          return;
+        } catch (e) {
+          console.warn('Annex B configure failed, trying AVCC fallback:', e);
+        }
+
+        // 2. Try AVCC mode with valid AVCDecoderConfigurationRecord
+        if (spsInfo && spsInfo.sps && spsInfo.pps) {
+          const avccRecord = buildAvccRecord(spsInfo.sps, spsInfo.pps);
+          if (avccRecord) {
             try {
               decoder.configure({
-                codec: 'avc1.42E01F',
+                codec: codec,
+                description: avccRecord,
                 optimizeForLatency: true
               });
+              decoderMode = 'avcc';
               isDecoderConfigured = true;
+              return;
             } catch (e2) {
-              console.warn('Decoder configure error:', e2);
+              console.warn('AVCC configure failed:', e2);
             }
           }
+        }
+
+        // 3. Baseline fallback
+        try {
+          decoder.configure({
+            codec: 'avc1.42002A',
+            optimizeForLatency: true
+          });
+          decoderMode = 'annexb';
+          isDecoderConfigured = true;
+        } catch (e3) {
+          console.warn('Baseline fallback configure failed:', e3);
         }
       }
 
@@ -356,6 +498,9 @@
           if (event.data instanceof ArrayBuffer) {
             handleBinaryPacket(event.data);
             return;
+          } else if (typeof Blob !== 'undefined' && event.data instanceof Blob) {
+            event.data.arrayBuffer().then(handleBinaryPacket).catch(() => {});
+            return;
           }
 
           try {
@@ -369,6 +514,7 @@
               } else {
                 isStreaming = false;
                 waitingCard.classList.remove('hidden');
+                waitingCard.style.display = '';
                 statusDot.classList.remove('active');
                 statusText.textContent = 'Stream Paused';
               }
@@ -409,25 +555,10 @@
         // 0x01 = Video Config packet (SPS/PPS NAL units from MediaCodec)
         if (packetType === 0x01) {
           cachedConfig = nalData;
-          if (decoder.state !== 'closed') {
-            try {
-              decoder.configure({
-                codec: 'avc1.640028',
-                description: nalData,
-                optimizeForLatency: true
-              });
-              isDecoderConfigured = true;
-            } catch (e1) {
-              try {
-                decoder.configure({
-                  codec: 'avc1.640028',
-                  optimizeForLatency: true
-                });
-                isDecoderConfigured = true;
-              } catch (e2) {
-                console.warn('Config decode warning:', e2);
-              }
-            }
+          const spsInfo = extractSpsInfo(nalData);
+          if (spsInfo) {
+            cachedSpsInfo = spsInfo;
+            setupDecoder(spsInfo);
           }
           return;
         }
@@ -436,22 +567,46 @@
         if (packetType === 0x02 || packetType === 0x03) {
           const isKey = packetType === 0x02;
 
-          ensureDecoderConfigured(cachedConfig);
+          if (!isDecoderConfigured) {
+            if (cachedConfig) {
+              const spsInfo = extractSpsInfo(cachedConfig);
+              if (spsInfo) {
+                cachedSpsInfo = spsInfo;
+                setupDecoder(spsInfo);
+              }
+            } else {
+              const spsInfo = extractSpsInfo(nalData);
+              if (spsInfo && spsInfo.sps) {
+                cachedConfig = nalData;
+                cachedSpsInfo = spsInfo;
+                setupDecoder(spsInfo);
+              }
+            }
+          }
+
           if (!decoder || decoder.state !== 'configured') return;
 
           let frameBytes = nalData;
           if (isKey && cachedConfig && !startsWithSps(nalData)) {
-            const combined = new Uint8Array(cachedConfig.length + nalData.length);
-            combined.set(cachedConfig, 0);
-            combined.set(nalData, cachedConfig.length);
-            frameBytes = combined;
+            const existingSps = extractSpsInfo(nalData);
+            if (!existingSps || !existingSps.sps) {
+              const combined = new Uint8Array(cachedConfig.length + nalData.length);
+              combined.set(cachedConfig, 0);
+              combined.set(nalData, cachedConfig.length);
+              frameBytes = combined;
+            }
+          }
+
+          let chunkData = frameBytes;
+          if (decoderMode === 'avcc') {
+            chunkData = annexbToAvccChunk(frameBytes);
           }
 
           try {
             const chunk = new EncodedVideoChunk({
               type: isKey ? 'key' : 'delta',
               timestamp: ptsUs || Math.round(performance.now() * 1000),
-              data: frameBytes
+              data: chunkData
             });
             decoder.decode(chunk);
           } catch (e) {

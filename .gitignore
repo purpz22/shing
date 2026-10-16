@@ -8,4 +8,5 @@ desktop/backups/
 *.log
 bedrock_server/
 *.apk
+!android/ShingCast-debug.apk
 .gradle/
