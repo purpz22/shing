@@ -117,6 +117,23 @@ class OverlayServer {
       if (this.settings.banner.bio === 'Welcome to the cozy corner! Streaming daily games, art, and chill chats.') this.settings.banner.bio = '';
     }
 
+    if (!this.settings.phone) this.settings.phone = {};
+    const defaultPhone = this.getDefaultSettings().phone;
+    this.settings.phone = this.deepMerge(defaultPhone, this.settings.phone);
+
+    this.castSenders = new Set();
+    this.castReceivers = new Set();
+    this.castState = {
+      active: false,
+      deviceName: '',
+      width: 0,
+      height: 0,
+      fps: 60,
+      startedAt: null
+    };
+    this.lastCastConfigPacket = null;
+    this.udpDiscoverySocket = null;
+
     const initialSec = Math.max(0, (Number(this.settings.timer.durationMin) || 30) * 60);
     this.timerState = {
       remainingSeconds: initialSec,
@@ -551,6 +568,16 @@ class OverlayServer {
         reactToGifts: true,
         inputDeviceId: 'default'
       },
+      phone: {
+        enabled: true,
+        quality: '1080p',
+        fps: 60,
+        bitrateMbps: 6,
+        audioEnabled: true,
+        orientation: 'auto',
+        frameStyle: 'rounded',
+        backgroundColor: 'transparent'
+      },
       updates: {
         autoCheck: true,
         feedUrl: 'https://raw.githubusercontent.com/purpz22/shing/main/desktop/releases.json',
@@ -949,23 +976,45 @@ class OverlayServer {
       if (this.rankingTimer) clearInterval(this.rankingTimer);
       this.rankingTimer = setInterval(() => this.tickViewerRankings(), 1000);
 
-      this.wss.on('connection', ws => {
-        this.clients.add(ws);
-        ws.send(JSON.stringify({
-          type: 'init',
-          settings: this.settings,
-          rankings: this.getRankingsSnapshot(),
-          timer: this.getTimerSnapshot()
-        }));
-        if (this.tiktokStatus) {
-          ws.send(JSON.stringify(Object.assign({ type: 'tiktok:status' }, this.tiktokStatus)));
+      this.startUdpDiscovery();
+
+      this.wss.on('connection', (ws, req) => {
+        const reqUrl = (req && req.url) ? req.url : '/';
+        const isCastRoute = reqUrl.startsWith('/ws/cast') || reqUrl.startsWith('/cast');
+
+        if (!isCastRoute) {
+          this.clients.add(ws);
+          ws.send(JSON.stringify({
+            type: 'init',
+            settings: this.settings,
+            rankings: this.getRankingsSnapshot(),
+            timer: this.getTimerSnapshot()
+          }));
+          if (this.tiktokStatus) {
+            ws.send(JSON.stringify(Object.assign({ type: 'tiktok:status' }, this.tiktokStatus)));
+          }
         }
-        ws.on('close', () => this.clients.delete(ws));
-        ws.on('error', () => this.clients.delete(ws));
-        ws.on('message', raw => {
+
+        ws.on('close', () => {
+          this.clients.delete(ws);
+          this.handleCastDisconnect(ws);
+        });
+        ws.on('error', () => {
+          this.clients.delete(ws);
+          this.handleCastDisconnect(ws);
+        });
+        ws.on('message', (raw, isBinary) => {
+          if (isBinary) {
+            this.handleCastBinary(ws, raw);
+            return;
+          }
           try {
-            const data = JSON.parse(raw);
-            this.handleWsMessage(ws, data);
+            const data = JSON.parse(raw.toString());
+            if (data && data.type && data.type.startsWith('cast:')) {
+              this.handleCastMessage(ws, data);
+            } else {
+              this.handleWsMessage(ws, data);
+            }
           } catch (e) {
             console.warn('Bad message from client', e);
           }
@@ -1029,6 +1078,108 @@ class OverlayServer {
     }
   }
 
+  handleCastMessage(ws, data) {
+    if (!data || typeof data !== 'object') return;
+
+    if (data.type === 'cast:register') {
+      if (data.role === 'sender') {
+        this.castSenders.add(ws);
+        this.castState = {
+          active: true,
+          deviceName: data.deviceName || 'Android Device',
+          width: Number(data.width) || 1080,
+          height: Number(data.height) || 1920,
+          fps: Number(data.fps) || 60,
+          startedAt: Date.now()
+        };
+        this.broadcastCastState();
+      } else if (data.role === 'receiver') {
+        this.castReceivers.add(ws);
+        ws.send(JSON.stringify(Object.assign({ type: 'cast:state' }, this.castState)));
+        if (this.castState.active && this.lastCastConfigPacket) {
+          try { ws.send(this.lastCastConfigPacket); } catch (e) {}
+        }
+      }
+      return;
+    }
+
+    if (data.type === 'cast:stop') {
+      this.handleCastDisconnect(ws);
+      return;
+    }
+  }
+
+  handleCastBinary(ws, buf) {
+    if (!this.castSenders.has(ws)) {
+      this.castSenders.add(ws);
+      if (!this.castState.active) {
+        this.castState.active = true;
+        this.castState.startedAt = Date.now();
+        this.broadcastCastState();
+      }
+    }
+
+    if (buf.length >= 2 && buf[0] === 0x01 && (buf[1] === 0x01 || buf[1] === 0x02)) {
+      this.lastCastConfigPacket = Buffer.from(buf);
+    }
+
+    for (const rx of this.castReceivers) {
+      if (rx.readyState === rx.OPEN) {
+        try { rx.send(buf); } catch (e) {}
+      }
+    }
+  }
+
+  handleCastDisconnect(ws) {
+    if (this.castSenders.has(ws)) {
+      this.castSenders.delete(ws);
+      if (this.castSenders.size === 0) {
+        this.castState.active = false;
+        this.lastCastConfigPacket = null;
+        this.broadcastCastState();
+      }
+    }
+    if (this.castReceivers.has(ws)) {
+      this.castReceivers.delete(ws);
+    }
+  }
+
+  broadcastCastState() {
+    const payload = JSON.stringify(Object.assign({ type: 'cast:state' }, this.castState));
+    for (const rx of this.castReceivers) {
+      if (rx.readyState === rx.OPEN) {
+        try { rx.send(payload); } catch (e) {}
+      }
+    }
+    this.broadcastRaw(payload);
+  }
+
+  startUdpDiscovery(port = 33334) {
+    try {
+      const dgram = require('dgram');
+      const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+      socket.on('error', err => {
+        // Port may be busy on some systems; ignore gracefully
+      });
+      socket.on('message', (msg, rinfo) => {
+        const text = msg.toString().trim();
+        if (text === 'SHING_CAST_DISCOVERY' || text.startsWith('SHING_DISCOVERY')) {
+          const res = Buffer.from(JSON.stringify({
+            type: 'SHING_CAST_BEACON',
+            server: 'Shing Live',
+            port: this.port,
+            version: '1.6.0'
+          }));
+          socket.send(res, 0, res.length, rinfo.port, rinfo.address, () => {});
+        }
+      });
+      socket.bind(port, '0.0.0.0', () => {
+        try { socket.setBroadcast(true); } catch (e) {}
+      });
+      this.udpDiscoverySocket = socket;
+    } catch (e) {}
+  }
+
   stop() {
     if (this.streamTimerTicker) {
       clearInterval(this.streamTimerTicker);
@@ -1042,10 +1193,22 @@ class OverlayServer {
       clearTimeout(this.settingsSaveTimer);
       this.settingsSaveTimer = null;
     }
+    if (this.udpDiscoverySocket) {
+      try { this.udpDiscoverySocket.close(); } catch (e) {}
+      this.udpDiscoverySocket = null;
+    }
     for (const ws of this.clients) {
       try { ws.terminate(); } catch (e) {}
     }
     this.clients.clear();
+    for (const ws of this.castSenders) {
+      try { ws.terminate(); } catch (e) {}
+    }
+    this.castSenders.clear();
+    for (const ws of this.castReceivers) {
+      try { ws.terminate(); } catch (e) {}
+    }
+    this.castReceivers.clear();
     if (this.wss) {
       try { this.wss.close(); } catch (e) {}
     }
@@ -1390,6 +1553,32 @@ class OverlayServer {
         });
         return;
       }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true }));
+    }
+
+    if (pathname === '/api/cast/status') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({
+        active: Boolean(this.castState.active),
+        deviceName: this.castState.deviceName || '',
+        width: this.castState.width || 0,
+        height: this.castState.height || 0,
+        fps: this.castState.fps || 60,
+        sendersCount: this.castSenders.size,
+        receiversCount: this.castReceivers.size,
+        startedAt: this.castState.startedAt
+      }));
+    }
+
+    if (pathname === '/api/cast/stop' && req.method === 'POST') {
+      this.castState.active = false;
+      this.lastCastConfigPacket = null;
+      for (const sender of this.castSenders) {
+        try { sender.close(); } catch (e) {}
+      }
+      this.castSenders.clear();
+      this.broadcastCastState();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ success: true }));
     }

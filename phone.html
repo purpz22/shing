@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shing Cast - Phone Mirror Overlay</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: transparent;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+      color: #fff;
+    }
+
+    #phone-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: width 0.3s ease, height 0.3s ease;
+    }
+
+    /* Orientation Modes */
+    #phone-stage.orientation-portrait {
+      width: 450px;
+      height: 800px;
+      max-width: 95vw;
+      max-height: 95vh;
+    }
+
+    #phone-stage.orientation-landscape {
+      width: 960px;
+      height: 540px;
+      max-width: 95vw;
+      max-height: 95vh;
+    }
+
+    /* Frame Styles */
+    .phone-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .phone-frame-none .phone-container {
+      border-radius: 0;
+      box-shadow: none;
+      background: #000;
+    }
+
+    .phone-frame-rounded .phone-container {
+      border-radius: 28px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      background: #000;
+    }
+
+    .phone-frame-bezel .phone-container {
+      border-radius: 42px;
+      border: 10px solid #201a30;
+      box-shadow: 0 16px 48px rgba(123, 63, 228, 0.25), 0 0 0 2px rgba(192, 132, 252, 0.4);
+      background: #0d0a14;
+    }
+
+    /* Screen Canvas */
+    #cast-canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      background: #000;
+    }
+
+    /* Bezel Camera Notch */
+    #phone-bezel-notch {
+      display: none;
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 18px;
+      background: #120e1e;
+      border-radius: 12px;
+      z-index: 10;
+    }
+
+    .phone-frame-bezel.orientation-portrait #phone-bezel-notch {
+      display: block;
+    }
+
+    /* Waiting State Card */
+    #phone-waiting-card {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(145deg, rgba(26, 20, 42, 0.94), rgba(15, 11, 24, 0.96));
+      backdrop-filter: blur(8px);
+      border: 1.5px dashed rgba(168, 85, 247, 0.4);
+      border-radius: inherit;
+      padding: 24px;
+      text-align: center;
+      z-index: 5;
+      transition: opacity 0.3s ease;
+    }
+
+    #phone-waiting-card.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .waiting-icon-wrap {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(123, 63, 228, 0.2);
+      border: 1.5px solid rgba(192, 132, 252, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      animation: pulseGlow 2.5s infinite ease-in-out;
+    }
+
+    .waiting-icon-svg {
+      width: 32px;
+      height: 32px;
+      fill: #e9d5ff;
+    }
+
+    .waiting-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #f3e8ff;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .waiting-sub {
+      font-size: 13px;
+      font-weight: 600;
+      color: #c084fc;
+      line-height: 1.4;
+      max-width: 240px;
+    }
+
+    .waiting-pulse-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #eab308;
+      animation: blinkDot 1.4s infinite;
+    }
+
+    .pulse-dot.active {
+      background: #10b981;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 16px rgba(123, 63, 228, 0.3); }
+      50% { transform: scale(1.05); box-shadow: 0 0 28px rgba(168, 85, 247, 0.6); }
+    }
+
+    @keyframes blinkDot {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="phone-stage" class="phone-frame-rounded orientation-portrait">
+    <div class="phone-container" id="phone-bezel">
+      <div id="phone-bezel-notch"></div>
+      <canvas id="cast-canvas" width="1080" height="1920"></canvas>
+
+      <div id="phone-waiting-card">
+        <div class="waiting-icon-wrap">
+          <svg class="waiting-icon-svg" viewBox="0 0 24 24">
+            <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
+          </svg>
+        </div>
+        <div class="waiting-title">Waiting for Shing Cast</div>
+        <div class="waiting-sub">Open Shing Cast on your phone and tap Start Streaming</div>
+        <div class="waiting-pulse-badge">
+          <span class="pulse-dot" id="status-dot"></span>
+          <span id="cast-status-text">Ready to Connect</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      const stage = document.getElementById('phone-stage');
+      const canvas = document.getElementById('cast-canvas');
+      const ctx = canvas.getContext('2d');
+      const waitingCard = document.getElementById('phone-waiting-card');
+      const statusText = document.getElementById('cast-status-text');
+      const statusDot = document.getElementById('status-dot');
+
+      let decoder = null;
+      let isDecoderConfigured = false;
+      let ws = null;
+      let isStreaming = false;
+
+      // Initialize WebCodecs Hardware Video Decoder
+      function initVideoDecoder() {
+        if (typeof VideoDecoder === 'undefined') {
+          console.warn('WebCodecs VideoDecoder not supported in this browser source.');
+          statusText.textContent = 'Hardware Decoder Unsupported';
+          return;
+        }
+
+        try {
+          decoder = new VideoDecoder({
+            output: (videoFrame) => {
+              // Update canvas resolution if frame dimensions change
+              if (canvas.width !== videoFrame.displayWidth || canvas.height !== videoFrame.displayHeight) {
+                canvas.width = videoFrame.displayWidth;
+                canvas.height = videoFrame.displayHeight;
+                updateOrientation(canvas.width, canvas.height);
+              }
+
+              ctx.drawImage(videoFrame, 0, 0, canvas.width, canvas.height);
+              videoFrame.close();
+
+              if (!isStreaming) {
+                isStreaming = true;
+                waitingCard.classList.add('hidden');
+                statusDot.classList.add('active');
+                statusText.textContent = 'Live Mirroring';
+              }
+            },
+            error: (err) => {
+              console.error('VideoDecoder decode error:', err);
+            }
+          });
+        } catch (e) {
+          console.error('Failed to construct VideoDecoder:', e);
+        }
+      }
+
+      function updateOrientation(width, height) {
+        if (width > height) {
+          stage.classList.remove('orientation-portrait');
+          stage.classList.add('orientation-landscape');
+        } else {
+          stage.classList.remove('orientation-landscape');
+          stage.classList.add('orientation-portrait');
+        }
+      }
+
+      function applyFrameStyle(style) {
+        stage.classList.remove('phone-frame-none', 'phone-frame-rounded', 'phone-frame-bezel');
+        if (style === 'none') {
+          stage.classList.add('phone-frame-none');
+        } else if (style === 'bezel') {
+          stage.classList.add('phone-frame-bezel');
+        } else {
+          stage.classList.add('phone-frame-rounded');
+        }
+      }
+
+      function connectWebSocket() {
+        const host = window.location.host || 'localhost:3333';
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${host}/ws/cast`;
+
+        ws = new WebSocket(wsUrl);
+        ws.binaryType = 'arraybuffer';
+
+        ws.onopen = () => {
+          ws.send(JSON.stringify({ type: 'cast:register', role: 'receiver' }));
+          statusText.textContent = 'Waiting for Phone Stream';
+        };
+
+        ws.onmessage = (event) => {
+          if (event.data instanceof ArrayBuffer) {
+            handleBinaryPacket(event.data);
+            return;
+          }
+
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'cast:state') {
+              if (data.active) {
+                if (data.width && data.height) {
+                  updateOrientation(data.width, data.height);
+                }
+                statusText.textContent = `Streaming (${data.deviceName || 'Android'})`;
+              } else {
+                isStreaming = false;
+                waitingCard.classList.remove('hidden');
+                statusDot.classList.remove('active');
+                statusText.textContent = 'Stream Paused';
+              }
+            } else if (data.type === 'init' || data.type === 'settings:update') {
+              const cfg = (data.settings && data.settings.phone) || {};
+              if (cfg.frameStyle) applyFrameStyle(cfg.frameStyle);
+              if (cfg.orientation && cfg.orientation !== 'auto') {
+                stage.classList.remove('orientation-portrait', 'orientation-landscape');
+                stage.classList.add(`orientation-${cfg.orientation}`);
+              }
+            }
+          } catch (e) {}
+        };
+
+        ws.onclose = () => {
+          statusText.textContent = 'Reconnecting...';
+          statusDot.classList.remove('active');
+          setTimeout(connectWebSocket, 1500);
+        };
+
+        ws.onerror = () => {
+          ws.close();
+        };
+      }
+
+      function handleBinaryPacket(buffer) {
+        if (!decoder) return;
+        const view = new DataView(buffer);
+        if (view.byteLength < 2) return;
+
+        const packetType = view.getUint8(0);
+        const flags = view.getUint8(1);
+
+        // 0x01 = Video packet (H.264)
+        if (packetType === 0x01) {
+          const isKeyframe = (flags & 0x01) === 0x01;
+          const isConfig = (flags & 0x02) === 0x02;
+
+          // Configure decoder on first SPS/PPS config frame or keyframe
+          if (isConfig || !isDecoderConfigured) {
+            try {
+              decoder.configure({
+                codec: 'avc1.42E01F',
+                optimizeForLatency: true
+              });
+              isDecoderConfigured = true;
+            } catch (e) {
+              console.warn('Decoder configure warning:', e);
+            }
+          }
+
+          // Payload starts at byte 10 (skipping 2-byte header + 8-byte timestamp)
+          const payload = new Uint8Array(buffer, 10);
+          if (payload.byteLength === 0) return;
+
+          try {
+            const chunk = new EncodedVideoChunk({
+              type: isKeyframe ? 'key' : 'delta',
+              timestamp: Number(view.getBigUint64(2)) || performance.now() * 1000,
+              data: payload
+            });
+            decoder.decode(chunk);
+          } catch (e) {
+            console.warn('Failed to decode chunk:', e);
+          }
+        }
+      }
+
+      initVideoDecoder();
+      connectWebSocket();
+    })();
+  </script>
+</body>
+</html>
