@@ -7,3 +7,5 @@ desktop/backups/
 .deploy-cache.json
 *.log
 bedrock_server/
+*.apk
+.gradle/
