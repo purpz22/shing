@@ -1,6 +1,23 @@
 {
-    "latest":  "1.6.1",
+    "latest":  "1.6.2",
     "releases":  [
+                     {
+                         "version":  "1.6.2",
+                         "releaseName":  "Shing Live v1.6.2 - Shing Cast Zero-Latency Protocol Sync \u0026 Live Phone Stream",
+                         "releaseDate":  "2026-10-16",
+                         "type":  "feature",
+                         "summary":  "Zero-latency protocol synchronization for Shing Cast with 5-byte header alignment, automatic SPS/PPS keyframe prepending for MediaTek and Infinix devices, WebCodecs hardware decoding in OBS browser overlays, and live stage preview in desktop dashboard.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.6.2.zip",
+                         "highlights":  [
+                                            "Protocol Alignment: Corrected 5-byte packet header parsing across OBS overlays, root overlay, and desktop dashboard stage preview",
+                                            "MediaTek Keyframe SPS Prefixing: Prepend cached SPS/PPS parameter sets to keyframes so late-joining browser sources sync instantly",
+                                            "Hardware H.264 WebCodecs Decoder: Fluid 60 FPS video playback on phone.html and dashboard stage canvas with automatic fallback",
+                                            "Internal Game Audio: 48kHz stereo PCM streaming with automatic Web Audio buffer scheduling and mute controls"
+                                        ],
+                         "notes":  "Shing Cast protocol sync, SPS/PPS keyframe prepending, and live phone streaming fixes.",
+                         "packageSize":  "4.6 MB",
+                         "checksum":  "94f2bf6f8e4e97080d3d30b9214bdfe673c385a1225dfd4c820d1ad7d47dd034"
+                     },
                      {
                          "version":  "1.6.1",
                          "releaseName":  "Shing Live v1.6.1 - Shing Cast Wireless Phone Screen \u0026 Game Audio Mirror",
