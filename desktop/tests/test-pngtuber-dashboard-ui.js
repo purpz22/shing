@@ -34,14 +34,18 @@ assert.ok(html.includes('id="pngtuber-threshold-slider"'), 'Must have sensitivit
 assert.ok(html.includes('id="pngtuber-hold-slider"'), 'Must have hold delay slider');
 assert.ok(html.includes('id="pngtuber-mic-select"'), 'Must have microphone device dropdown');
 
-// 4. Presets & 5-Frame Slots (Including Happy Gift Reaction)
+// 4. Presets & 6-Slot Grid (Including Talking Parted & Happy Gift Reaction)
 assert.ok(html.includes('data-preset="shing"'), 'Must have Shing Chibi preset button');
 assert.ok(!html.includes('data-preset="popcat"'), 'Must not have Pop Cat preset button');
 assert.ok(html.includes('data-preset="pixelcat"'), 'Must have Cozy Pixel Cat preset button');
 assert.ok(html.includes('data-preset="custom"'), 'Must have Custom Avatar preset button');
+assert.ok(html.includes('data-mode="2-frame"'), 'Must have 2-Frame Mode button');
+assert.ok(html.includes('data-mode="4-frame"'), 'Must have 4-Frame Mode button');
+assert.ok(html.includes('data-mode="multi-frame"'), 'Must have Multi-Frame Mode button');
 assert.ok(html.includes('data-slot="idle"'), 'Must have Idle state slot');
 assert.ok(html.includes('data-slot="blink"'), 'Must have Blink state slot');
-assert.ok(html.includes('data-slot="talk"'), 'Must have Talking state slot');
+assert.ok(html.includes('data-slot="talkHalf"'), 'Must have Talking Parted (Half-Open) state slot');
+assert.ok(html.includes('data-slot="talk"'), 'Must have Talking Full state slot');
 assert.ok(html.includes('data-slot="talkBlink"'), 'Must have Talking Blink state slot');
 assert.ok(html.includes('data-slot="happy"'), 'Must have Happy Gift state slot');
 assert.ok(html.includes('id="pngtuber-test-happy-btn"'), 'Must have Test Gift Happy button');
@@ -53,6 +57,7 @@ assert.ok(css.includes('.vu-meter-fill'), 'CSS must define .vu-meter-fill');
 assert.ok(css.includes('.stage-viewport'), 'CSS must define .stage-viewport');
 assert.ok(css.includes('.avatar-slots-grid'), 'CSS must define .avatar-slots-grid');
 assert.ok(css.includes('.badge-status-happy'), 'CSS must define .badge-status-happy');
+assert.ok(css.includes('.badge-status-paused'), 'CSS must define .badge-status-paused');
 
 // 6. JavaScript Bindings & Audio Logic
 assert.ok(js.includes('initPngTuberStudio'), 'app.js must define initPngTuberStudio');
@@ -60,6 +65,8 @@ assert.ok(js.includes('triggerStageHappy'), 'app.js must define triggerStageHapp
 assert.ok(js.includes('clampPngTuberScale'), 'app.js must define clampPngTuberScale');
 assert.ok(js.includes('clampPngTuberThreshold'), 'app.js must define clampPngTuberThreshold');
 assert.ok(js.includes('pngtuber:state'), 'app.js must synchronize pngtuber:state over WebSocket');
+assert.ok(js.includes('talkHalf'), 'app.js must bind talkHalf slot and image properties');
+assert.ok(js.includes('isPaused'), 'app.js must track isPaused state during voice hold delay');
 
 // 7. Strictly Zero Emojis Check
 const emojiRegex = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;

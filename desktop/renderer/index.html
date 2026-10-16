@@ -1583,8 +1583,9 @@
             <div class="panel-header">
               <h3>Avatar Preset</h3>
               <div class="mode-pill-toggle">
-                <button class="mode-btn active" data-mode="2-frame">2-Frame Mode</button>
-                <button class="mode-btn" data-mode="4-frame">4-Frame Mode (+ Blink)</button>
+                <button class="mode-btn" data-mode="2-frame">2-Frame</button>
+                <button class="mode-btn" data-mode="4-frame">4-Frame</button>
+                <button class="mode-btn active" data-mode="multi-frame">Multi-Frame</button>
               </div>
             </div>
             <div class="preset-buttons-grid">
@@ -1618,7 +1619,7 @@
             </div>
           </div>
 
-          <!-- 5 State Slots Grid -->
+          <!-- 6 State Slots Grid -->
           <div class="card slots-card">
             <div class="panel-header">
               <h3>Avatar State Frames</h3>
@@ -1663,9 +1664,29 @@
                 </div>
               </div>
 
-              <!-- Slot 3: Talking (Open Mouth) -->
+              <!-- Slot 3: Talking Parted (Half-Open) -->
+              <div class="avatar-slot-box" data-slot="talkHalf">
+                <div class="slot-badge">Talking Parted</div>
+                <div class="slot-thumb-dropzone" id="slot-drop-talkHalf">
+                  <img id="slot-img-talkHalf" src="../assets/pngtuber/shing_talk_half.png" alt="Talking Parted Frame" decoding="async">
+                  <div class="slot-empty-placeholder hidden" id="slot-ph-talkHalf">
+                    <span>(Fallback to Talk)</span>
+                  </div>
+                  <div class="slot-overlay-prompt">Drop Image</div>
+                </div>
+                <div class="slot-meta">
+                  <div class="slot-state-title">Parted Lips</div>
+                  <div class="slot-state-sub">Cadence &amp; pause</div>
+                </div>
+                <div class="slot-btn-row">
+                  <button class="btn btn-secondary btn-xs slot-browse-btn" data-slot="talkHalf">Browse</button>
+                  <button class="btn btn-secondary btn-xs slot-clear-btn" data-slot="talkHalf">Clear</button>
+                </div>
+              </div>
+
+              <!-- Slot 4: Talking (Open Mouth) -->
               <div class="avatar-slot-box" data-slot="talk">
-                <div class="slot-badge">Talking</div>
+                <div class="slot-badge">Talking Full</div>
                 <div class="slot-thumb-dropzone" id="slot-drop-talk">
                   <img id="slot-img-talk" src="../assets/pngtuber/shing_talk.png" alt="Talking Frame" decoding="async">
                   <div class="slot-overlay-prompt">Drop Image</div>

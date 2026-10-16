@@ -3323,6 +3323,18 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
   box-shadow: 0 0 12px rgba(244, 63, 94, 0.35);
 }
 
+.badge-status-paused {
+  background: rgba(245, 158, 11, 0.28);
+  border: 1px solid rgba(251, 191, 36, 0.75);
+  color: #fde68a;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+}
+
 .badge-fps {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -3629,15 +3641,15 @@ body.theme-dark-purple .custom-alert-icon-wrap.warning {
   color: #fff;
 }
 
-/* 5 State Slots Grid */
+/* 6 State Slots Grid */
 .avatar-slots-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   margin-top: 12px;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1280px) {
   .avatar-slots-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
