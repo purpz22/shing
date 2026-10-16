@@ -376,6 +376,10 @@
       const queryFit = urlParams.get('fit');
       const queryControls = urlParams.get('controls');
       const queryBg = urlParams.get('bg');
+      const queryMuted = urlParams.get('muted');
+      if (queryMuted === '1' || queryMuted === 'true') {
+        isAudioMuted = true;
+      }
 
       function extractSpsInfo(nalData) {
         if (!nalData || nalData.length < 8) return null;
@@ -667,10 +671,21 @@
       }
 
       if (btnToggleAudio) {
+        btnToggleAudio.textContent = isAudioMuted ? 'Muted' : 'Mute Audio';
         btnToggleAudio.addEventListener('click', () => {
           isAudioMuted = !isAudioMuted;
-          btnToggleAudio.textContent = isAudioMuted ? 'Muted' : 'Unmute Audio';
-          if (!isAudioMuted && audioCtx) {
+          btnToggleAudio.textContent = isAudioMuted ? 'Muted' : 'Mute Audio';
+          if (isAudioMuted) {
+            if (scheduledAudioSources.length > 0) {
+              for (let i = 0; i < scheduledAudioSources.length; i++) {
+                try {
+                  scheduledAudioSources[i].stop();
+                  scheduledAudioSources[i].disconnect();
+                } catch (e) {}
+              }
+              scheduledAudioSources = [];
+            }
+          } else if (audioCtx) {
             if (audioCtx.state === 'suspended') {
               audioCtx.resume().catch(() => {});
             }

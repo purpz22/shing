@@ -1,6 +1,23 @@
 {
-    "latest":  "1.6.7",
+    "latest":  "1.6.8",
     "releases":  [
+                     {
+                         "version":  "1.6.8",
+                         "releaseName":  "Shing Live v1.6.8 - Overlay-Only Audio Routing \u0026 Double-Audio Echo Fix",
+                         "releaseDate":  "2026-10-16",
+                         "type":  "bugfix",
+                         "summary":  "Completely eliminated double audio and echoing between the Shing Live desktop software and the stream overlay. Muted desktop preview audio by default so only phone.html browser source in OBS/TikTok Studio outputs phone sound, added instant audio buffer purge on mute, and added URL muted parameter support.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.6.8.zip",
+                         "highlights":  [
+                                            "Overlay-Only Audio Default: Desktop mirror preview is muted by default (Unmute Preview Audio toggle), preventing duplicate sound playback against OBS browser sources",
+                                            "Instant Audio Node Purge: Muting the preview immediately stops and disconnects all scheduled WebAudio nodes to prevent trailing echo",
+                                            "URL Mute Parameter Support: phone.html respects ?muted=1 parameter for preview iframes",
+                                            "Synchronized Studio UI: Updated Phone Studio tab controls and APK download badges to v1.6.8"
+                                        ],
+                         "notes":  "Critical update eliminating double audio echo between the desktop dashboard and the stream overlay.",
+                         "packageSize":  "4.6 MB",
+                         "checksum":  "c7f1cb9e9e287703f049679f1b40b9170c72319756caf4a648bcac70f1d40b5c"
+                     },
                      {
                          "version":  "1.6.7",
                          "releaseName":  "Shing Live v1.6.7 - Cool Gaming Performance \u0026 Thermal Optimization",

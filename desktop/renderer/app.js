@@ -3479,7 +3479,7 @@ let phoneFpsCount = 0;
 let phoneLastFpsTime = 0;
 let phoneAudioCtx = null;
 let phoneNextAudioTime = 0;
-let phoneAudioMuted = false;
+let phoneAudioMuted = true;
 
 function setPhoneCastUiConnected(name, width, height, fps) {
   if (typeof document === 'undefined') return;
@@ -4059,15 +4059,25 @@ function initPhoneCastStudio() {
   $('phone-toggle-audio-btn')?.addEventListener('click', () => {
     phoneAudioMuted = !phoneAudioMuted;
     if ($('phone-toggle-audio-btn')) {
-      $('phone-toggle-audio-btn').textContent = phoneAudioMuted ? 'Unmute Mirror Audio' : 'Mute Mirror Audio';
+      $('phone-toggle-audio-btn').textContent = phoneAudioMuted ? 'Unmute Preview Audio' : 'Mute Preview Audio';
     }
-    if (!phoneAudioMuted && phoneAudioCtx) {
+    if (phoneAudioMuted) {
+      if (phoneScheduledAudioSources.length > 0) {
+        for (let i = 0; i < phoneScheduledAudioSources.length; i++) {
+          try {
+            phoneScheduledAudioSources[i].stop();
+            phoneScheduledAudioSources[i].disconnect();
+          } catch (e) {}
+        }
+        phoneScheduledAudioSources = [];
+      }
+    } else if (phoneAudioCtx) {
       if (phoneAudioCtx.state === 'suspended') {
         phoneAudioCtx.resume().catch(() => {});
       }
       phoneNextAudioTime = phoneAudioCtx.currentTime;
     }
-    showToast(phoneAudioMuted ? 'Phone mirror audio muted' : 'Phone mirror audio unmuted', 'info', 'Phone Cast');
+    showToast(phoneAudioMuted ? 'Desktop preview muted (overlay outputs stream sound)' : 'Desktop preview audio unmuted', 'info', 'Phone Cast');
   });
 
   $('phone-fit-btn')?.addEventListener('click', () => {
