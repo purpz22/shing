@@ -46,6 +46,17 @@ if (Test-Path $OverlayPngTuberFile) {
     }
 }
 
+# Keep root phone.html synced with desktop/overlays/phone.html for remote web hosting (purpleeez.site/shing/phone.html)
+$OverlayPhoneFile = Join-Path $RootDir 'desktop\overlays\phone.html'
+$RootPhoneFile = Join-Path $RootDir 'phone.html'
+if (Test-Path $OverlayPhoneFile) {
+    $OverlayPhoneHash = (Get-FileHash -Path $OverlayPhoneFile -Algorithm SHA256).Hash
+    $RootPhoneHash = if (Test-Path $RootPhoneFile) { (Get-FileHash -Path $RootPhoneFile -Algorithm SHA256).Hash } else { '' }
+    if ($OverlayPhoneHash -ne $RootPhoneHash) {
+        Copy-Item -Path $OverlayPhoneFile -Destination $RootPhoneFile -Force
+    }
+}
+
 $AllowedExtensions = @(
     '.html', '.htm', '.css', '.js', '.mjs', '.json',
     '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico',
