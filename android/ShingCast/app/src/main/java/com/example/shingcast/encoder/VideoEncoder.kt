@@ -98,9 +98,11 @@ class VideoEncoder(
                 val sps = newFormat.getByteBuffer("csd-0")
                 val pps = newFormat.getByteBuffer("csd-1")
                 if (sps != null && pps != null) {
-                    val configBytes = ByteArray(sps.remaining() + pps.remaining())
-                    sps.get(configBytes, 0, sps.remaining())
-                    pps.get(configBytes, sps.position(), pps.remaining())
+                    val spsRem = sps.remaining()
+                    val ppsRem = pps.remaining()
+                    val configBytes = ByteArray(spsRem + ppsRem)
+                    sps.get(configBytes, 0, spsRem)
+                    pps.get(configBytes, spsRem, ppsRem)
                     cachedConfig = configBytes
                     client.sendBinaryPacket(CastClient.PACKET_VIDEO_CONFIG, 0L, configBytes)
                 }
@@ -121,7 +123,15 @@ class VideoEncoder(
                         cachedConfig = data
                         client.sendBinaryPacket(CastClient.PACKET_VIDEO_CONFIG, ptsMs, data)
                     } else if (isKeyFrame) {
-                        client.sendBinaryPacket(CastClient.PACKET_VIDEO_KEYFRAME, ptsMs, data)
+                        val packet = if (cachedConfig != null && !hasSpsPrefix(data)) {
+                            val combined = ByteArray(cachedConfig!!.size + data.size)
+                            System.arraycopy(cachedConfig!!, 0, combined, 0, cachedConfig!!.size)
+                            System.arraycopy(data, 0, combined, cachedConfig!!.size, data.size)
+                            combined
+                        } else {
+                            data
+                        }
+                        client.sendBinaryPacket(CastClient.PACKET_VIDEO_KEYFRAME, ptsMs, packet)
                     } else {
                         client.sendBinaryPacket(CastClient.PACKET_VIDEO_DELTA, ptsMs, data)
                     }
@@ -157,5 +167,18 @@ class VideoEncoder(
         } catch (ignored: Exception) {}
         inputSurface = null
         Log.d(TAG, "VideoEncoder stopped and released")
+    }
+
+    private fun hasSpsPrefix(data: ByteArray): Boolean {
+        if (data.size < 5) return false
+        if (data[0] == 0.toByte() && data[1] == 0.toByte() && data[2] == 0.toByte() && data[3] == 1.toByte()) {
+            val nalType = (data[4].toInt() and 0x1F)
+            return nalType == 7
+        }
+        if (data[0] == 0.toByte() && data[1] == 0.toByte() && data[2] == 1.toByte()) {
+            val nalType = (data[3].toInt() and 0x1F)
+            return nalType == 7
+        }
+        return false
     }
 }

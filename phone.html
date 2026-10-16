@@ -233,8 +233,11 @@
 
       let decoder = null;
       let isDecoderConfigured = false;
+      let cachedConfig = null;
       let ws = null;
       let isStreaming = false;
+      let audioCtx = null;
+      let nextAudioTime = 0;
 
       // Initialize WebCodecs Hardware Video Decoder
       function initVideoDecoder() {
@@ -245,9 +248,12 @@
         }
 
         try {
+          if (decoder && decoder.state !== 'closed') {
+            try { decoder.close(); } catch (e) {}
+          }
+
           decoder = new VideoDecoder({
             output: (videoFrame) => {
-              // Update canvas resolution if frame dimensions change
               if (canvas.width !== videoFrame.displayWidth || canvas.height !== videoFrame.displayHeight) {
                 canvas.width = videoFrame.displayWidth;
                 canvas.height = videoFrame.displayHeight;
@@ -265,11 +271,50 @@
               }
             },
             error: (err) => {
-              console.error('VideoDecoder decode error:', err);
+              console.warn('VideoDecoder decode error:', err);
+              if (decoder && decoder.state === 'closed') {
+                isDecoderConfigured = false;
+                initVideoDecoder();
+              }
             }
           });
+          isDecoderConfigured = false;
         } catch (e) {
           console.error('Failed to construct VideoDecoder:', e);
+        }
+      }
+
+      function ensureDecoderConfigured(descriptionBytes = null) {
+        if (!decoder || decoder.state === 'closed') {
+          initVideoDecoder();
+        }
+        if (decoder && decoder.state === 'unconfigured') {
+          try {
+            if (descriptionBytes && descriptionBytes.length > 0) {
+              decoder.configure({
+                codec: 'avc1.640028',
+                description: descriptionBytes,
+                optimizeForLatency: true
+              });
+              isDecoderConfigured = true;
+            } else {
+              decoder.configure({
+                codec: 'avc1.640028',
+                optimizeForLatency: true
+              });
+              isDecoderConfigured = true;
+            }
+          } catch (e1) {
+            try {
+              decoder.configure({
+                codec: 'avc1.42E01F',
+                optimizeForLatency: true
+              });
+              isDecoderConfigured = true;
+            } catch (e2) {
+              console.warn('Decoder configure error:', e2);
+            }
+          }
         }
       }
 
@@ -351,45 +396,119 @@
 
       function handleBinaryPacket(buffer) {
         if (!decoder) return;
-        const view = new DataView(buffer);
-        if (view.byteLength < 2) return;
+        const buf = new Uint8Array(buffer);
+        if (buf.length < 5) return;
 
-        const packetType = view.getUint8(0);
-        const flags = view.getUint8(1);
+        const packetType = buf[0];
+        const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+        const ptsMs = view.getUint32(1, false);
+        const ptsUs = ptsMs * 1000;
+        const nalData = buf.subarray(5);
+        if (nalData.length === 0) return;
 
-        // 0x01 = Video packet (H.264)
+        // 0x01 = Video Config packet (SPS/PPS NAL units from MediaCodec)
         if (packetType === 0x01) {
-          const isKeyframe = (flags & 0x01) === 0x01;
-          const isConfig = (flags & 0x02) === 0x02;
-
-          // Configure decoder on first SPS/PPS config frame or keyframe
-          if (isConfig || !isDecoderConfigured) {
+          cachedConfig = nalData;
+          if (decoder.state !== 'closed') {
             try {
               decoder.configure({
-                codec: 'avc1.42E01F',
+                codec: 'avc1.640028',
+                description: nalData,
                 optimizeForLatency: true
               });
               isDecoderConfigured = true;
-            } catch (e) {
-              console.warn('Decoder configure warning:', e);
+            } catch (e1) {
+              try {
+                decoder.configure({
+                  codec: 'avc1.640028',
+                  optimizeForLatency: true
+                });
+                isDecoderConfigured = true;
+              } catch (e2) {
+                console.warn('Config decode warning:', e2);
+              }
             }
           }
+          return;
+        }
 
-          // Payload starts at byte 10 (skipping 2-byte header + 8-byte timestamp)
-          const payload = new Uint8Array(buffer, 10);
-          if (payload.byteLength === 0) return;
+        // 0x02 = Video Keyframe, 0x03 = Video Delta frame
+        if (packetType === 0x02 || packetType === 0x03) {
+          const isKey = packetType === 0x02;
+
+          ensureDecoderConfigured(cachedConfig);
+          if (!decoder || decoder.state !== 'configured') return;
+
+          let frameBytes = nalData;
+          if (isKey && cachedConfig && !startsWithSps(nalData)) {
+            const combined = new Uint8Array(cachedConfig.length + nalData.length);
+            combined.set(cachedConfig, 0);
+            combined.set(nalData, cachedConfig.length);
+            frameBytes = combined;
+          }
 
           try {
             const chunk = new EncodedVideoChunk({
-              type: isKeyframe ? 'key' : 'delta',
-              timestamp: Number(view.getBigUint64(2)) || performance.now() * 1000,
-              data: payload
+              type: isKey ? 'key' : 'delta',
+              timestamp: ptsUs || Math.round(performance.now() * 1000),
+              data: frameBytes
             });
             decoder.decode(chunk);
           } catch (e) {
-            console.warn('Failed to decode chunk:', e);
+            console.warn('Decode chunk failed:', e);
           }
+          return;
         }
+
+        // 0x04 = Internal game audio (PCM 16-bit 48kHz stereo)
+        if (packetType === 0x04) {
+          playAudioChunk(nalData);
+        }
+      }
+
+      function startsWithSps(data) {
+        if (data.length < 5) return false;
+        if (data[0] === 0 && data[1] === 0) {
+          if (data[2] === 1 && (data[3] & 0x1F) === 7) return true;
+          if (data[2] === 0 && data[3] === 1 && (data[4] & 0x1F) === 7) return true;
+        }
+        return false;
+      }
+
+      function playAudioChunk(pcmData) {
+        try {
+          if (!audioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+            audioCtx = new AudioContextClass({ sampleRate: 48000 });
+            nextAudioTime = audioCtx.currentTime;
+          }
+          if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+          }
+
+          const int16 = new Int16Array(pcmData.buffer, pcmData.byteOffset, Math.floor(pcmData.byteLength / 2));
+          const numSamples = Math.floor(int16.length / 2);
+          if (numSamples <= 0) return;
+
+          const audioBuffer = audioCtx.createBuffer(2, numSamples, 48000);
+          const left = audioBuffer.getChannelData(0);
+          const right = audioBuffer.getChannelData(1);
+
+          for (let i = 0; i < numSamples; i++) {
+            left[i] = int16[i * 2] / 32768.0;
+            right[i] = int16[i * 2 + 1] / 32768.0;
+          }
+
+          const source = audioCtx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(audioCtx.destination);
+
+          const currentTime = audioCtx.currentTime;
+          if (nextAudioTime < currentTime) nextAudioTime = currentTime;
+          source.start(nextAudioTime);
+          nextAudioTime += audioBuffer.duration;
+        } catch (e) {}
       }
 
       initVideoDecoder();

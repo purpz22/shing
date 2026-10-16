@@ -1119,7 +1119,7 @@ class OverlayServer {
       }
     }
 
-    if (buf.length >= 2 && buf[0] === 0x01 && (buf[1] === 0x01 || buf[1] === 0x02)) {
+    if (buf.length >= 5 && buf[0] === 0x01) {
       this.lastCastConfigPacket = Buffer.from(buf);
     }
 

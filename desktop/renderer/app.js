@@ -3473,10 +3473,12 @@ function populatePhoneSettings(settings) {
 
 let phoneCastWs = null;
 let phoneVideoDecoder = null;
+let cachedPhoneConfig = null;
 let phoneCastListenersAttached = false;
 let phoneFpsCount = 0;
 let phoneLastFpsTime = 0;
 let phoneAudioCtx = null;
+let phoneNextAudioTime = 0;
 let phoneAudioMuted = false;
 
 function setPhoneCastUiConnected(name, width, height, fps) {
@@ -3578,23 +3580,59 @@ async function updatePhoneCastServerStatus() {
   } catch (e) {}
 }
 
-function handlePhoneVideoPacket(packetType, buf) {
-  if (typeof window === 'undefined' || typeof window.VideoDecoder === 'undefined') return;
+function startsWithSpsPrefix(data) {
+  if (data.length < 5) return false;
+  if (data[0] === 0 && data[1] === 0) {
+    if (data[2] === 1 && (data[3] & 0x1F) === 7) return true;
+    if (data[2] === 0 && data[3] === 1 && (data[4] & 0x1F) === 7) return true;
+  }
+  return false;
+}
 
+function playStudioAudio(pcmData) {
+  try {
+    if (!phoneAudioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      phoneAudioCtx = new AudioContextClass({ sampleRate: 48000 });
+      phoneNextAudioTime = phoneAudioCtx.currentTime;
+    }
+    if (phoneAudioCtx.state === 'suspended') {
+      phoneAudioCtx.resume();
+    }
+
+    const int16 = new Int16Array(pcmData.buffer, pcmData.byteOffset, Math.floor(pcmData.byteLength / 2));
+    const numSamples = Math.floor(int16.length / 2);
+    if (numSamples <= 0) return;
+
+    const audioBuffer = phoneAudioCtx.createBuffer(2, numSamples, 48000);
+    const left = audioBuffer.getChannelData(0);
+    const right = audioBuffer.getChannelData(1);
+
+    for (let i = 0; i < numSamples; i++) {
+      left[i] = int16[i * 2] / 32768.0;
+      right[i] = int16[i * 2 + 1] / 32768.0;
+    }
+
+    const source = phoneAudioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(phoneAudioCtx.destination);
+
+    const currentTime = phoneAudioCtx.currentTime;
+    if (phoneNextAudioTime < currentTime) phoneNextAudioTime = currentTime;
+    source.start(phoneNextAudioTime);
+    phoneNextAudioTime += audioBuffer.duration;
+  } catch (e) {}
+}
+
+function ensureStudioDecoderConfigured(descriptionBytes = null) {
   const canvas = $('phone-studio-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
-  const pts = view.getUint32(1, false) * 1000;
-  const nalData = buf.subarray(5);
-
-  if (packetType === 0x01) {
+  if (!phoneVideoDecoder || phoneVideoDecoder.state === 'closed') {
     try {
-      if (phoneVideoDecoder && phoneVideoDecoder.state !== 'closed') {
-        phoneVideoDecoder.close();
-      }
       phoneVideoDecoder = new VideoDecoder({
         output: (frame) => {
           if (canvas.width !== frame.displayWidth || canvas.height !== frame.displayHeight) {
@@ -3616,27 +3654,87 @@ function handlePhoneVideoPacket(packetType, buf) {
           }
           if ($('phone-studio-waiting')) $('phone-studio-waiting').classList.add('hidden');
         },
-        error: () => {}
+        error: (err) => {
+          console.warn('Phone studio VideoDecoder decode error:', err);
+        }
       });
+    } catch (e) {
+      return;
+    }
+  }
 
-      phoneVideoDecoder.configure({
-        codec: 'avc1.640028',
-        description: nalData,
-        optimizeForLatency: true
-      });
-    } catch (e) {}
+  if (phoneVideoDecoder && phoneVideoDecoder.state === 'unconfigured') {
+    try {
+      if (descriptionBytes && descriptionBytes.length > 0) {
+        phoneVideoDecoder.configure({
+          codec: 'avc1.640028',
+          description: descriptionBytes,
+          optimizeForLatency: true
+        });
+      } else {
+        phoneVideoDecoder.configure({
+          codec: 'avc1.640028',
+          optimizeForLatency: true
+        });
+      }
+    } catch (e1) {
+      try {
+        phoneVideoDecoder.configure({
+          codec: 'avc1.42E01F',
+          optimizeForLatency: true
+        });
+      } catch (e2) {
+        console.warn('Phone studio configure fallback failed:', e2);
+      }
+    }
+  }
+}
+
+function handlePhoneVideoPacket(packetType, buf) {
+  if (typeof window === 'undefined' || typeof window.VideoDecoder === 'undefined') return;
+
+  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const ptsMs = view.getUint32(1, false);
+  const ptsUs = ptsMs * 1000;
+  const nalData = buf.subarray(5);
+  if (nalData.length === 0) return;
+
+  if (packetType === 0x01) {
+    cachedPhoneConfig = nalData;
+    if (phoneVideoDecoder && phoneVideoDecoder.state !== 'closed') {
+      try { phoneVideoDecoder.close(); } catch (e) {}
+    }
+    ensureStudioDecoderConfigured(nalData);
     return;
   }
 
-  if (phoneVideoDecoder && phoneVideoDecoder.state === 'configured') {
+  if (packetType === 0x02 || packetType === 0x03) {
+    ensureStudioDecoderConfigured(cachedPhoneConfig);
+    if (!phoneVideoDecoder || phoneVideoDecoder.state !== 'configured') return;
+
+    let frameBytes = nalData;
+    if (packetType === 0x02 && cachedPhoneConfig && !startsWithSpsPrefix(nalData)) {
+      const combined = new Uint8Array(cachedPhoneConfig.length + nalData.length);
+      combined.set(cachedPhoneConfig, 0);
+      combined.set(nalData, cachedPhoneConfig.length);
+      frameBytes = combined;
+    }
+
     try {
       const chunk = new EncodedVideoChunk({
         type: packetType === 0x02 ? 'key' : 'delta',
-        timestamp: pts,
-        data: nalData
+        timestamp: ptsUs || Math.round(performance.now() * 1000),
+        data: frameBytes
       });
       phoneVideoDecoder.decode(chunk);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Phone studio decode chunk failed:', e);
+    }
+    return;
+  }
+
+  if (packetType === 0x04 && !phoneAudioMuted) {
+    playStudioAudio(nalData);
   }
 }
 
@@ -3661,7 +3759,13 @@ function connectPhoneCastPreviewWs() {
       if (typeof e.data === 'string') {
         try {
           const msg = JSON.parse(e.data);
-          if (msg.type === 'cast:dimensions' || msg.type === 'cast:started') {
+          if (msg.type === 'cast:state') {
+            if (msg.active) {
+              setPhoneCastUiConnected(msg.deviceName || 'Android Device', msg.width || 1080, msg.height || 1920, msg.fps || 60);
+            } else {
+              setPhoneCastUiDisconnected();
+            }
+          } else if (msg.type === 'cast:dimensions' || msg.type === 'cast:started') {
             setPhoneCastUiConnected(msg.deviceName || 'Android Device', msg.width || 1080, msg.height || 1920, msg.fps || 60);
           } else if (msg.type === 'cast:stopped') {
             setPhoneCastUiDisconnected();
@@ -3674,7 +3778,7 @@ function connectPhoneCastPreviewWs() {
       if (buf.length < 5) return;
       const packetType = buf[0];
 
-      if (packetType === 0x01 || packetType === 0x02 || packetType === 0x03) {
+      if (packetType === 0x01 || packetType === 0x02 || packetType === 0x03 || packetType === 0x04) {
         handlePhoneVideoPacket(packetType, buf);
       }
     };
