@@ -67,7 +67,7 @@ $ExcludedNames = @(
     '.deploy-cache.json', 'deploy.ps1', 'deploy.bat', 'overlay.svg'
 )
 $ExcludedDirs = @(
-    'desktop', 'node_modules', 'bedrock_server'
+    'desktop', 'node_modules', 'bedrock_server', 'android'
 )
 
 # Load previous SHA-256 cache
