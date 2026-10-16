@@ -3452,8 +3452,8 @@ function ensurePhoneSettings(custom) {
   const p = (custom && typeof custom === 'object') ? custom : {};
   return {
     enabled: p.enabled !== false,
-    frameStyle: ['rounded', 'bezel', 'none'].includes(p.frameStyle) ? p.frameStyle : 'rounded',
-    orientation: ['portrait', 'landscape', 'auto'].includes(p.orientation) ? p.orientation : 'portrait',
+    frameStyle: ['rounded', 'bezel', 'none'].includes(p.frameStyle) ? p.frameStyle : 'none',
+    orientation: ['portrait', 'landscape', 'auto'].includes(p.orientation) ? p.orientation : 'landscape',
     autoRotate: p.autoRotate !== false,
     showInfo: p.showInfo !== false,
     streamAudio: p.streamAudio !== false

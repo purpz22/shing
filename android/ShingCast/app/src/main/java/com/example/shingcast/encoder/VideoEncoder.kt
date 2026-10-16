@@ -34,7 +34,24 @@ class VideoEncoder(
     private var cachedConfig: ByteArray? = null
 
     fun prepare() {
-        val format = MediaFormat.createVideoFormat(MIME_TYPE, width, height).apply {
+        val codec = MediaCodec.createEncoderByType(MIME_TYPE)
+        var actualWidth = width
+        var actualHeight = height
+
+        try {
+            val caps = codec.codecInfo.getCapabilitiesForType(MIME_TYPE)
+            val videoCaps = caps?.videoCapabilities
+            if (videoCaps != null && !videoCaps.isSizeSupported(actualWidth, actualHeight)) {
+                val maxW = videoCaps.supportedWidths?.upper ?: actualWidth
+                val maxH = videoCaps.supportedHeights?.upper ?: actualHeight
+                val scale = minOf(maxW.toDouble() / actualWidth, maxH.toDouble() / actualHeight, 1.0)
+                actualWidth = ((actualWidth * scale).toInt() / 16) * 16
+                actualHeight = ((actualHeight * scale).toInt() / 16) * 16
+                Log.w(TAG, "Hardware encoder does not support native ${width}x${height}, scaling to ${actualWidth}x${actualHeight}")
+            }
+        } catch (ignored: Exception) {}
+
+        val format = MediaFormat.createVideoFormat(MIME_TYPE, actualWidth, actualHeight).apply {
             setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
             setInteger(MediaFormat.KEY_BIT_RATE, bitrateBps)
             setInteger(MediaFormat.KEY_FRAME_RATE, fps)
@@ -51,17 +68,20 @@ class VideoEncoder(
             }
             try {
                 setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline)
-                setInteger(MediaFormat.KEY_LEVEL, MediaCodecInfo.CodecProfileLevel.AVCLevel42)
+                if (actualWidth > 1920 || actualHeight > 1920) {
+                    setInteger(MediaFormat.KEY_LEVEL, MediaCodecInfo.CodecProfileLevel.AVCLevel5)
+                } else {
+                    setInteger(MediaFormat.KEY_LEVEL, MediaCodecInfo.CodecProfileLevel.AVCLevel42)
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "Baseline profile configuration failed, falling back to codec defaults: ${e.message}")
             }
         }
 
-        val codec = MediaCodec.createEncoderByType(MIME_TYPE)
         codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         inputSurface = codec.createInputSurface()
         mediaCodec = codec
-        Log.d(TAG, "Hardware H.264 VideoEncoder configured successfully: ${width}x${height} @ ${fps}FPS, ${bitrateBps / 1000}kbps")
+        Log.d(TAG, "Hardware H.264 VideoEncoder configured successfully: ${actualWidth}x${actualHeight} @ ${fps}FPS, ${bitrateBps / 1000}kbps")
     }
 
     fun start() {

@@ -23,7 +23,7 @@ console.log('Testing Shing Cast Server Protocol, WebSocket Relay & UDP Discovery
   assert.strictEqual(settings.phone.enabled, true, 'phone.enabled must default to true');
   assert.strictEqual(settings.phone.fps, 60, 'phone.fps must default to 60');
   assert.strictEqual(settings.phone.quality, '1080p', 'phone.quality must default to 1080p');
-  assert.strictEqual(settings.phone.frameStyle, 'rounded', 'phone.frameStyle must default to rounded');
+  assert.strictEqual(settings.phone.frameStyle, 'none', 'phone.frameStyle must default to none');
 
   // Start Server
   await server.start();

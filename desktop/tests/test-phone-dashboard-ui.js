@@ -76,8 +76,8 @@ assert.strictEqual(typeof app.initPhoneCastStudio, 'function', 'initPhoneCastStu
 // Test ensurePhoneSettings default values
 const testCfg = app.ensurePhoneSettings({});
 assert.strictEqual(testCfg.enabled, true);
-assert.strictEqual(testCfg.frameStyle, 'rounded');
-assert.strictEqual(testCfg.orientation, 'portrait');
+assert.strictEqual(testCfg.frameStyle, 'none');
+assert.strictEqual(testCfg.orientation, 'landscape');
 assert.strictEqual(testCfg.autoRotate, true);
 assert.strictEqual(testCfg.showInfo, true);
 assert.strictEqual(testCfg.streamAudio, true);

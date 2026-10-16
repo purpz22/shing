@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.hardware.SensorManager
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.projection.MediaProjection
@@ -19,6 +20,9 @@ import android.os.Looper
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Display
+import android.view.OrientationEventListener
+import android.view.Surface
+import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import com.example.shingcast.MainActivity
 import com.example.shingcast.encoder.AudioEncoder
@@ -63,6 +67,7 @@ class ScreenCaptureService : Service() {
     private var currentFps = 60
     private var isFullHd = true
     private var displayListener: DisplayManager.DisplayListener? = null
+    private var orientationEventListener: OrientationEventListener? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -166,22 +171,9 @@ class ScreenCaptureService : Service() {
         )
         virtualDisplay = vd
 
-        // 6. Dynamic Display Rotation Listener (for Auto Sensor mode)
-        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
-        if (displayManager != null && orientationMode == "auto") {
-            displayListener = object : DisplayManager.DisplayListener {
-                override fun onDisplayAdded(displayId: Int) {}
-                override fun onDisplayRemoved(displayId: Int) {}
-                override fun onDisplayChanged(displayId: Int) {
-                    if (displayId == Display.DEFAULT_DISPLAY) {
-                        handleDisplayOrientationChange(displayManager)
-                    }
-                }
-            }
-            displayManager.registerDisplayListener(
-                displayListener,
-                Handler(Looper.getMainLooper())
-            )
+        // 6. Dynamic Display Rotation Tracking
+        if (orientationMode == "auto") {
+            startOrientationTracking()
         }
 
         // 7. Start Internal Game Audio Capture
@@ -195,34 +187,100 @@ class ScreenCaptureService : Service() {
         Log.d(TAG, "Shing Cast stream started successfully to $host:$port (${width}x${height} @ ${fps}FPS, mode=$orientationMode)")
     }
 
-    private fun handleDisplayOrientationChange(displayManager: DisplayManager) {
-        if (!isStreaming || mediaProjection == null) return
+    private fun startOrientationTracking() {
+        try {
+            orientationEventListener = object : OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
+                override fun onOrientationChanged(orientation: Int) {
+                    if (orientation == ORIENTATION_UNKNOWN) return
 
-        val display = displayManager.getDisplay(Display.DEFAULT_DISPLAY) ?: return
-        val metrics = DisplayMetrics()
-        @Suppress("DEPRECATION")
-        display.getRealMetrics(metrics)
+                    // Check landscape angles (60..120 is right, 240..300 is left)
+                    val isLandscapeAngle = (orientation in 60..120) || (orientation in 240..300)
+                    val isPortraitAngle = (orientation in 330..360) || (orientation in 0..30) || (orientation in 150..210)
 
-        val isPhysicalLandscape = metrics.widthPixels > metrics.heightPixels
-        val activeIsLandscape = currentWidth > currentHeight
-
-        if (isPhysicalLandscape == activeIsLandscape) {
-            return
+                    if (isLandscapeAngle && currentWidth < currentHeight) {
+                        handleOrientationFlip(true)
+                    } else if (isPortraitAngle && currentWidth > currentHeight) {
+                        handleOrientationFlip(false)
+                    }
+                }
+            }
+            if (orientationEventListener?.canDetectOrientation() == true) {
+                orientationEventListener?.enable()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to start OrientationEventListener: ${e.message}")
         }
 
-        Log.d(TAG, "Display rotation detected: isLandscape=$isPhysicalLandscape (${metrics.widthPixels}x${metrics.heightPixels})")
+        // Secondary trigger: DisplayManager DisplayListener + WindowManager rotation
+        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
+        if (displayManager != null) {
+            displayListener = object : DisplayManager.DisplayListener {
+                override fun onDisplayAdded(displayId: Int) {}
+                override fun onDisplayRemoved(displayId: Int) {}
+                override fun onDisplayChanged(displayId: Int) {
+                    if (displayId == Display.DEFAULT_DISPLAY) {
+                        checkDisplayRotation()
+                    }
+                }
+            }
+            displayManager.registerDisplayListener(
+                displayListener,
+                Handler(Looper.getMainLooper())
+            )
+        }
+    }
+
+    private fun checkDisplayRotation() {
+        if (!isStreaming || mediaProjection == null) return
+        val windowManager = getSystemService(Context.WINDOW_SERVICE) as? WindowManager ?: return
+        @Suppress("DEPRECATION")
+        val display = windowManager.defaultDisplay ?: return
+        val rotation = display.rotation
+        val isLandscapeRot = (rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270)
+        if (isLandscapeRot && currentWidth < currentHeight) {
+            handleOrientationFlip(true)
+        } else if (!isLandscapeRot && currentWidth > currentHeight && orientationMode == "auto") {
+            handleOrientationFlip(false)
+        }
+    }
+
+    @Synchronized
+    private fun handleOrientationFlip(toLandscape: Boolean) {
+        if (!isStreaming || mediaProjection == null) return
+        val activeIsLandscape = currentWidth > currentHeight
+        if (toLandscape == activeIsLandscape) return
+
+        val metrics = DisplayMetrics()
+        val windowManager = getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+        @Suppress("DEPRECATION")
+        windowManager?.defaultDisplay?.getRealMetrics(metrics)
+
+        val maxDim = maxOf(metrics.widthPixels, metrics.heightPixels).coerceAtLeast(1920)
+        val minDim = minOf(metrics.widthPixels, metrics.heightPixels).coerceAtLeast(1080)
 
         val newWidth: Int
         val newHeight: Int
 
-        if (isPhysicalLandscape) {
-            newWidth = if (isFullHd) 1920 else 1280
-            newHeight = if (isFullHd) 1080 else 720
+        // Use native phone aspect ratio to eliminate letterbox/pillarbox borders completely!
+        if (toLandscape) {
+            if (isFullHd) {
+                newWidth = ((maxDim) / 16) * 16
+                newHeight = ((minDim) / 16) * 16
+            } else {
+                newHeight = 720
+                newWidth = (((maxDim.toDouble() / minDim) * 720).toInt() / 16) * 16
+            }
         } else {
-            newWidth = if (isFullHd) 1080 else 720
-            newHeight = if (isFullHd) 1920 else 1280
+            if (isFullHd) {
+                newWidth = ((minDim) / 16) * 16
+                newHeight = ((maxDim) / 16) * 16
+            } else {
+                newWidth = 720
+                newHeight = (((maxDim.toDouble() / minDim) * 720).toInt() / 16) * 16
+            }
         }
 
+        Log.d(TAG, "Orientation flipped: toLandscape=$toLandscape -> ${newWidth}x${newHeight}")
         currentWidth = newWidth
         currentHeight = newHeight
 
@@ -269,6 +327,10 @@ class ScreenCaptureService : Service() {
         if (!isStreaming && mediaProjection == null) return
         Log.d(TAG, "Stopping Shing Cast stream")
 
+        if (orientationEventListener != null) {
+            try { orientationEventListener?.disable() } catch (ignored: Exception) {}
+            orientationEventListener = null
+        }
         if (displayListener != null) {
             try {
                 val displayManager = getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager

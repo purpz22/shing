@@ -1,6 +1,24 @@
 {
-    "latest":  "1.6.4",
+    "latest":  "1.6.5",
     "releases":  [
+                     {
+                         "version":  "1.6.5",
+                         "releaseName":  "Shing Live v1.6.5 - True Fullscreen Borderless Gaming \u0026 Native 20:9 Landscape",
+                         "releaseDate":  "2026-10-16",
+                         "type":  "feature",
+                         "summary":  "Eliminated all letterbox borders and phone bezels for Mobile Legends and horizontal games. Hardware accelerometer sensor rotation with physical aspect ratio alignment (2400x1080), Level 5 AVC encoder profiling, default borderless landscape overlays, URL query parameter overrides, and floating quick controls.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.6.5.zip",
+                         "highlights":  [
+                                            "Physical Hardware Aspect Ratio: Encoder streams exact 20:9/19.5:9 native phone glass dimensions (e.g. 2400x1080) eliminating black compression letterboxes",
+                                            "H.264 Level 5 Profile: Hardware encoder checks capability and scales macroblock limits smoothly for ultra-wide mobile displays",
+                                            "Hardware Accelerometer Rotation: Background service uses OrientationEventListener tilt sensors to reliably detect game rotation even with system auto-rotate lock",
+                                            "Default Borderless Landscape: phone.html overlay and desktop dashboard default to borderless landscape with object-fit controls (?frame=none, ?fit=cover)",
+                                            "In-Browser Quick Toolbar: Hover-to-reveal floating controls to switch borderless, landscape/portrait, fit cover/contain, and fullscreen directly in browser"
+                                        ],
+                         "notes":  "Critical update eliminating all borders and letterbox bars for mobile gaming mirrors.",
+                         "packageSize":  "4.6 MB",
+                         "checksum":  "a470da2bc7fb7bbeaf391fb468c1b1e0d519cbc153a677889872287ca3f1c7e2"
+                     },
                      {
                          "version":  "1.6.4",
                          "releaseName":  "Shing Live v1.6.4 - Dynamic Landscape Auto-Rotate, Audio Unaligned Fix \u0026 16:9 Gaming Mode",

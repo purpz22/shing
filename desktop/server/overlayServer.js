@@ -575,8 +575,8 @@ class OverlayServer {
         fps: 60,
         bitrateMbps: 6,
         audioEnabled: true,
-        orientation: 'auto',
-        frameStyle: 'rounded',
+        orientation: 'landscape',
+        frameStyle: 'none',
         backgroundColor: 'transparent'
       },
       updates: {

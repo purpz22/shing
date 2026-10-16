@@ -49,7 +49,7 @@ fun MainCastScreen(
     isStreaming: Boolean,
     initialHost: String,
     initialPort: Int,
-    initialOrientationMode: String = "auto",
+    initialOrientationMode: String = "landscape",
     onStartCast: (host: String, port: Int, is1080p: Boolean, enableAudio: Boolean, orientationMode: String) -> Unit,
     onStopCast: () -> Unit
 ) {
@@ -280,9 +280,9 @@ fun MainCastScreen(
                         )
                         Text(
                             text = when (orientationMode) {
-                                "landscape" -> "Locked to Landscape 16:9 (Mobile Legends, Wild Rift, COD Mobile)"
-                                "portrait" -> "Locked to Portrait 9:16 (TikTok, Reels, vertical apps)"
-                                else -> "Auto Sensor (adapts dynamically when phone rotates)"
+                                "landscape" -> "Locked to Landscape Gaming (Mobile Legends, Wild Rift, COD Mobile with zero black borders)"
+                                "portrait" -> "Locked to Portrait (TikTok, Reels, vertical feeds)"
+                                else -> "Auto Sensor (automatically tracks phone rotation)"
                             },
                             fontSize = 12.sp,
                             color = Color(0xFF94A3B8)
@@ -294,9 +294,9 @@ fun MainCastScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         listOf(
+                            "landscape" to "Landscape (Gaming)",
                             "auto" to "Auto Sensor",
-                            "landscape" to "Landscape 16:9",
-                            "portrait" to "Portrait 9:16"
+                            "portrait" to "Portrait (Feed)"
                         ).forEach { (mode, label) ->
                             val isSelected = orientationMode == mode
                             Box(

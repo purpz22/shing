@@ -35,7 +35,7 @@ class MainActivity : ComponentActivity() {
     private var targetPort by mutableStateOf(3333)
     private var targetIs1080p by mutableStateOf(true)
     private var targetEnableAudio by mutableStateOf(true)
-    private var targetOrientationMode by mutableStateOf("auto")
+    private var targetOrientationMode by mutableStateOf("landscape")
     private var isCurrentlyStreaming by mutableStateOf(false)
 
     private val screenCaptureLauncher = registerForActivityResult(
@@ -67,7 +67,7 @@ class MainActivity : ComponentActivity() {
         val prefs = getSharedPreferences("ShingCastPrefs", Context.MODE_PRIVATE)
         targetHost = prefs.getString("last_host", "192.168.1.100") ?: "192.168.1.100"
         targetPort = prefs.getInt("last_port", 3333)
-        targetOrientationMode = prefs.getString("last_orientation_mode", "auto") ?: "auto"
+        targetOrientationMode = prefs.getString("last_orientation_mode", "landscape") ?: "landscape"
 
         // Parse pairing URI if launched from QR code: shingcast://connect?ip=<IP>&port=<PORT>
         handleIncomingIntent(intent)
@@ -164,8 +164,13 @@ class MainActivity : ComponentActivity() {
         val screenHeight = metrics.heightPixels
         val density = metrics.densityDpi
 
-        // Determine initial dimensions based on orientation mode
-        val isPhysicalLandscape = screenWidth > screenHeight
+        val maxDim = maxOf(screenWidth, screenHeight).coerceAtLeast(1920)
+        val minDim = minOf(screenWidth, screenHeight).coerceAtLeast(1080)
+
+        @Suppress("DEPRECATION")
+        val rotation = windowManager.defaultDisplay.rotation
+        val isPhysicalLandscape = (rotation == android.view.Surface.ROTATION_90 || rotation == android.view.Surface.ROTATION_270)
+
         val shouldBeLandscape = when (targetOrientationMode) {
             "landscape" -> true
             "portrait" -> false
@@ -175,21 +180,22 @@ class MainActivity : ComponentActivity() {
         val targetWidth: Int
         val targetHeight: Int
 
-        if (targetIs1080p) {
-            if (shouldBeLandscape) {
-                targetWidth = 1920
-                targetHeight = 1080
+        // Use native phone aspect ratio to eliminate letterbox/pillarbox borders completely!
+        if (shouldBeLandscape) {
+            if (targetIs1080p) {
+                targetWidth = ((maxDim) / 16) * 16
+                targetHeight = ((minDim) / 16) * 16
             } else {
-                targetWidth = 1080
-                targetHeight = 1920
+                targetHeight = 720
+                targetWidth = (((maxDim.toDouble() / minDim) * 720).toInt() / 16) * 16
             }
         } else {
-            if (shouldBeLandscape) {
-                targetWidth = 1280
-                targetHeight = 720
+            if (targetIs1080p) {
+                targetWidth = ((minDim) / 16) * 16
+                targetHeight = ((maxDim) / 16) * 16
             } else {
                 targetWidth = 720
-                targetHeight = 1280
+                targetHeight = (((maxDim.toDouble() / minDim) * 720).toInt() / 16) * 16
             }
         }
 
