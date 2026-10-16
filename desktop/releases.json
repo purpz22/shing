@@ -1,6 +1,25 @@
 {
-    "latest":  "1.6.0",
+    "latest":  "1.6.1",
     "releases":  [
+                     {
+                         "version":  "1.6.1",
+                         "releaseName":  "Shing Live v1.6.1 - Shing Cast Wireless Phone Screen \u0026 Game Audio Mirror",
+                         "releaseDate":  "2026-10-16",
+                         "type":  "feature",
+                         "summary":  "Zero Developer Mode wireless phone screen mirroring and internal game audio for OBS Studio and TikTok LIVE Studio with 60 FPS hardware H.264 decoding, UDP beacon auto-discovery, live dashboard stage preview, QR code pairing, and native Android companion app.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.6.1.zip",
+                         "highlights":  [
+                                            "Zero Developer Mode: Direct wireless screen mirror using native MediaProjection with zero USB debugging, zero ADB, and zero 7-tap build numbers",
+                                            "Hardware-Accelerated H.264: WebCodecs VideoDecoder hardware decoding in OBS browser source with 60 FPS fluid motion and ultra-low latency",
+                                            "Internal Game Audio Capture: Native Android 10+ AudioPlaybackCapture direct game sound streaming without room microphone noise",
+                                            "Wi-Fi UDP Auto-Discovery: 1-tap beacon discovery on port 33334 for instant zero-configuration phone pairing",
+                                            "Phone Cast Studio: Dedicated desktop dashboard tab with live stage preview, QR code pairing card, and telemetry",
+                                            "Customizable OBS Frames: Choose between modern device bezel, rounded corners, or borderless frame with automatic rotation"
+                                        ],
+                         "notes":  "Zero-dev-mode wireless phone screen and internal game audio mirroring companion with 60 FPS hardware H.264 decoding.",
+                         "packageSize":  "4.59 MB",
+                         "checksum":  "939f66bc295d1cdc31a132e3a1f0b653f863c5e76906f40eba27b57bf381672c"
+                     },
                      {
                          "version":  "1.6.0",
                          "releaseName":  "Shing Live v1.6.0 - Conversational Multi-Frame PNGTuber \u0026 Resting Mouth Pause Settle",

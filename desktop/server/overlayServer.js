@@ -1168,7 +1168,7 @@ class OverlayServer {
             type: 'SHING_CAST_BEACON',
             server: 'Shing Live',
             port: this.port,
-            version: '1.6.0'
+            version: '1.6.1'
           }));
           socket.send(res, 0, res.length, rinfo.port, rinfo.address, () => {});
         }
