@@ -44,6 +44,8 @@ class ScreenCaptureService : Service() {
         const val EXTRA_DENSITY = "EXTRA_DENSITY"
         const val EXTRA_FPS = "EXTRA_FPS"
         const val EXTRA_AUDIO = "EXTRA_AUDIO"
+        const val EXTRA_AUDIO_MODE = "EXTRA_AUDIO_MODE"
+        const val EXTRA_MIC_BOOST = "EXTRA_MIC_BOOST"
         const val EXTRA_ORIENTATION_MODE = "EXTRA_ORIENTATION_MODE"
 
         private const val NOTIFICATION_CHANNEL_ID = "shing_cast_streaming_channel"
@@ -96,7 +98,9 @@ class ScreenCaptureService : Service() {
         val height = intent.getIntExtra(EXTRA_HEIGHT, 1920)
         val density = intent.getIntExtra(EXTRA_DENSITY, 420)
         val fps = intent.getIntExtra(EXTRA_FPS, 60)
-        val enableAudio = intent.getBooleanExtra(EXTRA_AUDIO, true)
+        val legacyEnableAudio = intent.getBooleanExtra(EXTRA_AUDIO, true)
+        val audioMode = intent.getStringExtra(EXTRA_AUDIO_MODE) ?: if (legacyEnableAudio) "mixed" else "off"
+        val micBoost = intent.getFloatExtra(EXTRA_MIC_BOOST, 1.25f)
         val mode = intent.getStringExtra(EXTRA_ORIENTATION_MODE) ?: "auto"
 
         if (resultData == null) {
@@ -112,11 +116,13 @@ class ScreenCaptureService : Service() {
         currentFps = fps
         isFullHd = width >= 1080 || height >= 1080
 
+        val hasAudio = audioMode != "off"
+
         // 1. Promote to Foreground Service before MediaProjection capture
-        val notification = buildOngoingNotification(host, port)
+        val notification = buildOngoingNotification(host, port, audioMode)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             var serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-            if (enableAudio && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (hasAudio && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
             }
             startForeground(NOTIFICATION_ID, notification, serviceType)
@@ -177,9 +183,9 @@ class ScreenCaptureService : Service() {
             startOrientationTracking()
         }
 
-        // 7. Start Internal Game Audio Capture
-        if (enableAudio) {
-            val aEncoder = AudioEncoder(mp, client)
+        // 7. Start Audio Capture (Mic, Game Audio, or Mixed)
+        if (hasAudio) {
+            val aEncoder = AudioEncoder(mp, client, audioMode, micBoost)
             audioEncoder = aEncoder
             aEncoder.start()
         }
@@ -381,7 +387,7 @@ class ScreenCaptureService : Service() {
         }
     }
 
-    private fun buildOngoingNotification(host: String, port: Int): Notification {
+    private fun buildOngoingNotification(host: String, port: Int, audioMode: String = "mixed"): Notification {
         val launchIntent = Intent(this, MainActivity::class.java)
         val contentPendingIntent = PendingIntent.getActivity(
             this,
@@ -400,9 +406,16 @@ class ScreenCaptureService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val audioDesc = when (audioMode) {
+            "mic" -> "phone microphone"
+            "mixed" -> "game & mic audio"
+            "internal" -> "internal game audio"
+            else -> "video only"
+        }
+
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("Shing Cast Active")
-            .setContentText("Broadcasting screen and internal audio to $host:$port")
+            .setContentText("Broadcasting screen & $audioDesc to $host:$port")
             .setSmallIcon(android.R.drawable.ic_menu_camera)
             .setOngoing(true)
             .setContentIntent(contentPendingIntent)

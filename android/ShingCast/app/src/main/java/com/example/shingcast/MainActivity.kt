@@ -35,6 +35,8 @@ class MainActivity : ComponentActivity() {
     private var targetPort by mutableStateOf(3333)
     private var targetIs1080p by mutableStateOf(false)
     private var targetEnableAudio by mutableStateOf(true)
+    private var targetAudioMode by mutableStateOf("mixed")
+    private var targetMicBoost by mutableStateOf(1.25f)
     private var targetOrientationMode by mutableStateOf("landscape")
     private var isCurrentlyStreaming by mutableStateOf(false)
 
@@ -52,9 +54,9 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val recordAudioGranted = permissions[Manifest.permission.RECORD_AUDIO] ?: true
-        if (!recordAudioGranted && targetEnableAudio) {
-            Toast.makeText(this, "Audio permission denied, streaming video only", Toast.LENGTH_SHORT).show()
-            targetEnableAudio = false
+        if (!recordAudioGranted && (targetAudioMode == "mic" || targetAudioMode == "mixed")) {
+            Toast.makeText(this, "Microphone permission denied, falling back to game audio only", Toast.LENGTH_SHORT).show()
+            targetAudioMode = "internal"
         }
         requestMediaProjection()
     }
@@ -68,6 +70,9 @@ class MainActivity : ComponentActivity() {
         targetHost = prefs.getString("last_host", "192.168.1.100") ?: "192.168.1.100"
         targetPort = prefs.getInt("last_port", 3333)
         targetOrientationMode = prefs.getString("last_orientation_mode", "landscape") ?: "landscape"
+        targetAudioMode = prefs.getString("last_audio_mode", "mixed") ?: "mixed"
+        targetMicBoost = prefs.getFloat("last_mic_boost", 1.25f)
+        targetEnableAudio = targetAudioMode != "off"
 
         // Parse pairing URI if launched from QR code: shingcast://connect?ip=<IP>&port=<PORT>
         handleIncomingIntent(intent)
@@ -84,16 +89,22 @@ class MainActivity : ComponentActivity() {
                         initialHost = targetHost,
                         initialPort = targetPort,
                         initialOrientationMode = targetOrientationMode,
-                        onStartCast = { host, port, is1080p, audio, orientationMode ->
+                        initialAudioMode = targetAudioMode,
+                        initialMicBoost = targetMicBoost,
+                        onStartCast = { host, port, is1080p, audioMode, micBoost, orientationMode ->
                             targetHost = host
                             targetPort = port
                             targetIs1080p = is1080p
-                            targetEnableAudio = audio
+                            targetAudioMode = audioMode
+                            targetMicBoost = micBoost
+                            targetEnableAudio = audioMode != "off"
                             targetOrientationMode = orientationMode
 
                             prefs.edit()
                                 .putString("last_host", host)
                                 .putInt("last_port", port)
+                                .putString("last_audio_mode", audioMode)
+                                .putFloat("last_mic_boost", micBoost)
                                 .putString("last_orientation_mode", orientationMode)
                                 .apply()
 
@@ -136,7 +147,8 @@ class MainActivity : ComponentActivity() {
                 needed.add(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
-        if (targetEnableAudio) {
+        val wantsMic = (targetAudioMode == "mic" || targetAudioMode == "mixed")
+        if (wantsMic) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                 needed.add(Manifest.permission.RECORD_AUDIO)
             }
@@ -209,7 +221,9 @@ class MainActivity : ComponentActivity() {
             putExtra(ScreenCaptureService.EXTRA_HEIGHT, targetHeight)
             putExtra(ScreenCaptureService.EXTRA_DENSITY, density)
             putExtra(ScreenCaptureService.EXTRA_FPS, 60)
-            putExtra(ScreenCaptureService.EXTRA_AUDIO, targetEnableAudio)
+            putExtra(ScreenCaptureService.EXTRA_AUDIO, targetAudioMode != "off")
+            putExtra(ScreenCaptureService.EXTRA_AUDIO_MODE, targetAudioMode)
+            putExtra(ScreenCaptureService.EXTRA_MIC_BOOST, targetMicBoost)
             putExtra(ScreenCaptureService.EXTRA_ORIENTATION_MODE, targetOrientationMode)
         }
 

@@ -27,6 +27,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,7 +57,9 @@ fun MainCastScreen(
     initialHost: String,
     initialPort: Int,
     initialOrientationMode: String = "landscape",
-    onStartCast: (host: String, port: Int, is1080p: Boolean, enableAudio: Boolean, orientationMode: String) -> Unit,
+    initialAudioMode: String = "mixed",
+    initialMicBoost: Float = 1.25f,
+    onStartCast: (host: String, port: Int, is1080p: Boolean, audioMode: String, micBoost: Float, orientationMode: String) -> Unit,
     onStopCast: () -> Unit
 ) {
     val context = LocalContext.current
@@ -64,7 +68,9 @@ fun MainCastScreen(
     var host by remember { mutableStateOf(initialHost) }
     var portText by remember { mutableStateOf(initialPort.toString()) }
     var is1080p by remember { mutableStateOf(false) }
-    var enableAudio by remember { mutableStateOf(true) }
+    var audioEnabled by remember { mutableStateOf(initialAudioMode != "off") }
+    var audioMode by remember { mutableStateOf(if (initialAudioMode == "off") "mixed" else initialAudioMode) }
+    var micBoost by remember { mutableStateOf(initialMicBoost) }
     var orientationMode by remember { mutableStateOf(initialOrientationMode) }
     var isDiscovering by remember { mutableStateOf(false) }
     var discoveryStatus by remember { mutableStateOf<String?>(null) }
@@ -100,21 +106,21 @@ fun MainCastScreen(
                 Column {
                     Text(
                         text = "Shing Cast",
-                        fontSize = 24.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFF8FAFC)
                     )
                     Text(
-                        text = "Wireless Screen Mirror for OBS",
-                        fontSize = 13.sp,
+                        text = "Ultra Low-Latency Wireless Streamer",
+                        fontSize = 11.5.sp,
                         color = Color(0xFF94A3B8)
                     )
                 }
             }
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(Color(0xFF2E1065))
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF262338))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
                 Text(
@@ -225,7 +231,7 @@ fun MainCastScreen(
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
                     text = "Stream Settings",
@@ -260,7 +266,7 @@ fun MainCastScreen(
                     )
                 }
 
-                // Audio Capture Toggle
+                // Audio Streaming Master Toggle
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -268,22 +274,137 @@ fun MainCastScreen(
                 ) {
                     Column {
                         Text(
-                            text = "Internal Game Audio",
+                            text = "Audio Streaming",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFFF8FAFC)
                         )
                         Text(
-                            text = "Direct game sound without room microphone noise",
+                            text = "Transmit high-fidelity 48kHz stereo sound to software",
                             fontSize = 12.sp,
                             color = Color(0xFF94A3B8)
                         )
                     }
                     Switch(
-                        checked = enableAudio,
-                        onCheckedChange = { enableAudio = it },
+                        checked = audioEnabled,
+                        onCheckedChange = { audioEnabled = it },
                         enabled = !isStreaming
                     )
+                }
+
+                // Audio Source Selector (Mic, Mixed, Game)
+                if (audioEnabled) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Audio Source",
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFFF8FAFC)
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFF262338))
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = when (audioMode) {
+                                        "mic" -> "Phone Mic Only"
+                                        "mixed" -> "Game + Mic Mixed"
+                                        else -> "Game Audio Only"
+                                    },
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFA855F7)
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = when (audioMode) {
+                                "mic" -> "Phone Microphone: Use phone as a wireless streaming mic for OBS and PNGTuber"
+                                "mixed" -> "Mixed Sound: Mixes internal game sound effects with your voice from the microphone"
+                                else -> "Game Audio: Clean internal game sound without background room noise"
+                            },
+                            fontSize = 11.5.sp,
+                            color = Color(0xFF94A3B8)
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(
+                                "mic" to "Phone Mic",
+                                "mixed" to "Game + Mic",
+                                "internal" to "Game Audio"
+                            ).forEach { (mode, label) ->
+                                val isSelected = audioMode == mode
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) Color(0xFFA855F7) else Color(0xFF262338))
+                                        .clickable(enabled = !isStreaming) { audioMode = mode }
+                                        .padding(vertical = 10.dp, horizontal = 4.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 11.5.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) Color.White else Color(0xFFCBD5E1),
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+
+                        // Microphone Volume Boost Slider (when Mic or Mixed is selected)
+                        if (audioMode == "mic" || audioMode == "mixed") {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Microphone Gain / Boost",
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFFF8FAFC)
+                                )
+                                Text(
+                                    text = "${(micBoost * 100).toInt()}%",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFC084FC)
+                                )
+                            }
+                            Slider(
+                                value = micBoost,
+                                onValueChange = { micBoost = it },
+                                valueRange = 1.0f..2.5f,
+                                steps = 5,
+                                enabled = !isStreaming,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = Color(0xFFA855F7),
+                                    activeTrackColor = Color(0xFFA855F7),
+                                    inactiveTrackColor = Color(0xFF262338)
+                                )
+                            )
+                            Text(
+                                text = "Boosts voice clarity so your commentary sounds loud and crisp over game sound effects",
+                                fontSize = 11.sp,
+                                color = Color(0xFF64748B)
+                            )
+                        }
+                    }
                 }
 
                 // Orientation Mode Selector
@@ -346,7 +467,8 @@ fun MainCastScreen(
                     onStopCast()
                 } else {
                     val port = portText.toIntOrNull() ?: 3333
-                    onStartCast(host, port, is1080p, enableAudio, orientationMode)
+                    val effectiveAudioMode = if (audioEnabled) audioMode else "off"
+                    onStartCast(host, port, is1080p, effectiveAudioMode, micBoost, orientationMode)
                 }
             },
             modifier = Modifier
@@ -385,7 +507,7 @@ fun MainCastScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isStreaming) "Broadcasting to OBS" else "Ready to Stream",
+                        text = if (isStreaming) "Broadcasting to OBS / PC" else "Ready to Stream",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = if (isStreaming) Color(0xFF10B981) else Color(0xFF94A3B8)
@@ -398,9 +520,15 @@ fun MainCastScreen(
                             "portrait" -> "Portrait 9:16"
                             else -> "Auto Sensor"
                         }
-                        "Target: ws://$host:${portText}/ws/cast (${if (is1080p) "1080p" else "720p"} @ 60 FPS, $modeLabel)"
+                        val audioSummary = when (if (audioEnabled) audioMode else "off") {
+                            "mic" -> "Phone Mic Active (${(micBoost * 100).toInt()}%)"
+                            "mixed" -> "Game + Mic Mixed (${(micBoost * 100).toInt()}%)"
+                            "internal" -> "Internal Game Audio"
+                            else -> "Audio Muted"
+                        }
+                        "Target: ws://$host:${portText}/ws/cast\nVideo: ${if (is1080p) "1080p" else "720p"} @ 60 FPS ($modeLabel)\nAudio: $audioSummary"
                     } else {
-                        "Tap Start Wireless Cast and select Start now on the Android system prompt to begin mirroring."
+                        "Tap Start Wireless Cast and grant screen capture to mirror your screen and stream your phone microphone to Shing Live & OBS."
                     },
                     fontSize = 11.5.sp,
                     color = Color(0xFF94A3B8)

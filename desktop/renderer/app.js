@@ -3018,6 +3018,11 @@ async function refreshMicrophoneList() {
     const currentId = cfg.inputDeviceId || 'default';
 
     select.innerHTML = '<option value="default">Default System Microphone</option>';
+    const phoneOpt = document.createElement('option');
+    phoneOpt.value = 'phone-cast';
+    phoneOpt.textContent = 'Phone Cast Microphone / Audio (Wireless)';
+    if (currentId === 'phone-cast') phoneOpt.selected = true;
+    select.appendChild(phoneOpt);
     audioInputs.forEach((dev, idx) => {
       const opt = document.createElement('option');
       opt.value = dev.deviceId;
@@ -3037,6 +3042,18 @@ async function startPngTuberAudioEngine() {
 
   const cfg = ensurePngTuberSettings();
   const deviceId = cfg.inputDeviceId || 'default';
+
+  if (deviceId === 'phone-cast') {
+    if (pngtuberMicStream) {
+      try { pngtuberMicStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+      pngtuberMicStream = null;
+    }
+    const statusNote = $('pngtuber-mic-status-note');
+    if (statusNote) statusNote.textContent = 'Wireless Phone Microphone / Audio Active';
+    await refreshMicrophoneList();
+    runAudioAnalysisLoop();
+    return;
+  }
   const audioConstraints = (deviceId && deviceId !== 'default')
     ? { audio: { deviceId: { exact: deviceId } } }
     : { audio: true };
@@ -3084,7 +3101,14 @@ function runAudioAnalysisLoop() {
 
   function analyze() {
     let rawVol = 0;
-    if (pngtuberAnalyser && !pngtuberMicMuted) {
+    const cfg = ensurePngTuberSettings();
+    if (cfg.inputDeviceId === 'phone-cast') {
+      if (Date.now() - phoneCastAudioLastPacketTime < 350 && !pngtuberMicMuted) {
+        rawVol = Math.min(100, latestPhoneCastAudioRms * 160);
+      } else {
+        rawVol = 0;
+      }
+    } else if (pngtuberAnalyser && !pngtuberMicMuted) {
       pngtuberAnalyser.getByteFrequencyData(freqData);
       let sum = 0;
       for (let i = 0; i < freqData.length; i++) {
@@ -3093,7 +3117,6 @@ function runAudioAnalysisLoop() {
       rawVol = (sum / freqData.length) / 255 * 100;
     }
 
-    const cfg = ensurePngTuberSettings();
     const sens = Number(cfg.sensitivity) || 1.2;
     const currentVol = Math.min(100, rawVol * sens);
 
@@ -3667,6 +3690,8 @@ function updatePhoneStageOrientation(width, height) {
 }
 
 let phoneScheduledAudioSources = [];
+let latestPhoneCastAudioRms = 0;
+let phoneCastAudioLastPacketTime = 0;
 const STUDIO_AUDIO_LEAD_TIME = 0.020;
 const STUDIO_MAX_AUDIO_LATENCY = 0.060;
 
@@ -3693,10 +3718,16 @@ function playStudioAudio(pcmData) {
     const left = audioBuffer.getChannelData(0);
     const right = audioBuffer.getChannelData(1);
 
+    let sumSq = 0;
     for (let i = 0; i < numSamples; i++) {
-      left[i] = view.getInt16(i * 4, true) / 32768.0;
-      right[i] = view.getInt16(i * 4 + 2, true) / 32768.0;
+      const l = view.getInt16(i * 4, true) / 32768.0;
+      const r = view.getInt16(i * 4 + 2, true) / 32768.0;
+      left[i] = l;
+      right[i] = r;
+      sumSq += (l * l + r * r) * 0.5;
     }
+    latestPhoneCastAudioRms = Math.sqrt(sumSq / numSamples);
+    phoneCastAudioLastPacketTime = Date.now();
 
     const currentTime = phoneAudioCtx.currentTime;
 
