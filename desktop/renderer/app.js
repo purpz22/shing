@@ -3731,10 +3731,6 @@ const STUDIO_MAX_AUDIO_LATENCY = 0.250;
 
 // Filter & Suppression Disabled: All filters and DSP nodes are stripped from the audio graph.
 // Audio routes 100% direct from raw PCM buffer to output with zero processing.
-let phoneHighpassNode = null;
-let phoneGateGainNode = null;
-let phoneCompressorNode = null;
-let phoneRnnoiseNode = null;
 function initPhoneAudioAi() {}
 function updatePhoneAudioRouting() {}
 
