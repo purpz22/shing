@@ -381,6 +381,11 @@
       if (queryMuted === '1' || queryMuted === 'true') {
         isAudioMuted = true;
       }
+      if (urlParams.has('noiseFilter')) {
+        overlayNoiseFilterMode = urlParams.get('noiseFilter');
+      } else if (urlParams.has('ai')) {
+        overlayNoiseFilterMode = (urlParams.get('ai') === '0' || urlParams.get('ai') === 'false') ? 'off' : 'ai';
+      }
 
       function extractSpsInfo(nalData) {
         if (!nalData || nalData.length < 8) return null;
@@ -785,6 +790,10 @@
                   applyOrientation(cfg.orientation);
                 }
               }
+              if (cfg.noiseFilter && !urlParams.has('noiseFilter') && !urlParams.has('ai')) {
+                overlayNoiseFilterMode = cfg.noiseFilter;
+                updateOverlayAudioRouting();
+              }
             }
           } catch (e) {}
         };
@@ -893,13 +902,69 @@
       }
 
       let scheduledAudioSources = [];
+      let overlayStudioBus = null;
+      let overlayRnnoiseNode = null;
+      let overlayRnnoiseActiveGain = null;
+      let overlayRnnoiseBypassGain = null;
+      let overlayRnnoiseReady = false;
+      let overlayRnnoiseInitializing = false;
+      let overlayHighpassNode = null;
+      let overlayCompressorNode = null;
       let overlayGateEnvelope = 1.0;
+      let overlayNoiseFilterMode = 'ai'; // 'ai' | 'clean' | 'off'
       const AUDIO_LEAD_TIME = 0.060; // 60ms initial cushion for smooth playback without jitter underruns
       const MAX_AUDIO_LATENCY = 0.250; // 250ms maximum latency allowance before gently catching up
 
-      // Filter & Suppression Disabled: Direct raw audio output with zero processing
-      let overlayRnnoiseNode = null;
-      function initOverlayAudioAi() {}
+      async function initOverlayAudioAi() {
+        if (!audioCtx || overlayRnnoiseReady || overlayRnnoiseInitializing) return;
+        overlayRnnoiseInitializing = true;
+        try {
+          if (typeof window !== 'undefined' && window.ShingRnnoise) {
+            const basePath = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http'))
+              ? (window.location.origin + '/assets/rnnoise/')
+              : '/assets/rnnoise/';
+            const node = await window.ShingRnnoise.createRnnoiseNode(audioCtx, {
+              maxChannels: 2,
+              basePath: basePath
+            });
+            overlayRnnoiseNode = node;
+            overlayRnnoiseReady = true;
+
+            if (overlayStudioBus && overlayRnnoiseActiveGain) {
+              overlayStudioBus.connect(overlayRnnoiseNode);
+              overlayRnnoiseNode.connect(overlayRnnoiseActiveGain);
+              updateOverlayAudioRouting();
+            }
+            console.log('RNNoise AI Voice Isolation loaded on OBS overlay.');
+          }
+        } catch (err) {
+          console.warn('RNNoise worklet init skipped or failed on overlay:', err);
+          overlayRnnoiseReady = false;
+        } finally {
+          overlayRnnoiseInitializing = false;
+        }
+      }
+
+      function updateOverlayAudioRouting() {
+        if (!audioCtx) return;
+        const currentTime = audioCtx.currentTime;
+        const useAi = (overlayNoiseFilterMode === 'ai') && overlayRnnoiseReady && overlayRnnoiseNode;
+        const filterActive = overlayNoiseFilterMode !== 'off';
+
+        if (overlayRnnoiseActiveGain && overlayRnnoiseBypassGain) {
+          if (useAi) {
+            overlayRnnoiseActiveGain.gain.setValueAtTime(1.0, currentTime);
+            overlayRnnoiseBypassGain.gain.setValueAtTime(0.0, currentTime);
+          } else {
+            overlayRnnoiseActiveGain.gain.setValueAtTime(0.0, currentTime);
+            overlayRnnoiseBypassGain.gain.setValueAtTime(1.0, currentTime);
+          }
+        }
+
+        if (overlayHighpassNode) {
+          overlayHighpassNode.frequency.setValueAtTime(filterActive ? 80 : 10, currentTime);
+        }
+      }
 
       function playAudioChunk(pcmData) {
         try {
@@ -939,13 +1004,48 @@
             nextAudioTime = currentTime + AUDIO_LEAD_TIME;
           }
 
+          if (!overlayStudioBus && audioCtx) {
+            overlayStudioBus = audioCtx.createGain();
+            overlayStudioBus.gain.value = 1.0;
+
+            overlayRnnoiseActiveGain = audioCtx.createGain();
+            overlayRnnoiseActiveGain.gain.value = 0.0;
+
+            overlayRnnoiseBypassGain = audioCtx.createGain();
+            overlayRnnoiseBypassGain.gain.value = 1.0;
+
+            overlayHighpassNode = audioCtx.createBiquadFilter();
+            overlayHighpassNode.type = 'highpass';
+            overlayHighpassNode.frequency.value = (overlayNoiseFilterMode !== 'off') ? 80 : 10;
+            overlayHighpassNode.Q.value = 0.707;
+
+            overlayCompressorNode = audioCtx.createDynamicsCompressor();
+            overlayCompressorNode.threshold.value = -2.0;
+            overlayCompressorNode.knee.value = 3.0;
+            overlayCompressorNode.ratio.value = 12.0;
+            overlayCompressorNode.attack.value = 0.002;
+            overlayCompressorNode.release.value = 0.05;
+
+            // Audio Graph Topology:
+            // StudioBus -> Bypass -> Highpass -> Limiter -> Destination
+            // StudioBus -> [RNNoise Worklet -> Active] -> Highpass -> Limiter -> Destination
+            overlayStudioBus.connect(overlayRnnoiseBypassGain);
+            overlayRnnoiseBypassGain.connect(overlayHighpassNode);
+            overlayRnnoiseActiveGain.connect(overlayHighpassNode);
+
+            overlayHighpassNode.connect(overlayCompressorNode);
+            overlayCompressorNode.connect(audioCtx.destination);
+
+            initOverlayAudioAi();
+          } else if (overlayStudioBus) {
+            updateOverlayAudioRouting();
+          }
+
           overlayGateEnvelope = 1.0;
 
-          // Pure Direct Raw Audio (Zero Filters / Zero Compression):
-          // Source -> Audio Destination directly!
           const source = audioCtx.createBufferSource();
           source.buffer = audioBuffer;
-          source.connect(audioCtx.destination);
+          source.connect(overlayStudioBus || audioCtx.destination);
           source.start(nextAudioTime);
           nextAudioTime += audioBuffer.duration;
 

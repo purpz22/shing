@@ -575,6 +575,7 @@ class OverlayServer {
         fps: 60,
         bitrateMbps: 6,
         audioEnabled: true,
+        noiseFilter: 'ai',
         orientation: 'landscape',
         frameStyle: 'none',
         backgroundColor: 'transparent'
@@ -1843,7 +1844,8 @@ class OverlayServer {
         'Content-Range': `bytes ${start}-${end}/${stat.size}`,
         'Accept-Ranges': 'bytes',
         'Content-Length': chunksize,
-        'Content-Type': mime
+        'Content-Type': mime,
+        'Access-Control-Allow-Origin': '*'
       });
       return fs.createReadStream(filePath, { start, end }).pipe(res);
     }
@@ -1851,7 +1853,8 @@ class OverlayServer {
     res.writeHead(200, {
       'Content-Type': mime,
       'Content-Length': stat.size,
-      'Accept-Ranges': 'bytes'
+      'Accept-Ranges': 'bytes',
+      'Access-Control-Allow-Origin': '*'
     });
     fs.createReadStream(filePath).pipe(res);
   }

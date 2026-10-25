@@ -3555,7 +3555,8 @@ function ensurePhoneSettings(custom) {
     orientation: ['portrait', 'landscape', 'auto'].includes(p.orientation) ? p.orientation : 'landscape',
     autoRotate: p.autoRotate !== false,
     showInfo: p.showInfo !== false,
-    streamAudio: p.streamAudio !== false
+    streamAudio: p.streamAudio !== false,
+    noiseFilter: ['ai', 'clean', 'off'].includes(p.noiseFilter) ? p.noiseFilter : 'ai'
   };
 }
 
@@ -3597,6 +3598,7 @@ let phoneRnnoiseBypassGain = null;
 let phoneRnnoiseReady = false;
 let phoneRnnoiseInitializing = false;
 let phoneAnalyserNode = null;
+let phoneNoiseFilterMode = 'ai'; // 'ai' | 'clean' | 'off'
 
 function setPhoneCastUiConnected(name, width, height, fps) {
   if (typeof document === 'undefined') return;
@@ -3729,16 +3731,68 @@ let phoneCastAudioLastPacketTime = 0;
 const STUDIO_AUDIO_LEAD_TIME = 0.060;
 const STUDIO_MAX_AUDIO_LATENCY = 0.250;
 
-// Filter & Suppression Disabled: All filters and DSP nodes are stripped from the audio graph.
-// Audio routes 100% direct from raw PCM buffer to output with zero processing.
-function initPhoneAudioAi() {}
-function updatePhoneAudioRouting() {}
+async function initPhoneAudioAi() {
+  if (!phoneAudioCtx || phoneRnnoiseReady || phoneRnnoiseInitializing) return;
+  phoneRnnoiseInitializing = true;
+  try {
+    if (typeof window !== 'undefined' && window.ShingRnnoise) {
+      const basePath = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http'))
+        ? (window.location.origin + '/assets/rnnoise/')
+        : 'http://127.0.0.1:3333/assets/rnnoise/';
+      const node = await window.ShingRnnoise.createRnnoiseNode(phoneAudioCtx, {
+        maxChannels: 2,
+        basePath: basePath
+      });
+      phoneRnnoiseNode = node;
+      phoneRnnoiseReady = true;
+
+      if (phoneStudioBus && phoneRnnoiseActiveGain) {
+        phoneStudioBus.connect(phoneRnnoiseNode);
+        phoneRnnoiseNode.connect(phoneRnnoiseActiveGain);
+        updatePhoneAudioRouting();
+      }
+      console.log('RNNoise AI Voice Isolation loaded successfully on desktop preview.');
+      updateNoiseFilterButtonState();
+    }
+  } catch (err) {
+    console.warn('RNNoise AI worklet init skipped or failed:', err);
+    phoneRnnoiseReady = false;
+  } finally {
+    phoneRnnoiseInitializing = false;
+  }
+}
+
+function updatePhoneAudioRouting() {
+  if (!phoneAudioCtx) return;
+  const currentTime = phoneAudioCtx.currentTime;
+  const useAi = phoneNoiseFilterEnabled && (phoneNoiseFilterMode === 'ai') && phoneRnnoiseReady && phoneRnnoiseNode;
+  const filterActive = phoneNoiseFilterEnabled && (phoneNoiseFilterMode !== 'off');
+
+  if (phoneRnnoiseActiveGain && phoneRnnoiseBypassGain) {
+    if (useAi) {
+      phoneRnnoiseActiveGain.gain.setValueAtTime(1.0, currentTime);
+      phoneRnnoiseBypassGain.gain.setValueAtTime(0.0, currentTime);
+    } else {
+      phoneRnnoiseActiveGain.gain.setValueAtTime(0.0, currentTime);
+      phoneRnnoiseBypassGain.gain.setValueAtTime(1.0, currentTime);
+    }
+  }
+
+  if (phoneHighpassNode) {
+    phoneHighpassNode.frequency.setValueAtTime(filterActive ? 80 : 10, currentTime);
+  }
+}
 
 function updateNoiseFilterButtonState() {
   const btn = $('phone-noise-filter-btn') || $('phone-toggle-noise-filter-btn');
   if (!btn) return;
-  btn.textContent = 'Raw Audio: Direct (No Filters)';
-  btn.style.color = '#38bdf8';
+  if (phoneNoiseFilterEnabled) {
+    btn.textContent = phoneRnnoiseReady ? 'AI Voice Isolation: ON' : 'Noise Filter: ON';
+    btn.style.color = '#c084fc';
+  } else {
+    btn.textContent = 'Noise Filter: OFF';
+    btn.style.color = '#94a3b8';
+  }
 }
 
 function playStudioAudio(pcmData) {
@@ -3794,25 +3848,75 @@ function playStudioAudio(pcmData) {
     }
 
     if (!phoneGainNode && phoneAudioCtx) {
+      phoneStudioBus = phoneAudioCtx.createGain();
+      phoneStudioBus.gain.value = 1.0;
+
+      phoneRnnoiseActiveGain = phoneAudioCtx.createGain();
+      phoneRnnoiseActiveGain.gain.value = 0.0;
+
+      phoneRnnoiseBypassGain = phoneAudioCtx.createGain();
+      phoneRnnoiseBypassGain.gain.value = 1.0;
+
+      phoneHighpassNode = phoneAudioCtx.createBiquadFilter();
+      phoneHighpassNode.type = 'highpass';
+      phoneHighpassNode.frequency.value = (phoneNoiseFilterMode !== 'off') ? 80 : 10;
+      phoneHighpassNode.Q.value = 0.707;
+
+      phoneGateGainNode = phoneAudioCtx.createGain();
+      phoneGateGainNode.gain.value = 1.0;
+
+      phoneCompressorNode = phoneAudioCtx.createDynamicsCompressor();
+      phoneCompressorNode.threshold.value = -2.0;
+      phoneCompressorNode.knee.value = 3.0;
+      phoneCompressorNode.ratio.value = 12.0;
+      phoneCompressorNode.attack.value = 0.002;
+      phoneCompressorNode.release.value = 0.05;
+
       phoneGainNode = phoneAudioCtx.createGain();
       phoneGainNode.gain.value = phoneAudioMuted ? 0 : phoneAudioVolume;
 
       phoneAnalyserNode = phoneAudioCtx.createAnalyser();
       phoneAnalyserNode.fftSize = 256;
 
-      // Pure Direct Raw Audio Graph (Zero Filters / Zero Suppression):
-      // Source -> Gain (Volume/Mute) -> Analyser (VU Meter) -> Audio Destination
+      // Audio Graph Topology:
+      // StudioBus -> Bypass -> Highpass -> Gate -> Limiter -> Gain -> Analyser -> Destination
+      // StudioBus -> [RNNoise Worklet -> Active] -> Highpass -> Gate -> Limiter -> Gain -> Analyser -> Destination
+      phoneStudioBus.connect(phoneRnnoiseBypassGain);
+      phoneRnnoiseBypassGain.connect(phoneHighpassNode);
+      phoneRnnoiseActiveGain.connect(phoneHighpassNode);
+
+      phoneHighpassNode.connect(phoneGateGainNode);
+      phoneGateGainNode.connect(phoneCompressorNode);
+      phoneCompressorNode.connect(phoneGainNode);
       phoneGainNode.connect(phoneAnalyserNode);
       phoneAnalyserNode.connect(phoneAudioCtx.destination);
+
+      initPhoneAudioAi();
       updateNoiseFilterButtonState();
     } else if (phoneGainNode) {
       phoneGainNode.gain.value = phoneAudioMuted ? 0 : phoneAudioVolume;
+      updatePhoneAudioRouting();
     }
 
+    // Pure continuous signal: by default gateGainNode is 1.0, preserving all natural speech syllables
     phoneGateEnvelope = 1.0;
+    if (phoneGateGainNode) {
+      phoneGateGainNode.gain.setValueAtTime(1.0, currentTime);
+    }
 
-    // Live VU meter update in dashboard (monitors direct raw microphone signal)
-    const vuPct = Math.min(100, Math.round(latestPhoneCastAudioRms * 220));
+    // Live VU meter update in dashboard (monitors post-AI / processed microphone signal)
+    let effectiveVuRms = latestPhoneCastAudioRms;
+    if (phoneAnalyserNode && phoneNoiseFilterEnabled) {
+      const timeData = new Uint8Array(64);
+      phoneAnalyserNode.getByteTimeDomainData(timeData);
+      let sumSq = 0;
+      for (let i = 0; i < timeData.length; i++) {
+        const v = (timeData[i] - 128) / 128.0;
+        sumSq += v * v;
+      }
+      effectiveVuRms = Math.sqrt(sumSq / timeData.length);
+    }
+    const vuPct = Math.min(100, Math.round(effectiveVuRms * 220));
     const phoneVuFill = typeof document !== 'undefined' ? document.getElementById('phone-audio-vu-fill') : null;
     const phoneVuVal = typeof document !== 'undefined' ? document.getElementById('phone-audio-vu-val') : null;
     if (phoneVuFill) phoneVuFill.style.width = vuPct + '%';
@@ -3820,7 +3924,7 @@ function playStudioAudio(pcmData) {
 
     const source = phoneAudioCtx.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(phoneGainNode || phoneAudioCtx.destination);
+    source.connect(phoneStudioBus || phoneHighpassNode || phoneGainNode || phoneAudioCtx.destination);
     source.start(phoneNextAudioTime);
     phoneNextAudioTime += audioBuffer.duration;
 
@@ -4240,7 +4344,25 @@ function initPhoneCastStudio() {
   if (noiseFilterBtn) {
     updateNoiseFilterButtonState();
     noiseFilterBtn.addEventListener('click', () => {
-      showToast('Raw Audio Mode: All filters and noise suppression are completely disabled for 100% natural mic sound', 'info', 'Audio Engine');
+      phoneNoiseFilterEnabled = !phoneNoiseFilterEnabled;
+      phoneNoiseFilterMode = phoneNoiseFilterEnabled ? 'ai' : 'off';
+      updatePhoneAudioRouting();
+      updateNoiseFilterButtonState();
+      try { localStorage.setItem('shing_phone_noise_filter', phoneNoiseFilterEnabled); } catch (e) {}
+
+      // Synchronize with server settings and broadcast to OBS overlays
+      const cfg = ensurePhoneSettings(appSettings.phone);
+      cfg.noiseFilter = phoneNoiseFilterMode;
+      appSettings.phone = cfg;
+      saveSettingsDebounced();
+
+      showToast(
+        phoneNoiseFilterEnabled
+          ? (phoneRnnoiseReady ? 'AI Voice Isolation active (RNNoise 48kHz)' : 'Noise Filter enabled (80Hz cut + limiter)')
+          : 'Noise Filter disabled (raw mic audio)',
+        'info',
+        'Audio Engine'
+      );
     });
   }
 
