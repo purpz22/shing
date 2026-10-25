@@ -690,7 +690,7 @@
             if (audioCtx.state === 'suspended') {
               audioCtx.resume().catch(() => {});
             }
-            nextAudioTime = audioCtx.currentTime;
+            nextAudioTime = audioCtx.currentTime + AUDIO_LEAD_TIME;
           }
         });
       }
@@ -959,11 +959,11 @@
             const AudioContextClass = window.AudioContext || window.webkitAudioContext;
             if (!AudioContextClass) return;
             audioCtx = new AudioContextClass({ sampleRate: 48000 });
-            nextAudioTime = audioCtx.currentTime;
+            nextAudioTime = audioCtx.currentTime + AUDIO_LEAD_TIME;
           }
           if (audioCtx.state === 'suspended') {
             audioCtx.resume().catch(() => {});
-            nextAudioTime = audioCtx.currentTime;
+            nextAudioTime = audioCtx.currentTime + AUDIO_LEAD_TIME;
             return;
           }
 
@@ -993,11 +993,10 @@
 
           const currentTime = audioCtx.currentTime;
 
-          // Latency Drift Self-Healing:
-          // If nextAudioTime fell behind currentTime (buffer underrun), schedule this packet to start immediately at currentTime.
-          // Never add artificial lead time here, which would inject audible dead-air gaps!
+          // Latency Drift Self-Healing Jitter Buffer:
+          // When nextAudioTime falls behind currentTime (buffer underrun), re-establish the lead time cushion so subsequent packets play glitch-free.
           if (nextAudioTime < currentTime) {
-            nextAudioTime = currentTime;
+            nextAudioTime = currentTime + AUDIO_LEAD_TIME;
           } else if (nextAudioTime > currentTime + MAX_AUDIO_LATENCY) {
             nextAudioTime = currentTime + AUDIO_LEAD_TIME;
           }
@@ -1021,11 +1020,11 @@
             overlayGateGainNode.gain.value = 1.0;
 
             overlayCompressorNode = audioCtx.createDynamicsCompressor();
-            overlayCompressorNode.threshold.value = -24;
-            overlayCompressorNode.knee.value = 10;
-            overlayCompressorNode.ratio.value = 3.5;
+            overlayCompressorNode.threshold.value = -6;
+            overlayCompressorNode.knee.value = 6;
+            overlayCompressorNode.ratio.value = 8;
             overlayCompressorNode.attack.value = 0.003;
-            overlayCompressorNode.release.value = 0.25;
+            overlayCompressorNode.release.value = 0.10;
 
             // Audio Graph Topology:
             // Bus -> Bypass -> Highpass
@@ -1071,14 +1070,14 @@
       window.addEventListener('click', () => {
         if (audioCtx && audioCtx.state === 'suspended') {
           audioCtx.resume().then(() => {
-            nextAudioTime = audioCtx.currentTime;
+            nextAudioTime = audioCtx.currentTime + AUDIO_LEAD_TIME;
           }).catch(() => {});
         }
       });
       window.addEventListener('keydown', () => {
         if (audioCtx && audioCtx.state === 'suspended') {
           audioCtx.resume().then(() => {
-            nextAudioTime = audioCtx.currentTime;
+            nextAudioTime = audioCtx.currentTime + AUDIO_LEAD_TIME;
           }).catch(() => {});
         }
       });

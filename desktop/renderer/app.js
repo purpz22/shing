@@ -3796,11 +3796,11 @@ function playStudioAudio(pcmData) {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextClass) return;
       phoneAudioCtx = new AudioContextClass({ sampleRate: 48000 });
-      phoneNextAudioTime = phoneAudioCtx.currentTime;
+      phoneNextAudioTime = phoneAudioCtx.currentTime + STUDIO_AUDIO_LEAD_TIME;
     }
     if (phoneAudioCtx.state === 'suspended') {
       phoneAudioCtx.resume().catch(() => {});
-      phoneNextAudioTime = phoneAudioCtx.currentTime;
+      phoneNextAudioTime = phoneAudioCtx.currentTime + STUDIO_AUDIO_LEAD_TIME;
       return;
     }
 
@@ -3834,11 +3834,10 @@ function playStudioAudio(pcmData) {
 
     const currentTime = phoneAudioCtx.currentTime;
 
-    // Latency Drift Self-Healing:
-    // If nextAudioTime fell behind currentTime (buffer underrun), schedule this packet to start immediately at currentTime.
-    // Never add artificial lead time here, which would inject audible dead-air gaps!
+    // Latency Drift Self-Healing Jitter Buffer:
+    // When nextAudioTime falls behind currentTime (buffer underrun), re-establish the lead time cushion so subsequent packets play glitch-free.
     if (phoneNextAudioTime < currentTime) {
-      phoneNextAudioTime = currentTime;
+      phoneNextAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
     } else if (phoneNextAudioTime > currentTime + STUDIO_MAX_AUDIO_LATENCY) {
       phoneNextAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
     }
@@ -3862,11 +3861,11 @@ function playStudioAudio(pcmData) {
       phoneGateGainNode.gain.value = 1.0;
 
       phoneCompressorNode = phoneAudioCtx.createDynamicsCompressor();
-      phoneCompressorNode.threshold.value = -24;
-      phoneCompressorNode.knee.value = 10;
-      phoneCompressorNode.ratio.value = 3.5;
+      phoneCompressorNode.threshold.value = -6;
+      phoneCompressorNode.knee.value = 6;
+      phoneCompressorNode.ratio.value = 8;
       phoneCompressorNode.attack.value = 0.003;
-      phoneCompressorNode.release.value = 0.25;
+      phoneCompressorNode.release.value = 0.10;
 
       phoneGainNode = phoneAudioCtx.createGain();
       phoneGainNode.gain.value = phoneAudioMuted ? 0 : phoneAudioVolume;
@@ -4381,7 +4380,7 @@ function initPhoneCastStudio() {
       if (phoneAudioCtx.state === 'suspended') {
         phoneAudioCtx.resume().catch(() => {});
       }
-      phoneNextAudioTime = phoneAudioCtx.currentTime;
+      phoneNextAudioTime = phoneAudioCtx.currentTime + STUDIO_AUDIO_LEAD_TIME;
     }
     showToast(phoneAudioMuted ? 'Desktop preview muted (overlay outputs stream sound)' : 'Desktop preview audio unmuted', 'info', 'Phone Cast');
   });

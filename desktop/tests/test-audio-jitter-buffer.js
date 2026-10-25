@@ -14,7 +14,7 @@ assert(appJsContent.includes('const STUDIO_AUDIO_LEAD_TIME = 0.060;'), 'STUDIO_A
 assert(appJsContent.includes('const STUDIO_MAX_AUDIO_LATENCY = 0.250;'), 'STUDIO_MAX_AUDIO_LATENCY must be 0.250s (250ms)');
 const playStudioAudioBlock = appJsContent.slice(appJsContent.indexOf('function playStudioAudio('), appJsContent.indexOf('function connectPhoneCastPreviewWs('));
 assert(!playStudioAudioBlock.includes('.stop()'), 'playStudioAudio must NOT call .stop() on active sources during jitter');
-assert(appJsContent.includes('phoneNextAudioTime = currentTime;'), 'Must catch up immediately to currentTime on buffer underrun without dead-air holes');
+assert(appJsContent.includes('phoneNextAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;'), 'Must re-establish lead cushion on buffer underrun for glitch-free playback');
 assert(appJsContent.includes('phoneGateEnvelope = 1.0;'), 'Must preserve continuous waveform without syllable chopping');
 
 // 2. Check phone.html jitter constants and scheduling logic
@@ -25,7 +25,7 @@ assert(phoneHtmlContent.includes('const AUDIO_LEAD_TIME = 0.060;'), 'AUDIO_LEAD_
 assert(phoneHtmlContent.includes('const MAX_AUDIO_LATENCY = 0.250;'), 'MAX_AUDIO_LATENCY must be 0.250s (250ms) in phone.html');
 const playAudioChunkBlock = phoneHtmlContent.slice(phoneHtmlContent.indexOf('function playAudioChunk('), phoneHtmlContent.indexOf('window.addEventListener(\'click\''));
 assert(!playAudioChunkBlock.includes('.stop()'), 'playAudioChunk in phone.html must NOT call .stop() on active sources during jitter');
-assert(phoneHtmlContent.includes('nextAudioTime = currentTime;'), 'Must catch up immediately to currentTime on buffer underrun without dead-air holes in phone.html');
+assert(phoneHtmlContent.includes('nextAudioTime = currentTime + AUDIO_LEAD_TIME;'), 'Must re-establish lead cushion on buffer underrun for glitch-free playback in phone.html');
 assert(phoneHtmlContent.includes('overlayGateEnvelope = 1.0;'), 'Must preserve continuous waveform without syllable chopping in phone.html');
 
 // 3. Check AudioEncoder.kt mixingLoop

@@ -1,6 +1,24 @@
 {
-    "latest":  "1.7.7",
+    "latest":  "1.7.8",
     "releases":  [
+                     {
+                         "version":  "1.7.8",
+                         "releaseName":  "Shing Live v1.7.8 - Jitter Buffer Cushion Restoration & Transparent Safety Limiting",
+                         "releaseDate":  "2026-10-25",
+                         "type":  "improvement",
+                         "summary":  "Resolved PC desktop and OBS overlay software glitching and micro-dropouts by restoring a 60ms lead cushion to the audio jitter buffer (eliminating the zero-cushion regression where 63% of packets suffered Web Audio hardware clock underruns), replacing aggressive -24dB dynamics compression with a transparent -6dB safety limiter, and ensuring continuous glitch-free playback across Wi-Fi jitter.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.7.8.zip",
+                         "highlights":  [
+                                            "Jitter Buffer Cushion Restoration: Restored 60ms lead cushion on AudioContext initialization, resumes, and underrun recoveries, eliminating the zero-cushion flaw where 63% of packets experienced hardware timing starvation",
+                                            "Hardware Clock Alignment: Web Audio BufferSource nodes are scheduled with adequate runway, preventing Web Audio render quantums from truncating audio sample starts",
+                                            "Transparent Peak Limiter: Replaced aggressive -24dB voice-squishing dynamics compressor with a clean -6dB safety peak limiter, preserving full vocal dynamics without volume pumping",
+                                            "Unmute Lead Synchronization: Re-establishes full 60ms jitter buffer runway immediately when unmuting desktop preview or OBS overlay audio",
+                                            "Synchronized HTML Overlays: Synchronized phone.html mirrors across desktop preview, standalone overlays, and web server roots"
+                                        ],
+                         "notes":  "Silky-smooth, continuous, broadcast-grade audio playback on both PC desktop app and OBS overlay.",
+                         "packageSize":  "5 MB",
+                         "checksum":  "b6f26db0deafda77417276183764d54e08e44476962e0c99f0ddc19d62cd7fe8"
+                     },
                      {
                          "version":  "1.7.7",
                          "releaseName":  "Shing Live v1.7.7 - Pure Raw 48kHz Mobile Capture & Unchopped Continuous Speech Audio",
