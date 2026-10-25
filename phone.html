@@ -887,8 +887,17 @@
         // 0x04 = Internal game audio (PCM 16-bit 48kHz stereo)
         if (packetType === 0x04) {
           if (!isAudioMuted) {
-            playAudioChunk(nalData);
+            playAudioChunk(nalData, false);
           }
+          return;
+        }
+
+        // 0x05 = Dedicated phone microphone voice audio
+        if (packetType === 0x05) {
+          if (!isAudioMuted) {
+            playAudioChunk(nalData, true);
+          }
+          return;
         }
       }
 
@@ -903,6 +912,8 @@
 
       let scheduledAudioSources = [];
       let overlayStudioBus = null;
+      let overlayGameBus = null;
+      let overlayMasterMixBus = null;
       let overlayRnnoiseNode = null;
       let overlayRnnoiseActiveGain = null;
       let overlayRnnoiseBypassGain = null;
@@ -914,6 +925,8 @@
       let overlayNoiseFilterMode = 'ai'; // 'ai' | 'clean' | 'off'
       const AUDIO_LEAD_TIME = 0.060; // 60ms initial cushion for smooth playback without jitter underruns
       const MAX_AUDIO_LATENCY = 0.250; // 250ms maximum latency allowance before gently catching up
+      let nextGameAudioTime = 0;
+      let nextMicAudioTime = 0;
 
       async function initOverlayAudioAi() {
         if (!audioCtx || overlayRnnoiseReady || overlayRnnoiseInitializing) return;
@@ -966,17 +979,21 @@
         }
       }
 
-      function playAudioChunk(pcmData) {
+      function playAudioChunk(pcmData, isMic = false) {
         try {
           if (!audioCtx) {
             const AudioContextClass = window.AudioContext || window.webkitAudioContext;
             if (!AudioContextClass) return;
             audioCtx = new AudioContextClass({ sampleRate: 48000 });
-            nextAudioTime = audioCtx.currentTime + AUDIO_LEAD_TIME;
+            nextGameAudioTime = audioCtx.currentTime + AUDIO_LEAD_TIME;
+            nextMicAudioTime = audioCtx.currentTime + AUDIO_LEAD_TIME;
+            nextAudioTime = nextGameAudioTime;
           }
           if (audioCtx.state === 'suspended') {
             audioCtx.resume().catch(() => {});
-            nextAudioTime = audioCtx.currentTime + AUDIO_LEAD_TIME;
+            nextGameAudioTime = audioCtx.currentTime + AUDIO_LEAD_TIME;
+            nextMicAudioTime = audioCtx.currentTime + AUDIO_LEAD_TIME;
+            nextAudioTime = nextGameAudioTime;
             return;
           }
 
@@ -996,15 +1013,26 @@
 
           const currentTime = audioCtx.currentTime;
 
-          // Latency Drift Self-Healing Jitter Buffer:
-          // When nextAudioTime falls behind currentTime (buffer underrun), re-establish the lead time cushion so subsequent packets play glitch-free.
-          if (nextAudioTime < currentTime) {
-            nextAudioTime = currentTime + AUDIO_LEAD_TIME;
-          } else if (nextAudioTime > currentTime + MAX_AUDIO_LATENCY) {
-            nextAudioTime = currentTime + AUDIO_LEAD_TIME;
-          }
+          if (!overlayMasterMixBus && audioCtx) {
+            overlayMasterMixBus = audioCtx.createGain();
+            overlayMasterMixBus.gain.value = 1.0;
 
-          if (!overlayStudioBus && audioCtx) {
+            overlayCompressorNode = audioCtx.createDynamicsCompressor();
+            overlayCompressorNode.threshold.value = -1.5;
+            overlayCompressorNode.knee.value = 3.0;
+            overlayCompressorNode.ratio.value = 16.0;
+            overlayCompressorNode.attack.value = 0.002;
+            overlayCompressorNode.release.value = 0.05;
+
+            overlayMasterMixBus.connect(overlayCompressorNode);
+            overlayCompressorNode.connect(audioCtx.destination);
+
+            // Clean game bus: bypasses RNNoise entirely for 100% crystal-clear game sound
+            overlayGameBus = audioCtx.createGain();
+            overlayGameBus.gain.value = 1.0;
+            overlayGameBus.connect(overlayMasterMixBus);
+
+            // Microphone bus: connects to RNNoise AI worklet for voice isolation
             overlayStudioBus = audioCtx.createGain();
             overlayStudioBus.gain.value = 1.0;
 
@@ -1019,22 +1047,11 @@
             overlayHighpassNode.frequency.value = (overlayNoiseFilterMode !== 'off') ? 80 : 10;
             overlayHighpassNode.Q.value = 0.707;
 
-            overlayCompressorNode = audioCtx.createDynamicsCompressor();
-            overlayCompressorNode.threshold.value = -2.0;
-            overlayCompressorNode.knee.value = 3.0;
-            overlayCompressorNode.ratio.value = 12.0;
-            overlayCompressorNode.attack.value = 0.002;
-            overlayCompressorNode.release.value = 0.05;
-
-            // Audio Graph Topology:
-            // StudioBus -> Bypass -> Highpass -> Limiter -> Destination
-            // StudioBus -> [RNNoise Worklet -> Active] -> Highpass -> Limiter -> Destination
             overlayStudioBus.connect(overlayRnnoiseBypassGain);
+            overlayStudioBus.connect(overlayRnnoiseActiveGain);
             overlayRnnoiseBypassGain.connect(overlayHighpassNode);
             overlayRnnoiseActiveGain.connect(overlayHighpassNode);
-
-            overlayHighpassNode.connect(overlayCompressorNode);
-            overlayCompressorNode.connect(audioCtx.destination);
+            overlayHighpassNode.connect(overlayMasterMixBus);
 
             initOverlayAudioAi();
           } else if (overlayStudioBus) {
@@ -1043,13 +1060,48 @@
 
           overlayGateEnvelope = 1.0;
 
-          const source = audioCtx.createBufferSource();
-          source.buffer = audioBuffer;
-          source.connect(overlayStudioBus || audioCtx.destination);
-          source.start(nextAudioTime);
-          nextAudioTime += audioBuffer.duration;
+          if (isMic) {
+            // Microphone channel: routes through AI Voice Isolation worklet
+            if (nextMicAudioTime < currentTime) {
+              nextMicAudioTime = currentTime + AUDIO_LEAD_TIME;
+              nextAudioTime = currentTime + AUDIO_LEAD_TIME;
+            } else if (nextMicAudioTime > currentTime + MAX_AUDIO_LATENCY) {
+              nextMicAudioTime = currentTime + AUDIO_LEAD_TIME;
+              nextAudioTime = currentTime + AUDIO_LEAD_TIME;
+            }
 
-          scheduledAudioSources.push(source);
+            const source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(overlayStudioBus || overlayMasterMixBus || audioCtx.destination);
+            source.start(nextMicAudioTime);
+            nextMicAudioTime += audioBuffer.duration;
+
+            scheduledAudioSources.push(source);
+            source.onended = () => {
+              const idx = scheduledAudioSources.indexOf(source);
+              if (idx !== -1) scheduledAudioSources.splice(idx, 1);
+            };
+          } else {
+            // Game audio channel: routes to clean game bus (bypasses RNNoise completely)
+            if (nextGameAudioTime < currentTime) {
+              nextGameAudioTime = currentTime + AUDIO_LEAD_TIME;
+            } else if (nextGameAudioTime > currentTime + MAX_AUDIO_LATENCY) {
+              nextGameAudioTime = currentTime + AUDIO_LEAD_TIME;
+            }
+            nextAudioTime = nextGameAudioTime;
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(overlayGameBus || overlayMasterMixBus || audioCtx.destination);
+            source.start(nextGameAudioTime);
+            nextGameAudioTime += audioBuffer.duration;
+
+            scheduledAudioSources.push(source);
+            source.onended = () => {
+              const idx = scheduledAudioSources.indexOf(source);
+              if (idx !== -1) scheduledAudioSources.splice(idx, 1);
+            };
+          }
           source.onended = () => {
             const idx = scheduledAudioSources.indexOf(source);
             if (idx !== -1) scheduledAudioSources.splice(idx, 1);

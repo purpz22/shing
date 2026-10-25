@@ -20,6 +20,7 @@ class CastClient(
     var width: Int,
     var height: Int,
     private val fps: Int,
+    var audioMode: String = "mixed",
     private val onConnectionStateChanged: (Boolean, String?) -> Unit
 ) {
     companion object {
@@ -28,6 +29,7 @@ class CastClient(
         const val PACKET_VIDEO_KEYFRAME: Byte = 0x02
         const val PACKET_VIDEO_DELTA: Byte = 0x03
         const val PACKET_AUDIO: Byte = 0x04
+        const val PACKET_MIC: Byte = 0x05
     }
 
     private var webSocket: WebSocket? = null
@@ -61,6 +63,7 @@ class CastClient(
                     put("width", width)
                     put("height", height)
                     put("fps", fps)
+                    put("audioMode", audioMode)
                 }
                 ws.send(registerMsg.toString())
                 onConnectionStateChanged(true, null)

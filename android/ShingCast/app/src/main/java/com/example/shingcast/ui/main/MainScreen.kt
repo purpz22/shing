@@ -331,7 +331,7 @@ fun MainCastScreen(
                         Text(
                             text = when (audioMode) {
                                 "mic" -> "Phone Microphone: Use phone as a wireless streaming mic for OBS and PNGTuber"
-                                "mixed" -> "Mixed Sound: Mixes internal game sound effects with your voice from the microphone"
+                                "mixed" -> "Dual-Channel Game + Mic: Independent game sound + voice channels with acoustic bleed isolation"
                                 else -> "Game Audio: Clean internal game sound without background room noise"
                             },
                             fontSize = 11.5.sp,
@@ -366,6 +366,14 @@ fun MainCastScreen(
                                     )
                                 }
                             }
+                        }
+
+                        if (audioMode == "mixed") {
+                            Text(
+                                text = "Dual-Channel Active: Internal game audio and mic are streamed on independent channels for zero distortion and zero echo. Earphones recommended to eliminate acoustic speaker feedback.",
+                                fontSize = 11.sp,
+                                color = Color(0xFF38BDF8)
+                            )
                         }
 
                         // Microphone Volume Boost Slider (when Mic or Mixed is selected)

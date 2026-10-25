@@ -3589,9 +3589,14 @@ let phoneFpsCount = 0;
 let phoneLastFpsTime = 0;
 let phoneAudioCtx = null;
 let phoneNextAudioTime = 0;
+let phoneNextGameAudioTime = 0;
+let phoneNextMicAudioTime = 0;
+let phoneLastMicPacketTime = 0;
 let phoneAudioMuted = false;
 let phoneAudioVolume = 1.0;
 let phoneGainNode = null;
+let phoneGameBus = null;
+let phoneMasterMixBus = null;
 let phoneNoiseFilterEnabled = true;
 let phoneNoiseGateThreshold = 0.016; // approx -36 dB RMS
 let phoneHighpassNode = null;
@@ -3805,17 +3810,21 @@ function updateNoiseFilterButtonState() {
   }
 }
 
-function playStudioAudio(pcmData) {
+function playStudioAudio(pcmData, isMic = false) {
   try {
     if (!phoneAudioCtx) {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextClass) return;
       phoneAudioCtx = new AudioContextClass({ sampleRate: 48000 });
-      phoneNextAudioTime = phoneAudioCtx.currentTime + STUDIO_AUDIO_LEAD_TIME;
+      phoneNextGameAudioTime = phoneAudioCtx.currentTime + STUDIO_AUDIO_LEAD_TIME;
+      phoneNextMicAudioTime = phoneAudioCtx.currentTime + STUDIO_AUDIO_LEAD_TIME;
+      phoneNextAudioTime = phoneNextGameAudioTime;
     }
     if (phoneAudioCtx.state === 'suspended') {
       phoneAudioCtx.resume().catch(() => {});
-      phoneNextAudioTime = phoneAudioCtx.currentTime + STUDIO_AUDIO_LEAD_TIME;
+      phoneNextGameAudioTime = phoneAudioCtx.currentTime + STUDIO_AUDIO_LEAD_TIME;
+      phoneNextMicAudioTime = phoneAudioCtx.currentTime + STUDIO_AUDIO_LEAD_TIME;
+      phoneNextAudioTime = phoneNextGameAudioTime;
       return;
     }
 
@@ -3843,21 +3852,34 @@ function playStudioAudio(pcmData) {
       prevMono = mono;
       sumSq += (l * l + r * r) * 0.5;
     }
-    latestPhoneCastAudioRms = Math.sqrt(sumSq / numSamples);
-    latestPhoneCastAudioZcr = zeroCrossings;
-    phoneCastAudioLastPacketTime = Date.now();
 
     const currentTime = phoneAudioCtx.currentTime;
 
-    // Latency Drift Self-Healing Jitter Buffer:
-    // When nextAudioTime falls behind currentTime (buffer underrun), re-establish the lead time cushion so subsequent packets play glitch-free.
-    if (phoneNextAudioTime < currentTime) {
-      phoneNextAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
-    } else if (phoneNextAudioTime > currentTime + STUDIO_MAX_AUDIO_LATENCY) {
-      phoneNextAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
-    }
-
     if (!phoneGainNode && phoneAudioCtx) {
+      // Master mix bus & safety broadcast compressor
+      phoneMasterMixBus = phoneAudioCtx.createGain();
+      phoneMasterMixBus.gain.value = 1.0;
+
+      phoneCompressorNode = phoneAudioCtx.createDynamicsCompressor();
+      phoneCompressorNode.threshold.value = -1.5;
+      phoneCompressorNode.knee.value = 3.0;
+      phoneCompressorNode.ratio.value = 12.0;
+      phoneCompressorNode.attack.value = 0.002;
+      phoneCompressorNode.release.value = 0.05;
+
+      phoneGainNode = phoneAudioCtx.createGain();
+      phoneGainNode.gain.value = phoneAudioMuted ? 0 : phoneAudioVolume;
+
+      phoneMasterMixBus.connect(phoneCompressorNode);
+      phoneCompressorNode.connect(phoneGainNode);
+      phoneGainNode.connect(phoneAudioCtx.destination);
+
+      // Clean Game Audio Bus: 100% full-bandwidth stereo, zero filtering, bypasses RNNoise
+      phoneGameBus = phoneAudioCtx.createGain();
+      phoneGameBus.gain.value = 1.0;
+      phoneGameBus.connect(phoneMasterMixBus);
+
+      // Dedicated Microphone Bus: RNNoise AI voice isolation worklet, 80Hz rumble cut, and VU meter analyser
       phoneStudioBus = phoneAudioCtx.createGain();
       phoneStudioBus.gain.value = 1.0;
 
@@ -3875,31 +3897,18 @@ function playStudioAudio(pcmData) {
       phoneGateGainNode = phoneAudioCtx.createGain();
       phoneGateGainNode.gain.value = 1.0;
 
-      phoneCompressorNode = phoneAudioCtx.createDynamicsCompressor();
-      phoneCompressorNode.threshold.value = -2.0;
-      phoneCompressorNode.knee.value = 3.0;
-      phoneCompressorNode.ratio.value = 12.0;
-      phoneCompressorNode.attack.value = 0.002;
-      phoneCompressorNode.release.value = 0.05;
-
-      phoneGainNode = phoneAudioCtx.createGain();
-      phoneGainNode.gain.value = phoneAudioMuted ? 0 : phoneAudioVolume;
-
       phoneAnalyserNode = phoneAudioCtx.createAnalyser();
       phoneAnalyserNode.fftSize = 256;
 
-      // Audio Graph Topology:
-      // StudioBus -> Bypass -> Highpass -> Gate -> Limiter -> Gain -> Analyser -> Destination
-      // StudioBus -> [RNNoise Worklet -> Active] -> Highpass -> Gate -> Limiter -> Gain -> Analyser -> Destination
+      // Microphone Routing Topology:
+      // phoneStudioBus -> [Bypass / RNNoise AI] -> Highpass (80Hz cut) -> Gate -> Analyser -> MasterMixBus
       phoneStudioBus.connect(phoneRnnoiseBypassGain);
       phoneRnnoiseBypassGain.connect(phoneHighpassNode);
       phoneRnnoiseActiveGain.connect(phoneHighpassNode);
 
       phoneHighpassNode.connect(phoneGateGainNode);
-      phoneGateGainNode.connect(phoneCompressorNode);
-      phoneCompressorNode.connect(phoneGainNode);
-      phoneGainNode.connect(phoneAnalyserNode);
-      phoneAnalyserNode.connect(phoneAudioCtx.destination);
+      phoneGateGainNode.connect(phoneAnalyserNode);
+      phoneAnalyserNode.connect(phoneMasterMixBus);
 
       initPhoneAudioAi();
       updateNoiseFilterButtonState();
@@ -3908,41 +3917,94 @@ function playStudioAudio(pcmData) {
       updatePhoneAudioRouting();
     }
 
-    // Pure continuous signal: by default gateGainNode is 1.0, preserving all natural speech syllables
     phoneGateEnvelope = 1.0;
     if (phoneGateGainNode) {
       phoneGateGainNode.gain.setValueAtTime(1.0, currentTime);
     }
 
-    // Live VU meter update in dashboard (monitors post-AI / processed microphone signal)
-    let effectiveVuRms = latestPhoneCastAudioRms;
-    if (phoneAnalyserNode && phoneNoiseFilterEnabled) {
-      const timeData = new Uint8Array(64);
-      phoneAnalyserNode.getByteTimeDomainData(timeData);
-      let sumSq = 0;
-      for (let i = 0; i < timeData.length; i++) {
-        const v = (timeData[i] - 128) / 128.0;
-        sumSq += v * v;
+    if (isMic) {
+      phoneLastMicPacketTime = Date.now();
+      latestPhoneCastAudioRms = Math.sqrt(sumSq / numSamples);
+      latestPhoneCastAudioZcr = zeroCrossings;
+      phoneCastAudioLastPacketTime = Date.now();
+
+      // Latency Drift Self-Healing Jitter Buffer for Microphone
+      if (phoneNextMicAudioTime < currentTime) {
+        phoneNextMicAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
+        phoneNextAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
+      } else if (phoneNextMicAudioTime > currentTime + STUDIO_MAX_AUDIO_LATENCY) {
+        phoneNextMicAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
+        phoneNextAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
       }
-      effectiveVuRms = Math.sqrt(sumSq / timeData.length);
+
+      // Live VU meter update in dashboard (monitors post-AI microphone signal)
+      let effectiveVuRms = latestPhoneCastAudioRms;
+      if (phoneAnalyserNode && phoneNoiseFilterEnabled) {
+        const timeData = new Uint8Array(64);
+        phoneAnalyserNode.getByteTimeDomainData(timeData);
+        let sSq = 0;
+        for (let i = 0; i < timeData.length; i++) {
+          const v = (timeData[i] - 128) / 128.0;
+          sSq += v * v;
+        }
+        effectiveVuRms = Math.sqrt(sSq / timeData.length);
+      }
+      const vuPct = Math.min(100, Math.round(effectiveVuRms * 220));
+      const phoneVuFill = typeof document !== 'undefined' ? document.getElementById('phone-audio-vu-fill') : null;
+      const phoneVuVal = typeof document !== 'undefined' ? document.getElementById('phone-audio-vu-val') : null;
+      if (phoneVuFill) phoneVuFill.style.width = vuPct + '%';
+      if (phoneVuVal) phoneVuVal.textContent = vuPct + '%';
+
+      const source = phoneAudioCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(phoneStudioBus || phoneMasterMixBus || phoneAudioCtx.destination);
+      source.start(phoneNextMicAudioTime);
+      phoneNextMicAudioTime += audioBuffer.duration;
+
+      phoneScheduledAudioSources.push(source);
+      source.onended = () => {
+        const idx = phoneScheduledAudioSources.indexOf(source);
+        if (idx !== -1) phoneScheduledAudioSources.splice(idx, 1);
+      };
+    } else {
+      // Game Audio (PACKET_AUDIO 0x04)
+      const dualStreamActive = (Date.now() - phoneLastMicPacketTime < 1500);
+
+      // If no dedicated mic stream is present (legacy single stream), update telemetry as fallback
+      if (!dualStreamActive) {
+        latestPhoneCastAudioRms = Math.sqrt(sumSq / numSamples);
+        latestPhoneCastAudioZcr = zeroCrossings;
+        phoneCastAudioLastPacketTime = Date.now();
+        const vuPct = Math.min(100, Math.round(latestPhoneCastAudioRms * 220));
+        const phoneVuFill = typeof document !== 'undefined' ? document.getElementById('phone-audio-vu-fill') : null;
+        const phoneVuVal = typeof document !== 'undefined' ? document.getElementById('phone-audio-vu-val') : null;
+        if (phoneVuFill) phoneVuFill.style.width = vuPct + '%';
+        if (phoneVuVal) phoneVuVal.textContent = vuPct + '%';
+      }
+
+      // Latency Drift Self-Healing Jitter Buffer for Game Audio
+      if (phoneNextGameAudioTime < currentTime) {
+        phoneNextGameAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
+      } else if (phoneNextGameAudioTime > currentTime + STUDIO_MAX_AUDIO_LATENCY) {
+        phoneNextGameAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
+      }
+      if (!dualStreamActive) {
+        phoneNextAudioTime = phoneNextGameAudioTime;
+      }
+
+      const source = phoneAudioCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      // Dual-channel game audio connects to clean game bus (bypasses RNNoise completely)
+      source.connect(phoneGameBus || phoneMasterMixBus || phoneAudioCtx.destination);
+      source.start(phoneNextGameAudioTime);
+      phoneNextGameAudioTime += audioBuffer.duration;
+
+      phoneScheduledAudioSources.push(source);
+      source.onended = () => {
+        const idx = phoneScheduledAudioSources.indexOf(source);
+        if (idx !== -1) phoneScheduledAudioSources.splice(idx, 1);
+      };
     }
-    const vuPct = Math.min(100, Math.round(effectiveVuRms * 220));
-    const phoneVuFill = typeof document !== 'undefined' ? document.getElementById('phone-audio-vu-fill') : null;
-    const phoneVuVal = typeof document !== 'undefined' ? document.getElementById('phone-audio-vu-val') : null;
-    if (phoneVuFill) phoneVuFill.style.width = vuPct + '%';
-    if (phoneVuVal) phoneVuVal.textContent = vuPct + '%';
-
-    const source = phoneAudioCtx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(phoneStudioBus || phoneHighpassNode || phoneGainNode || phoneAudioCtx.destination);
-    source.start(phoneNextAudioTime);
-    phoneNextAudioTime += audioBuffer.duration;
-
-    phoneScheduledAudioSources.push(source);
-    source.onended = () => {
-      const idx = phoneScheduledAudioSources.indexOf(source);
-      if (idx !== -1) phoneScheduledAudioSources.splice(idx, 1);
-    };
   } catch (e) {
     console.warn('Studio audio playback error:', e);
   }
@@ -4229,7 +4291,9 @@ function handlePhoneVideoPacket(packetType, buf) {
   }
 
   if (packetType === 0x04) {
-    playStudioAudio(nalData);
+    playStudioAudio(nalData, false);
+  } else if (packetType === 0x05) {
+    playStudioAudio(nalData, true);
   }
 }
 
@@ -4273,7 +4337,7 @@ function connectPhoneCastPreviewWs() {
       if (buf.length < 5) return;
       const packetType = buf[0];
 
-      if (packetType === 0x01 || packetType === 0x02 || packetType === 0x03 || packetType === 0x04) {
+      if (packetType === 0x01 || packetType === 0x02 || packetType === 0x03 || packetType === 0x04 || packetType === 0x05) {
         handlePhoneVideoPacket(packetType, buf);
       }
     };

@@ -151,7 +151,7 @@ class ScreenCaptureService : Service() {
         }, null)
 
         // 3. Connect WebSocket CastClient
-        val client = CastClient(host, port, width, height, fps) { connected, error ->
+        val client = CastClient(host, port, width, height, fps, audioMode) { connected, error ->
             Log.d(TAG, "CastClient connection state: connected=$connected, error=$error")
             if (!connected && isStreaming) {
                 // Keep trying or notify UI

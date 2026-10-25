@@ -12,7 +12,6 @@ import android.os.Process
 import android.util.Log
 import com.example.shingcast.net.CastClient
 import java.util.concurrent.ArrayBlockingQueue
-import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
 class AudioEncoder(
@@ -38,7 +37,6 @@ class AudioEncoder(
         // 10ms of 48kHz 16-bit mono PCM = 480 samples * 2 bytes = 960 bytes
         const val MONO_CHUNK_SIZE_BYTES = 960
         const val SAMPLES_PER_CHUNK = 480
-
         private const val MAX_QUEUE_CHUNKS = 6
     }
 
@@ -195,6 +193,9 @@ class AudioEncoder(
         val stereoBuf = ByteArray(CHUNK_SIZE_BYTES)
         val startTimeNs = System.nanoTime()
 
+        // Adaptive acoustic speaker-bleed gate envelope to prevent loud game audio from bleeding into mic
+        var micGateGain = 1.0f
+
         while (isRecording) {
             // Fill exact 10ms mono chunk from mic (480 samples = 960 bytes)
             var bytesReadTotal = 0
@@ -213,14 +214,50 @@ class AudioEncoder(
 
             if (bytesReadTotal < MONO_CHUNK_SIZE_BYTES) continue
 
-            // Clean Raw 16-bit Mono PCM to 16-bit Stereo PCM (L = R = Mono * boost)
             val boost = micBoost
             val numSamples = bytesReadTotal / 2
 
+            // Calculate microphone RMS level for intelligent speaker-bleed suppression
+            var sumSq = 0.0
+            for (i in 0 until numSamples) {
+                val s = (rawMonoBuf[i * 2 + 1].toInt() shl 8) or (rawMonoBuf[i * 2].toInt() and 0xFF)
+                sumSq += s.toDouble() * s.toDouble()
+            }
+            val rms = kotlin.math.sqrt(sumSq / numSamples) / 32768.0
+
+            // In MODE_MIXED: Poll internal queue to detect active game sound playback for acoustic bleed suppression
+            var gameEnergy = 0.0
+            if (audioMode == MODE_MIXED && internalAudioRecord != null) {
+                val gameChunk = internalQueue.poll()
+                if (gameChunk != null) {
+                    var gameSumSq = 0.0
+                    for (i in 0 until SAMPLES_PER_CHUNK * 2) {
+                        val idx = i * 2
+                        val gs = (gameChunk[idx + 1].toInt() shl 8) or (gameChunk[idx].toInt() and 0xFF)
+                        gameSumSq += gs.toDouble() * gs.toDouble()
+                    }
+                    gameEnergy = kotlin.math.sqrt(gameSumSq / (SAMPLES_PER_CHUNK * 2)) / 32768.0
+                }
+            }
+
+            // In MODE_MIXED, if game sound is playing loud through phone speakers and user is not speaking,
+            // attenuate acoustic speaker bleed so loud game audio is not picked up by the mic
+            if (audioMode == MODE_MIXED) {
+                val isSpeaking = rms >= (0.012 + (gameEnergy * 0.25).coerceAtMost(0.040))
+                if (isSpeaking) {
+                    micGateGain = kotlin.math.min(1.0f, micGateGain + 0.35f)
+                } else {
+                    micGateGain = kotlin.math.max(0.12f, micGateGain - 0.12f)
+                }
+            } else {
+                micGateGain = 1.0f
+            }
+
             for (i in 0 until numSamples) {
                 val sampleMono = (rawMonoBuf[i * 2 + 1].toInt() shl 8) or (rawMonoBuf[i * 2].toInt() and 0xFF)
-                val boosted = if (boost != 1.0f) {
-                    (sampleMono * boost).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                val effectiveBoost = boost * micGateGain
+                val boosted = if (effectiveBoost != 1.0f) {
+                    (sampleMono * effectiveBoost).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
                 } else {
                     sampleMono
                 }
@@ -235,28 +272,15 @@ class AudioEncoder(
                 stereoBuf[i * 4 + 3] = high
             }
 
-            // In MODE_MIXED: Synchronously mix internal game audio into the same 10ms packet
-            if (audioMode == MODE_MIXED && internalAudioRecord != null) {
-                val gameChunk = internalQueue.poll()
-                if (gameChunk != null) {
-                    for (i in 0 until SAMPLES_PER_CHUNK * 2) {
-                        val idx = i * 2
-                        val gameSample = (gameChunk[idx + 1].toInt() shl 8) or (gameChunk[idx].toInt() and 0xFF)
-                        val micSample = (stereoBuf[idx + 1].toInt() shl 8) or (stereoBuf[idx].toInt() and 0xFF)
-
-                        // Smooth broadcast mix with soft headroom (game 85%, mic 100%)
-                        val mixedInt = (gameSample * 0.85f + micSample * 1.0f).roundToInt()
-                        val clamped = mixedInt.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-
-                        stereoBuf[idx] = (clamped and 0xFF).toByte()
-                        stereoBuf[idx + 1] = ((clamped shr 8) and 0xFF).toByte()
-                    }
-                }
-            }
-
-            // Send exactly one 10ms packet directly to PC
             val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
-            client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, stereoBuf, 0, CHUNK_SIZE_BYTES)
+            if (audioMode == MODE_MIC) {
+                // In mic-only mode, stream on PACKET_MIC and PACKET_AUDIO for universal compatibility
+                client.sendBinaryPacket(CastClient.PACKET_MIC, ptsMs, stereoBuf, 0, CHUNK_SIZE_BYTES)
+                client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, stereoBuf, 0, CHUNK_SIZE_BYTES)
+            } else {
+                // In mixed mode, send dedicated microphone stream on PACKET_MIC (0x05)
+                client.sendBinaryPacket(CastClient.PACKET_MIC, ptsMs, stereoBuf, 0, CHUNK_SIZE_BYTES)
+            }
         }
     }
 
@@ -285,12 +309,12 @@ class AudioEncoder(
 
             if (bytesReadTotal < CHUNK_SIZE_BYTES) continue
 
-            if (audioMode == MODE_INTERNAL || micAudioRecord == null) {
-                // Direct internal audio streaming (Game Only)
-                val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
-                client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, internalBuf, 0, CHUNK_SIZE_BYTES)
-            } else {
-                // Push to internal mix queue, dropping oldest if full to stay real-time
+            // Direct internal audio streaming for Game Audio (clean, full-fidelity 48kHz stereo, zero queue drop)
+            val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
+            client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, internalBuf, 0, CHUNK_SIZE_BYTES)
+
+            // Maintain reference queue for real-time acoustic speaker-bleed reference
+            if (audioMode == MODE_MIXED && micAudioRecord != null) {
                 if (internalQueue.remainingCapacity() == 0) {
                     internalQueue.poll()
                 }
