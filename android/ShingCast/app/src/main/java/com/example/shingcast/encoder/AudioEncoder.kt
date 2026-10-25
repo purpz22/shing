@@ -50,9 +50,7 @@ class AudioEncoder(
 
     private var micThread: Thread? = null
     private var internalThread: Thread? = null
-    private var mixThread: Thread? = null
 
-    private val micQueue = ArrayBlockingQueue<ByteArray>(MAX_QUEUE_CHUNKS)
     private val internalQueue = ArrayBlockingQueue<ByteArray>(MAX_QUEUE_CHUNKS)
 
     @SuppressLint("MissingPermission")
@@ -88,12 +86,6 @@ class AudioEncoder(
                 internalThread = Thread({
                     readInternalLoop()
                 }, "ShingInternalAudioThread").apply { start() }
-            }
-
-            if (audioMode == MODE_MIXED && micAudioRecord != null && internalAudioRecord != null) {
-                mixThread = Thread({
-                    mixingLoop()
-                }, "ShingAudioMixerThread").apply { start() }
             }
 
             Log.d(TAG, "AudioEncoder started: mode=$audioMode, mic=${micAudioRecord != null}, internal=${internalAudioRecord != null}, boost=${micBoost}x")
@@ -204,13 +196,15 @@ class AudioEncoder(
         val startTimeNs = System.nanoTime()
 
         while (isRecording) {
-            // Fill exact 10ms mono chunk (480 samples = 960 bytes)
+            // Fill exact 10ms mono chunk from mic (480 samples = 960 bytes)
             var bytesReadTotal = 0
             while (bytesReadTotal < MONO_CHUNK_SIZE_BYTES && isRecording) {
                 val read = record.read(rawMonoBuf, bytesReadTotal, MONO_CHUNK_SIZE_BYTES - bytesReadTotal)
                 if (read > 0) {
                     bytesReadTotal += read
-                } else if (read < 0) {
+                } else if (read == 0) {
+                    try { Thread.sleep(1) } catch (ignored: Exception) {}
+                } else {
                     Log.w(TAG, "Mic read error: $read")
                     try { Thread.sleep(5) } catch (ignored: Exception) {}
                     break
@@ -241,17 +235,28 @@ class AudioEncoder(
                 stereoBuf[i * 4 + 3] = high
             }
 
-            if (audioMode == MODE_MIC || internalAudioRecord == null) {
-                // Direct mic streaming: zero latency, zero queue overhead
-                val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
-                client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, stereoBuf, 0, CHUNK_SIZE_BYTES)
-            } else {
-                // Push to mix queue, dropping oldest if full to maintain real-time sync
-                if (micQueue.remainingCapacity() == 0) {
-                    micQueue.poll()
+            // In MODE_MIXED: Synchronously mix internal game audio into the same 10ms packet
+            if (audioMode == MODE_MIXED && internalAudioRecord != null) {
+                val gameChunk = internalQueue.poll()
+                if (gameChunk != null) {
+                    for (i in 0 until SAMPLES_PER_CHUNK * 2) {
+                        val idx = i * 2
+                        val gameSample = (gameChunk[idx + 1].toInt() shl 8) or (gameChunk[idx].toInt() and 0xFF)
+                        val micSample = (stereoBuf[idx + 1].toInt() shl 8) or (stereoBuf[idx].toInt() and 0xFF)
+
+                        // Smooth broadcast mix with soft headroom (game 85%, mic 100%)
+                        val mixedInt = (gameSample * 0.85f + micSample * 1.0f).roundToInt()
+                        val clamped = mixedInt.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+
+                        stereoBuf[idx] = (clamped and 0xFF).toByte()
+                        stereoBuf[idx + 1] = ((clamped shr 8) and 0xFF).toByte()
+                    }
                 }
-                micQueue.offer(stereoBuf.clone())
             }
+
+            // Send exactly one 10ms packet directly to PC
+            val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
+            client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, stereoBuf, 0, CHUNK_SIZE_BYTES)
         }
     }
 
@@ -270,7 +275,9 @@ class AudioEncoder(
                 val read = record.read(internalBuf, bytesReadTotal, CHUNK_SIZE_BYTES - bytesReadTotal)
                 if (read > 0) {
                     bytesReadTotal += read
-                } else if (read < 0) {
+                } else if (read == 0) {
+                    try { Thread.sleep(1) } catch (ignored: Exception) {}
+                } else {
                     try { Thread.sleep(5) } catch (ignored: Exception) {}
                     break
                 }
@@ -279,59 +286,15 @@ class AudioEncoder(
             if (bytesReadTotal < CHUNK_SIZE_BYTES) continue
 
             if (audioMode == MODE_INTERNAL || micAudioRecord == null) {
-                // Direct internal audio streaming
+                // Direct internal audio streaming (Game Only)
                 val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
                 client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, internalBuf, 0, CHUNK_SIZE_BYTES)
             } else {
-                // Push to internal mix queue, dropping oldest if full
+                // Push to internal mix queue, dropping oldest if full to stay real-time
                 if (internalQueue.remainingCapacity() == 0) {
                     internalQueue.poll()
                 }
                 internalQueue.offer(internalBuf.clone())
-            }
-        }
-    }
-
-    private fun mixingLoop() {
-        try {
-            Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
-        } catch (ignored: Exception) {}
-
-        val mixedBuf = ByteArray(CHUNK_SIZE_BYTES)
-        val startTimeNs = System.nanoTime()
-
-        while (isRecording) {
-            // Short 6ms / 2ms poll ensures loop runs at exact 10ms pacing without falling behind real-time
-            var internalChunk = internalQueue.poll(6, TimeUnit.MILLISECONDS)
-            var micChunk = micQueue.poll(if (internalChunk != null) 2 else 5, TimeUnit.MILLISECONDS)
-
-            if (internalChunk == null && micChunk == null) {
-                continue
-            }
-
-            if (internalChunk != null && micChunk == null) {
-                micChunk = micQueue.poll(2, TimeUnit.MILLISECONDS)
-            } else if (micChunk != null && internalChunk == null) {
-                internalChunk = internalQueue.poll(2, TimeUnit.MILLISECONDS)
-            }
-
-            val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
-
-            if (micChunk != null && internalChunk != null) {
-                for (i in 0 until SAMPLES_PER_CHUNK * 2) {
-                    val idx = i * 2
-                    val gameSample = (internalChunk[idx + 1].toInt() shl 8) or (internalChunk[idx].toInt() and 0xFF)
-                    val micSample = (micChunk[idx + 1].toInt() shl 8) or (micChunk[idx].toInt() and 0xFF)
-
-                    val sum = (gameSample + micSample).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-                    mixedBuf[idx] = (sum and 0xFF).toByte()
-                    mixedBuf[idx + 1] = ((sum shr 8) and 0xFF).toByte()
-                }
-                client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, mixedBuf, 0, CHUNK_SIZE_BYTES)
-            } else if (micChunk != null) {
-                client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, micChunk, 0, CHUNK_SIZE_BYTES)
-            } else if (internalChunk != null) {
-                client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, internalChunk, 0, CHUNK_SIZE_BYTES)
             }
         }
     }
@@ -345,10 +308,6 @@ class AudioEncoder(
         try { internalThread?.join(500) } catch (ignored: Exception) {}
         internalThread = null
 
-        try { mixThread?.join(500) } catch (ignored: Exception) {}
-        mixThread = null
-
-        micQueue.clear()
         internalQueue.clear()
 
         try { micAudioRecord?.stop() } catch (ignored: Exception) {}

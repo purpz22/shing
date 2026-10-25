@@ -28,11 +28,11 @@ assert(!playAudioChunkBlock.includes('.stop()'), 'playAudioChunk in phone.html m
 assert(phoneHtmlContent.includes('nextAudioTime = currentTime + AUDIO_LEAD_TIME;'), 'Must re-establish lead cushion on buffer underrun for glitch-free playback in phone.html');
 assert(phoneHtmlContent.includes('overlayGateEnvelope = 1.0;'), 'Must preserve continuous waveform without syllable chopping in phone.html');
 
-// 3. Check AudioEncoder.kt mixingLoop
+// 3. Check AudioEncoder.kt synchronous real-time mixing
 const encoderPath = path.join(__dirname, '../../android/ShingCast/app/src/main/java/com/example/shingcast/encoder/AudioEncoder.kt');
 const encoderContent = fs.readFileSync(encoderPath, 'utf8');
 
-assert(encoderContent.includes('internalQueue.poll(6, TimeUnit.MILLISECONDS)'), 'AudioEncoder must poll internal audio with fast 6ms timeout');
+assert(encoderContent.includes('internalQueue.poll()'), 'AudioEncoder must poll internal game audio synchronously');
 assert(encoderContent.includes('MAX_QUEUE_CHUNKS = 6'), 'MAX_QUEUE_CHUNKS must be 6 for smooth queue elasticity');
 
 // 4. Jitter buffer simulation test
