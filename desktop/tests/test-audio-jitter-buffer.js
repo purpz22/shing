@@ -15,8 +15,7 @@ assert(appJsContent.includes('const STUDIO_MAX_AUDIO_LATENCY = 0.250;'), 'STUDIO
 const playStudioAudioBlock = appJsContent.slice(appJsContent.indexOf('function playStudioAudio('), appJsContent.indexOf('function connectPhoneCastPreviewWs('));
 assert(!playStudioAudioBlock.includes('.stop()'), 'playStudioAudio must NOT call .stop() on active sources during jitter');
 assert(appJsContent.includes('phoneNextAudioTime = currentTime;'), 'Must catch up immediately to currentTime on buffer underrun without dead-air holes');
-assert(appJsContent.includes('latestPhoneCastAudioZcr <= 220'), 'Must allow speech consonants with ZCR <= 220 in app.js');
-assert(appJsContent.includes('phoneGateHoldUntil = currentTime + 0.350'), 'Must hold gate open for at least 350ms in app.js');
+assert(appJsContent.includes('phoneGateEnvelope = 1.0;'), 'Must preserve continuous waveform without syllable chopping');
 
 // 2. Check phone.html jitter constants and scheduling logic
 const phoneHtmlPath = path.join(__dirname, '../overlays/phone.html');
@@ -27,8 +26,7 @@ assert(phoneHtmlContent.includes('const MAX_AUDIO_LATENCY = 0.250;'), 'MAX_AUDIO
 const playAudioChunkBlock = phoneHtmlContent.slice(phoneHtmlContent.indexOf('function playAudioChunk('), phoneHtmlContent.indexOf('window.addEventListener(\'click\''));
 assert(!playAudioChunkBlock.includes('.stop()'), 'playAudioChunk in phone.html must NOT call .stop() on active sources during jitter');
 assert(phoneHtmlContent.includes('nextAudioTime = currentTime;'), 'Must catch up immediately to currentTime on buffer underrun without dead-air holes in phone.html');
-assert(phoneHtmlContent.includes('zeroCrossings <= 220'), 'Must allow speech consonants with ZCR <= 220 in phone.html');
-assert(phoneHtmlContent.includes('overlayGateHoldUntil = currentTime + 0.350'), 'Must hold gate open for at least 350ms in phone.html');
+assert(phoneHtmlContent.includes('overlayGateEnvelope = 1.0;'), 'Must preserve continuous waveform without syllable chopping in phone.html');
 
 // 3. Check AudioEncoder.kt mixingLoop
 const encoderPath = path.join(__dirname, '../../android/ShingCast/app/src/main/java/com/example/shingcast/encoder/AudioEncoder.kt');

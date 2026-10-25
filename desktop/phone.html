@@ -1043,37 +1043,9 @@
             updateOverlayAudioRouting();
           }
 
-          // AI Voice Isolation Mode: When RNNoise neural network is active, human speech flows
-          // through with zero robotic distortion and zero syllable cutting.
-          // Legacy software gate only engages as a fallback when AI is disabled or unavailable.
-          if (overlayNoiseFilterEnabled && !overlayRnnoiseReady) {
-            const openThresh = overlayNoiseGateThreshold;
-            const closeThresh = overlayNoiseGateThreshold * 0.55;
-            const isVoiceOrAudio = (zeroCrossings <= 220) || (chunkRms >= 0.025);
-
-            if (chunkRms >= openThresh && isVoiceOrAudio) {
-              overlayGateHoldUntil = currentTime + 0.350;
-            }
-
-            const isGateOpen = (currentTime < overlayGateHoldUntil) || (chunkRms >= closeThresh && isVoiceOrAudio);
-            targetEnvelope = isGateOpen ? 1.0 : 0.0;
-
-            const startEnvelope = overlayGateEnvelope;
-            const endEnvelope = (targetEnvelope > startEnvelope)
-              ? Math.min(1.0, startEnvelope + 0.35)
-              : Math.max(0.0, startEnvelope - 0.04);
-            overlayGateEnvelope = endEnvelope;
-
-            const envStep = (endEnvelope - startEnvelope) / numSamples;
-            let curEnv = startEnvelope;
-            for (let i = 0; i < numSamples; i++) {
-              curEnv += envStep;
-              left[i] *= curEnv;
-              right[i] *= curEnv;
-            }
-          } else {
-            overlayGateEnvelope = 1.0;
-          }
+          // Pure Continuous Audio: Samples are never multiplied by a threshold gate, preventing all syllable cutting and "putol-putol" glitches.
+          // Background noise is eliminated naturally in frequency domain by RNNoise AI on the WebAudio worklet graph.
+          overlayGateEnvelope = 1.0;
 
           if (overlayGateGainNode) {
             overlayGateGainNode.gain.setValueAtTime(1.0, currentTime);

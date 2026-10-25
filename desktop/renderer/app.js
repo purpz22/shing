@@ -3893,38 +3893,9 @@ function playStudioAudio(pcmData) {
       updatePhoneAudioRouting();
     }
 
-    // AI Voice Isolation Mode: When RNNoise neural network is active, human speech flows
-    // through with zero robotic distortion and zero syllable cutting.
-    // Legacy software gate only engages as a fallback when AI is disabled or unavailable.
-    if (phoneNoiseFilterEnabled && !phoneRnnoiseReady) {
-      const openThresh = phoneNoiseGateThreshold;
-      const closeThresh = phoneNoiseGateThreshold * 0.55;
-      const isVoiceOrAudio = !phoneVoiceOnlyVadEnabled || (latestPhoneCastAudioZcr <= 220) || (latestPhoneCastAudioRms >= 0.025);
-
-      if (latestPhoneCastAudioRms >= openThresh && isVoiceOrAudio) {
-        phoneGateHoldUntil = currentTime + 0.350; // Hold open for 350ms across words and pauses
-      }
-
-      const isGateOpen = (currentTime < phoneGateHoldUntil) || (latestPhoneCastAudioRms >= closeThresh && isVoiceOrAudio);
-      targetEnvelope = isGateOpen ? 1.0 : 0.0;
-
-      const startEnvelope = phoneGateEnvelope;
-      const endEnvelope = (targetEnvelope > startEnvelope)
-        ? Math.min(1.0, startEnvelope + 0.35)
-        : Math.max(0.0, startEnvelope - 0.04);
-      phoneGateEnvelope = endEnvelope;
-
-      // Linear envelope interpolation across samples prevents clicks and phase mismatch
-      const envStep = (endEnvelope - startEnvelope) / numSamples;
-      let curEnv = startEnvelope;
-      for (let i = 0; i < numSamples; i++) {
-        curEnv += envStep;
-        left[i] *= curEnv;
-        right[i] *= curEnv;
-      }
-    } else {
-      phoneGateEnvelope = 1.0;
-    }
+    // Pure Continuous Audio: Samples are never multiplied by a threshold gate, preventing all syllable cutting and "putol-putol" glitches.
+    // Background noise is eliminated naturally in frequency domain by RNNoise AI on the WebAudio worklet graph.
+    phoneGateEnvelope = 1.0;
 
     if (phoneGateGainNode) {
       phoneGateGainNode.gain.setValueAtTime(1.0, currentTime);

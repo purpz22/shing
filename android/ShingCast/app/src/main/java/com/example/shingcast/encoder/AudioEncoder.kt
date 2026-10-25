@@ -6,8 +6,6 @@ import android.media.AudioFormat
 import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.media.audiofx.AcousticEchoCanceler
-import android.media.audiofx.NoiseSuppressor
 import android.media.projection.MediaProjection
 import android.os.Build
 import android.os.Process
@@ -22,7 +20,7 @@ class AudioEncoder(
     private val client: CastClient,
     private val audioMode: String = MODE_MIXED,
     private val micBoost: Float = 1.25f,
-    private val noiseFilterEnabled: Boolean = true
+    private val noiseFilterEnabled: Boolean = false
 ) {
     companion object {
         private const val TAG = "AudioEncoder"
@@ -46,12 +44,6 @@ class AudioEncoder(
 
     private var internalAudioRecord: AudioRecord? = null
     private var micAudioRecord: AudioRecord? = null
-    private var noiseSuppressor: NoiseSuppressor? = null
-    private var echoCanceler: AcousticEchoCanceler? = null
-
-    // 85Hz High-Pass Filter state for mic handling noise & AC rumble cut
-    private var hpPrevX = 0f
-    private var hpPrevY = 0f
 
     @Volatile
     private var isRecording = false
@@ -113,7 +105,7 @@ class AudioEncoder(
 
     @SuppressLint("MissingPermission")
     private fun setupMicAudioRecord() {
-        // Universal mono microphone capture in standard media mode (48kHz clean capture, zero VoIP ducking)
+        // Universal clean mono microphone capture in standard media mode (48kHz clean capture, zero VoIP ducking)
         try {
             val minBufMono = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG_MONO, AUDIO_FORMAT)
             if (minBufMono > 0) {
@@ -127,8 +119,7 @@ class AudioEncoder(
                 )
                 if (record.state == AudioRecord.STATE_INITIALIZED) {
                     micAudioRecord = record
-                    attachHardwareAudioEffects(record)
-                    Log.d(TAG, "Microphone initialized in standard MIC mode at 48kHz (hardware buffer: $bufSize bytes, noiseFilter=$noiseFilterEnabled)")
+                    Log.d(TAG, "Microphone initialized in clean raw MIC mode at 48kHz (hardware buffer: $bufSize bytes)")
                     return
                 }
                 record.release()
@@ -137,13 +128,13 @@ class AudioEncoder(
             Log.w(TAG, "Standard MIC init error: ${e.message}")
         }
 
-        // Voice Communication fallback
+        // Clean default fallback (never use VOICE_COMMUNICATION to avoid telephony DSP ducking)
         try {
             val minBuf = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG_MONO, AUDIO_FORMAT)
             if (minBuf > 0) {
                 val bufSize = (minBuf * 4).coerceAtLeast(16384)
                 val record = AudioRecord(
-                    MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                    MediaRecorder.AudioSource.DEFAULT,
                     SAMPLE_RATE,
                     CHANNEL_CONFIG_MONO,
                     AUDIO_FORMAT,
@@ -151,21 +142,14 @@ class AudioEncoder(
                 )
                 if (record.state == AudioRecord.STATE_INITIALIZED) {
                     micAudioRecord = record
-                    attachHardwareAudioEffects(record)
-                    Log.d(TAG, "Microphone initialized with VOICE_COMMUNICATION at 48kHz (noiseFilter=$noiseFilterEnabled)")
+                    Log.d(TAG, "Microphone initialized with clean DEFAULT at 48kHz")
                     return
                 }
                 record.release()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Voice communication mic init failed: ${e.message}")
+            Log.e(TAG, "Default mic init failed: ${e.message}")
         }
-    }
-
-    private fun attachHardwareAudioEffects(record: AudioRecord) {
-        // Hardware NoiseSuppressor & AcousticEchoCanceler intentionally disabled to prevent
-        // robotic clipping, voice ducking, and double-filtering distortion.
-        // PC desktop app performs deep-learning AI voice isolation (RNNoise) on clean 48kHz PCM.
     }
 
     @SuppressLint("MissingPermission")
@@ -235,29 +219,16 @@ class AudioEncoder(
 
             if (bytesReadTotal < MONO_CHUNK_SIZE_BYTES) continue
 
-            // Convert 16-bit Mono PCM to 16-bit Stereo PCM (L = R = Mono * boost)
+            // Clean Raw 16-bit Mono PCM to 16-bit Stereo PCM (L = R = Mono * boost)
             val boost = micBoost
             val numSamples = bytesReadTotal / 2
-            val useFilter = noiseFilterEnabled
 
             for (i in 0 until numSamples) {
                 val sampleMono = (rawMonoBuf[i * 2 + 1].toInt() shl 8) or (rawMonoBuf[i * 2].toInt() and 0xFF)
-
-                // 85Hz High-pass IIR filter (alpha = 0.9890f at 48kHz): removes phone vibrations and AC hum cleanly
-                val filteredSample = if (useFilter) {
-                    val x = sampleMono.toFloat()
-                    val y = 0.9890f * (hpPrevY + x - hpPrevX)
-                    hpPrevX = x
-                    hpPrevY = y
-                    y.roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                val boosted = if (boost != 1.0f) {
+                    (sampleMono * boost).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
                 } else {
                     sampleMono
-                }
-
-                val boosted = if (boost != 1.0f) {
-                    (filteredSample * boost).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-                } else {
-                    filteredSample
                 }
                 val low = (boosted and 0xFF).toByte()
                 val high = ((boosted shr 8) and 0xFF).toByte()
@@ -379,11 +350,6 @@ class AudioEncoder(
 
         micQueue.clear()
         internalQueue.clear()
-
-        try { noiseSuppressor?.release() } catch (ignored: Exception) {}
-        noiseSuppressor = null
-        try { echoCanceler?.release() } catch (ignored: Exception) {}
-        echoCanceler = null
 
         try { micAudioRecord?.stop() } catch (ignored: Exception) {}
         try { micAudioRecord?.release() } catch (ignored: Exception) {}

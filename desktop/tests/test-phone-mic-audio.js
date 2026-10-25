@@ -22,9 +22,8 @@ assert(audioEncoderContent.includes('MediaRecorder.AudioSource.MIC'), 'Must use 
 assert(audioEncoderContent.includes('AudioPlaybackCaptureConfiguration'), 'Must support internal game audio capture');
 assert(audioEncoderContent.includes('micBoost'), 'Must support microphone volume gain boost');
 assert(audioEncoderContent.includes('CastClient.PACKET_AUDIO'), 'Must send binary audio packets');
-assert(audioEncoderContent.includes('NoiseSuppressor'), 'Must support Android hardware NoiseSuppressor');
-assert(audioEncoderContent.includes('AcousticEchoCanceler'), 'Must support Android hardware AcousticEchoCanceler');
-assert(audioEncoderContent.includes('0.9890f'), 'Must implement 85Hz High-pass IIR filter for handling noise reduction');
+assert(!audioEncoderContent.includes('NoiseSuppressor'), 'Hardware NoiseSuppressor must be excluded from mobile capture to prevent DSP lag and syllable chopping');
+assert(!audioEncoderContent.includes('AcousticEchoCanceler'), 'Telephony AcousticEchoCanceler must be excluded from mobile capture to prevent voice ducking');
 
 // 2. Verify ScreenCaptureService.kt Kotlin source
 let servicePath = path.join(__dirname, '../../android/ShingCast/app/src/main/java/com/example/shingcast/service/ScreenCaptureService.kt');
@@ -47,7 +46,7 @@ assert(mainScreenContent.includes('Phone Mic'), 'MainScreen must have Phone Mic 
 assert(mainScreenContent.includes('Game + Mic'), 'MainScreen must have Game + Mic mixed option');
 assert(mainScreenContent.includes('Game Audio'), 'MainScreen must have Game Audio option');
 assert(mainScreenContent.includes('micBoost'), 'MainScreen must have mic boost control');
-assert(mainScreenContent.includes('Hardware Noise Suppressor'), 'MainScreen must have Hardware Noise Suppressor control');
+assert(mainScreenContent.includes('Clean Raw Capture'), 'MainScreen must indicate Clean Raw Capture mode');
 assert(mainScreenContent.includes('noiseFilter'), 'MainScreen must bind noiseFilter state');
 
 // 4. Verify Desktop app.js Phone Cast audio & PNGTuber integration

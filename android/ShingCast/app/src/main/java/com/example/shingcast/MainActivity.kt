@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
     private var targetEnableAudio by mutableStateOf(true)
     private var targetAudioMode by mutableStateOf("mixed")
     private var targetMicBoost by mutableStateOf(1.25f)
-    private var targetNoiseFilter by mutableStateOf(true)
+    private var targetNoiseFilter by mutableStateOf(false)
     private var targetOrientationMode by mutableStateOf("landscape")
     private var isCurrentlyStreaming by mutableStateOf(false)
 
@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
         targetOrientationMode = prefs.getString("last_orientation_mode", "landscape") ?: "landscape"
         targetAudioMode = prefs.getString("last_audio_mode", "mixed") ?: "mixed"
         targetMicBoost = prefs.getFloat("last_mic_boost", 1.25f)
-        targetNoiseFilter = prefs.getBoolean("last_noise_filter", true)
+        targetNoiseFilter = prefs.getBoolean("last_noise_filter", false)
         targetEnableAudio = targetAudioMode != "off"
 
         // Parse pairing URI if launched from QR code: shingcast://connect?ip=<IP>&port=<PORT>

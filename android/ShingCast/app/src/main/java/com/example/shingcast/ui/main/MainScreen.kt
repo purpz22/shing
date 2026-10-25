@@ -60,7 +60,7 @@ fun MainCastScreen(
     initialOrientationMode: String = "landscape",
     initialAudioMode: String = "mixed",
     initialMicBoost: Float = 1.25f,
-    initialNoiseFilter: Boolean = true,
+    initialNoiseFilter: Boolean = false,
     onStartCast: (host: String, port: Int, is1080p: Boolean, audioMode: String, micBoost: Float, noiseFilter: Boolean, orientationMode: String) -> Unit,
     onStopCast: () -> Unit
 ) {
@@ -409,34 +409,26 @@ fun MainCastScreen(
 
                             Spacer(modifier = Modifier.height(10.dp))
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFF1E1B2E), RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 12.dp, vertical = 9.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "Hardware Noise Suppressor",
-                                        fontSize = 12.5.sp,
+                                        text = "Clean Raw Capture (48kHz)",
+                                        fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFFF8FAFC)
+                                        color = Color(0xFFC084FC)
                                     )
                                     Text(
-                                        text = "Filters electric fans, room hum, and screen tap vibrations using phone DSP",
-                                        fontSize = 11.sp,
-                                        color = Color(0xFF64748B)
+                                        text = "Pure uncompressed PCM. AI voice isolation runs on PC with zero lag and zero cutoff.",
+                                        fontSize = 10.5.sp,
+                                        color = Color(0xFF94A3B8)
                                     )
                                 }
-                                Switch(
-                                    checked = noiseFilter,
-                                    onCheckedChange = { noiseFilter = it },
-                                    enabled = !isStreaming,
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color(0xFFFFFFFF),
-                                        checkedTrackColor = Color(0xFFA855F7),
-                                        uncheckedThumbColor = Color(0xFF94A3B8),
-                                        uncheckedTrackColor = Color(0xFF262338)
-                                    )
-                                )
                             }
                         }
                     }
