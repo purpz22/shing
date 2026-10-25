@@ -1,6 +1,25 @@
 {
-    "latest":  "1.6.9",
+    "latest":  "1.7.0",
     "releases":  [
+                     {
+                         "version":  "1.7.0",
+                         "releaseName":  "Shing Live v1.7.0 - Wireless Phone Microphone Streaming \u0026 Live Audio VU Meter",
+                         "releaseDate":  "2026-10-25",
+                         "type":  "feature",
+                         "summary":  "Wireless phone microphone audio streaming over WebSocket with non-blocking capture engine, live visual gradient audio VU meter in dashboard, wireless PNGTuber avatar lip-sync support, and monster pixel pop cat stage integration.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.7.0.zip",
+                         "highlights":  [
+                                            "Real-Time Wireless Phone Mic: 48kHz PCM wireless voice streaming from ShingCast Android app with sub-10ms latency",
+                                            "Non-Blocking Audio Mixer: Independent recording threads for microphone and game sound to prevent audio deadlocks during silent gameplay",
+                                            "Live Audio VU Meter: Real-time visual gradient meter in Phone Cast tab with decibel and RMS feedback",
+                                            "Wireless PNGTuber Lip-Sync: Drive avatar mouth movements wirelessly using the phone microphone as audio source",
+                                            "Monster Pop Cat Stage: Pixel art pop cat companion with full monster-mouth jaw drop and reactive gift belly expansions",
+                                            "Updated Mobile App: ShingCast APK v1.7.0 with Mic Gain Boost slider (100% - 250%) and Android 14/15 background service support"
+                                        ],
+                         "notes":  "Essential update for mobile phone audio streaming, wireless PNGTuber voice input, and updated companion stage.",
+                         "packageSize":  "4.76 MB",
+                         "checksum":  "944d9d174995fb9b32145f9c16f3486f748b1dcfe9d0e125744517b17e8936b0"
+                     },
                      {
                          "version":  "1.6.9",
                          "releaseName":  "Shing Live v1.6.9 - Natural Conversational Mouth Flap \u0026 Parted Anime Lips",

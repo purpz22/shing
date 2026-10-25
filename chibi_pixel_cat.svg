@@ -1,0 +1,1011 @@
+<svg xmlns="http://www.w3.org/2000/svg" 
+     viewBox="0 0 320 320" 
+     width="100%" 
+     height="100%" 
+     shape-rendering="crispEdges" 
+     preserveAspectRatio="xMidYMid meet"
+     id="master-cat-svg">
+
+  <defs>
+    <!-- Soft Background Radial Glow -->
+    <radialGradient id="bg-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FAF5FF"/>
+      <stop offset="65%" stop-color="#F3E8FF"/>
+      <stop offset="100%" stop-color="#E9D5FF"/>
+    </radialGradient>
+
+    <!-- Ground Shadow Blur Filter -->
+    <filter id="shadow-blur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.2"/>
+    </filter>
+
+    <!-- Reusable Pixel Glyphs in Defs -->
+    <!-- Pixel Heart -->
+    <g id="glyph-heart">
+      <path fill="#FF4D6D" d="M1,0 h2 v1 h-2 z M4,0 h2 v1 h-2 z M0,1 h7 v2 h-7 z M1,3 h5 v1 h-5 z M2,4 h3 v1 h-3 z M3,5 h1 v1 h-1 z"/>
+    </g>
+    <!-- Pixel Star -->
+    <g id="glyph-star">
+      <path fill="#FFD166" d="M2,0 h1 v1 h-1 z M0,2 h5 v1 h-5 z M2,4 h1 v1 h-1 z M1,1 h3 v3 h-3 z"/>
+    </g>
+    <!-- Pixel Music Note -->
+    <g id="glyph-note">
+      <path fill="#7B2CBF" d="M2,0 h3 v1 h-3 z M2,1 h1 v3 h-1 z M4,1 h1 v3 h-1 z M0,3 h3 v2 h-3 z M3,3 h2 v2 h-2 z"/>
+    </g>
+    <!-- Pixel Z (Sleep) -->
+    <g id="glyph-z">
+      <path fill="#9D4EDD" d="M0,0 h4 v1 h-4 z M2,1 h2 v1 h-2 z M1,2 h2 v1 h-2 z M0,3 h4 v1 h-4 z"/>
+    </g>
+  </defs>
+
+  <style>
+    /* <![CDATA[ */
+    /* ==========================================================================
+       GLOBAL COLOR THEME TOKENS
+       ========================================================================== */
+    :root {
+      --ui-bg:          #241B35;
+      --ui-btn-bg:      #3B2D54;
+      --ui-btn-hover:   #56427D;
+      --ui-btn-active:  #9D4EDD;
+      --ui-text:        #F3E8FF;
+      --ui-accent:      #00F5D4;
+
+      /* Cat Palette Tokens (Default: Shing Calico) */
+      --col-out:        #1E162B; /* Dark Plum Outline */
+      --col-white:      #FFFFFF; /* Pure White Fur */
+      --col-fur-sh:     #D8CEE8; /* Lavender Shading */
+      --col-patch-1:    #FFAE8A; /* Sunset Peach */
+      --col-patch-1-sh: #DE7D5D; /* Peach Shadow */
+      --col-patch-2:    #9D8DF1; /* Nebula Violet */
+      --col-patch-2-sh: #6F5DBA; /* Violet Shadow */
+      --col-eye:        #00E5A3; /* Mint Emerald Iris */
+      --col-eye-sh:     #008765; /* Deep Teal Shade */
+      --col-pink:       #FFB3C6; /* Soft Rose (Inner Ears and Beans) */
+      --col-blush:      #FF8FA3; /* Sweet Cheek Blush */
+      --col-tongue:     #FF4D6D; /* Joyful Pink Tongue */
+    }
+
+    /* Specific Coat Theme Overrides */
+    #master-cat-svg.theme-tuxedo, svg.theme-tuxedo {
+      --col-white:      #2A2738 !important;
+      --col-fur-sh:     #171421 !important;
+      --col-patch-1:    #FFFFFF !important;
+      --col-patch-1-sh: #CBD5E1 !important;
+      --col-patch-2:    #FFFFFF !important;
+      --col-patch-2-sh: #CBD5E1 !important;
+      --col-eye:        #FFD166 !important;
+      --col-eye-sh:     #D49B00 !important;
+    }
+    #master-cat-svg.theme-tabby, svg.theme-tabby {
+      --col-white:      #FFA834 !important;
+      --col-fur-sh:     #DB6A0B !important;
+      --col-patch-1:    #8C3806 !important;
+      --col-patch-1-sh: #592202 !important;
+      --col-patch-2:    #FFF0C2 !important;
+      --col-patch-2-sh: #F7D070 !important;
+      --col-eye:        #06D6A0 !important;
+      --col-eye-sh:     #039A72 !important;
+    }
+    #master-cat-svg.theme-void, svg.theme-void {
+      --col-white:      #181524 !important;
+      --col-fur-sh:     #0D0B14 !important;
+      --col-patch-1:    #2C2642 !important;
+      --col-patch-1-sh: #181524 !important;
+      --col-patch-2:    #3F375E !important;
+      --col-patch-2-sh: #2C2642 !important;
+      --col-eye:        #FFEA00 !important;
+      --col-eye-sh:     #FF9E00 !important;
+    }
+
+    /* General SVG Behavior */
+    #master-cat-svg {
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: ui-monospace, "SF Mono", "Cascadia Code", "Courier New", monospace;
+      image-rendering: pixelated;
+    }
+
+    /* ==========================================================================
+       ANIMATION ENGINES AND TIMELINES
+       ========================================================================== */
+
+    /* 1. Base Idle Respiration */
+    @keyframes idleBreath {
+      0%, 100% { transform: translateY(0px) scale(1, 1); }
+      50%      { transform: translateY(-1.5px) scale(0.99, 1.02); }
+    }
+    @keyframes idleHeadBob {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50%      { transform: translateY(-1px) rotate(0.6deg); }
+    }
+    @keyframes tailWave {
+      0%, 100% { transform: rotate(0deg); }
+      30%      { transform: rotate(12deg); }
+      70%      { transform: rotate(-8deg); }
+    }
+    @keyframes earFlickL {
+      0%, 90%, 100% { transform: rotate(0deg); }
+      93%           { transform: rotate(-8deg); }
+      96%           { transform: rotate(4deg); }
+    }
+    @keyframes earFlickR {
+      0%, 85%, 100% { transform: rotate(0deg); }
+      88%           { transform: rotate(9deg); }
+      92%           { transform: rotate(-3deg); }
+    }
+    @keyframes eyeBlinkCycle {
+      0%, 94%, 100% { transform: scaleY(1); }
+      96%, 98%      { transform: scaleY(0.1); }
+    }
+    @keyframes shadowPulse {
+      0%, 100% { transform: scale(1, 1); opacity: 0.35; }
+      50%      { transform: scale(1.08, 0.94); opacity: 0.25; }
+    }
+
+    /* 2. Walk Cycle Animation */
+    @keyframes catWalkHop {
+      0%, 100% { transform: translateY(0px) rotate(-1deg); }
+      25%      { transform: translateY(-3px) rotate(1deg); }
+      50%      { transform: translateY(0px) rotate(-1deg); }
+      75%      { transform: translateY(-3px) rotate(1deg); }
+    }
+    @keyframes pawWalkL {
+      0%, 100% { transform: translateY(0px) translateX(0px); }
+      25%      { transform: translateY(-4px) translateX(2px); }
+      50%      { transform: translateY(0px) translateX(-1px); }
+      75%      { transform: translateY(0px) translateX(0px); }
+    }
+    @keyframes pawWalkR {
+      0%, 50%  { transform: translateY(0px) translateX(0px); }
+      75%      { transform: translateY(-4px) translateX(2px); }
+      100%     { transform: translateY(0px) translateX(-1px); }
+    }
+
+    /* 3. Dance / Tippy-Taps Animation */
+    @keyframes catDance {
+      0%, 100% { transform: translateY(0px) rotate(-3deg); }
+      50%      { transform: translateY(-6px) rotate(3deg); }
+    }
+    @keyframes earDance {
+      0%, 100% { transform: rotate(-10deg); }
+      50%      { transform: rotate(10deg); }
+    }
+
+    /* 4. Pounce Animation */
+    @keyframes pounceSequence {
+      0%       { transform: translateY(0px) scale(1, 1); }
+      20%      { transform: translateY(4px) scale(1.15, 0.85); }
+      30%      { transform: translateY(4px) scale(1.15, 0.85) translateX(-2px); }
+      40%      { transform: translateY(4px) scale(1.15, 0.85) translateX(2px); }
+      55%      { transform: translateY(-16px) scale(0.9, 1.15) rotate(5deg); }
+      75%      { transform: translateY(2px) scale(1.1, 0.9); }
+      100%     { transform: translateY(0px) scale(1, 1); }
+    }
+
+    /* 5. Loaf Mode Animation */
+    @keyframes loafSquash {
+      0%, 100% { transform: translateY(4px) scale(1.1, 0.92); }
+      50%      { transform: translateY(3.5px) scale(1.08, 0.94); }
+    }
+
+    /* 6. Sleep Mode Animation */
+    @keyframes sleepRespiration {
+      0%, 100% { transform: translateY(4px) scale(1.05, 0.95); }
+      50%      { transform: translateY(3px) scale(1.02, 0.98); }
+    }
+    @keyframes floatZzz {
+      0%   { transform: translate(0px, 0px) scale(0.5); opacity: 0; }
+      30%  { opacity: 1; }
+      100% { transform: translate(14px, -24px) scale(1.2); opacity: 0; }
+    }
+
+    /* 7. Particle Bursts */
+    @keyframes particleDrift {
+      0%   { transform: translateY(0px) scale(0); opacity: 0; }
+      30%  { opacity: 1; transform: translateY(-6px) scale(1); }
+      100% { transform: translateY(-22px) scale(1.1); opacity: 0; }
+    }
+
+    /* ==========================================================================
+       RIGGING BINDINGS
+       ========================================================================== */
+    .rig-body {
+      transform-box: fill-box;
+      transform-origin: 50% 100%;
+    }
+    .rig-head {
+      transform-box: fill-box;
+      transform-origin: 50% 90%;
+    }
+    .rig-tail {
+      transform-box: fill-box;
+      transform-origin: 85% 85%;
+    }
+    .rig-ear-l {
+      transform-box: fill-box;
+      transform-origin: 80% 100%;
+    }
+    .rig-ear-r {
+      transform-box: fill-box;
+      transform-origin: 20% 100%;
+    }
+    .rig-paw-l, .rig-paw-r {
+      transform-box: fill-box;
+      transform-origin: 50% 0%;
+    }
+    .rig-eye {
+      transform-box: fill-box;
+      transform-origin: 50% 50%;
+    }
+
+    /* Default Idle Mode Active */
+    .mode-idle .rig-body    { animation: idleBreath 3.6s ease-in-out infinite; }
+    .mode-idle .rig-head    { animation: idleHeadBob 3.6s ease-in-out infinite; animation-delay: 0.15s; }
+    .mode-idle .rig-tail    { animation: tailWave 4.2s ease-in-out infinite; }
+    .mode-idle .rig-ear-l   { animation: earFlickL 6.5s ease-in-out infinite; }
+    .mode-idle .rig-ear-r   { animation: earFlickR 5.8s ease-in-out infinite; }
+    .mode-idle .rig-eye     { animation: eyeBlinkCycle 5.0s steps(1) infinite; }
+    .mode-idle #ground-shadow { animation: shadowPulse 3.6s ease-in-out infinite; }
+
+    /* Walk Mode Active */
+    .mode-walk .rig-body    { animation: catWalkHop 0.6s ease-in-out infinite; }
+    .mode-walk .rig-tail    { animation: tailWave 1.2s ease-in-out infinite; }
+    .mode-walk .rig-paw-l   { animation: pawWalkL 0.6s ease-in-out infinite; }
+    .mode-walk .rig-paw-r   { animation: pawWalkR 0.6s ease-in-out infinite; }
+    .mode-walk .rig-eye     { animation: eyeBlinkCycle 4.0s steps(1) infinite; }
+    .mode-walk #ground-shadow { animation: shadowPulse 0.6s ease-in-out infinite; }
+
+    /* Dance Mode Active */
+    .mode-dance .rig-body   { animation: catDance 0.45s ease-in-out infinite; }
+    .mode-dance .rig-ear-l  { animation: earDance 0.45s ease-in-out infinite; }
+    .mode-dance .rig-ear-r  { animation: earDance 0.45s ease-in-out infinite reverse; }
+    .mode-dance .rig-tail   { animation: tailWave 0.9s ease-in-out infinite; }
+    .mode-dance .dance-notes { display: block !important; }
+    .mode-dance #ground-shadow { animation: shadowPulse 0.45s ease-in-out infinite; }
+
+    /* Pounce Mode Active */
+    .mode-pounce .rig-body  { animation: pounceSequence 1.6s cubic-bezier(0.25, 1, 0.5, 1) infinite; }
+    .mode-pounce .rig-tail  { animation: tailWave 0.8s ease-in-out infinite; }
+    .mode-pounce #ground-shadow { animation: shadowPulse 1.6s ease-in-out infinite; }
+
+    /* Loaf Mode Active */
+    .mode-loaf .rig-body    { animation: loafSquash 2.4s ease-in-out infinite; }
+    .mode-loaf .rig-paw-l   { display: none !important; }
+    .mode-loaf .rig-paw-r   { display: none !important; }
+    .mode-loaf .rig-tail    { animation: none !important; transform: rotate(-25deg) translateY(4px) !important; }
+    .mode-loaf .eye-open    { display: none !important; }
+    .mode-loaf .eye-happy   { display: block !important; }
+
+    /* Sleep Mode Active */
+    .mode-sleep .rig-body   { animation: sleepRespiration 4.8s ease-in-out infinite; }
+    .mode-sleep .rig-paw-l  { display: none !important; }
+    .mode-sleep .rig-paw-r  { display: none !important; }
+    .mode-sleep .rig-tail   { animation: none !important; transform: rotate(-30deg) translateY(6px) !important; }
+    .mode-sleep .eye-open   { display: none !important; }
+    .mode-sleep .eye-closed { display: block !important; }
+    .mode-sleep .sleep-zzz  { display: block !important; }
+
+    /* Interactive Tap Reactions */
+    .cat-clickable {
+      cursor: pointer;
+    }
+    .cat-clickable:active .rig-body {
+      transform: scale(1.18, 0.82) translateY(5px) !important;
+      transition: transform 0.08s ease;
+    }
+    .cat-clickable:active .mouth-closed { display: none !important; }
+    .cat-clickable:active .mouth-open   { display: block !important; }
+    .cat-clickable:active .click-hearts { display: block !important; }
+
+    /* UI Navigation Styling */
+    .ui-btn {
+      cursor: pointer;
+      pointer-events: all;
+      transition: filter 0.15s, transform 0.1s;
+    }
+    .ui-btn * {
+      cursor: pointer;
+      pointer-events: all;
+    }
+    .ui-btn:hover {
+      filter: brightness(1.2);
+    }
+    .ui-btn:active {
+      transform: translateY(1px);
+    }
+
+    /* Accessory Layers (Toggled via inline display or class) */
+    .slot-hidden { display: none !important; }
+    .slot-active { display: block !important; }
+
+    .interactive-fx {
+      animation: particleDrift 1.4s ease-out infinite;
+    }
+    .fx-delay-1 { animation-delay: 0.4s; }
+    .fx-delay-2 { animation-delay: 0.8s; }
+    /* ]]> */
+  </style>
+
+  <!-- ==========================================================================
+       SECTION 1: CANVAS BACKGROUND AND ENVIRONMENT
+       ========================================================================== -->
+  <rect width="320" height="320" rx="16" fill="url(#bg-glow)"/>
+  
+  <!-- Subtle Retro Floor Grid Lines -->
+  <g opacity="0.15">
+    <line x1="0" y1="210" x2="320" y2="210" stroke="#7B2CBF" stroke-width="1"/>
+    <line x1="0" y1="225" x2="320" y2="225" stroke="#7B2CBF" stroke-width="1"/>
+    <line x1="0" y1="240" x2="320" y2="240" stroke="#7B2CBF" stroke-width="1"/>
+  </g>
+
+  <!-- Top Title Banner -->
+  <g transform="translate(16, 12)">
+    <rect width="288" height="24" rx="6" fill="var(--ui-bg)"/>
+    <text x="12" y="16" fill="var(--ui-accent)" font-size="10" font-weight="bold" letter-spacing="0.5">CHIBI PIXEL CAT</text>
+    <text x="140" y="16" fill="var(--ui-text)" font-size="9" opacity="0.8">VECTOR MOTION ENGINE</text>
+    <!-- Audio Trigger Button -->
+    <g id="btn-audio" class="ui-btn" transform="translate(254, 3)">
+      <rect id="bg-audio" width="28" height="18" rx="3" fill="var(--ui-btn-bg)"/>
+      <path d="M5,6 h2 l3,-3 v10 l-3,-3 h-2 z" fill="var(--ui-accent)"/>
+      <path d="M12,4 a4,4 0 0,1 0,8" stroke="var(--ui-accent)" stroke-width="1.2" fill="none"/>
+    </g>
+  </g>
+
+  <!-- ==========================================================================
+       SECTION 2: MAIN CHARACTER SCENE (CENTERED AND SCALED)
+       ========================================================================== -->
+  <g id="cat-character" class="mode-idle cat-clickable" transform="translate(160, 115) scale(2.8)">
+    
+    <!-- GROUND CONTACT SHADOW -->
+    <ellipse id="ground-shadow" cx="0" cy="27" rx="19" ry="4" fill="rgba(30, 22, 43, 0.35)" filter="url(#shadow-blur)"/>
+
+    <!-- ROOT RIGGED CONTAINER -->
+    <g class="rig-body">
+      
+      <!-- LAYER A: TAIL (BEHIND BODY) -->
+      <g class="rig-tail">
+        <!-- Tail Silhouette -->
+        <path fill="var(--col-out)" d="
+          M-14,18 h4 v2 h-4 z
+          M-16,14 h4 v4 h-4 z
+          M-18,8 h4 v6 h-4 z
+          M-20,2 h4 v6 h-4 z
+          M-22,-2 h4 v4 h-4 z
+          M-20,-6 h6 v4 h-6 z
+          M-14,-8 h4 v2 h-4 z
+        "/>
+        <!-- Tail Violet Patch -->
+        <path fill="var(--col-patch-2)" d="
+          M-15,14 h2 v4 h-2 z
+          M-17,8 h2 v6 h-2 z
+          M-19,2 h2 v6 h-2 z
+          M-21,-2 h2 v4 h-2 z
+          M-19,-5 h4 v2 h-4 z
+        "/>
+        <!-- Tail Cream Fluff Tip -->
+        <path fill="var(--col-white)" d="
+          M-18,-5 h3 v2 h-3 z
+          M-15,-7 h3 v2 h-3 z
+        "/>
+      </g>
+
+      <!-- LAYER B: BACKWEAR (ANGEL WINGS) -->
+      <g id="acc-wings" class="slot-hidden" transform="translate(-20, -6)">
+        <path fill="var(--col-out)" d="M-4,0 h10 v2 h-10 z M-8,2 h14 v2 h-14 z M-10,4 h14 v2 h-14 z M-6,6 h8 v2 h-8 z"/>
+        <path fill="#FFFFFF" d="M-2,1 h6 v1 h-6 z M-6,3 h10 v1 h-10 z M-8,5 h10 v1 h-10 z M-4,7 h4 v1 h-4 z"/>
+      </g>
+
+      <!-- LAYER C: TORSO SILHOUETTE -->
+      <path fill="var(--col-out)" d="
+        M-11,8 h22 v2 h-22 z
+        M-13,10 h26 v2 h-26 z
+        M-15,12 h30 v10 h-30 z
+        M-13,22 h26 v2 h-26 z
+        M-9,24 h18 v2 h-18 z
+      "/>
+
+      <!-- Torso Fur Shading -->
+      <path fill="var(--col-fur-sh)" d="
+        M-13,12 h2 v8 h-2 z
+        M11,12 h2 v8 h-2 z
+        M-11,20 h22 v2 h-22 z
+        M-9,22 h18 v2 h-18 z
+      "/>
+
+      <!-- Calico Torso Patch Left (Peach) -->
+      <path fill="var(--col-patch-1)" d="
+        M-13,12 h6 v6 h-6 z
+        M-7,14 h4 v3 h-4 z
+      "/>
+      <path fill="var(--col-patch-1-sh)" d="
+        M-13,18 h4 v2 h-4 z
+      "/>
+
+      <!-- Calico Torso Patch Right (Violet) -->
+      <path fill="var(--col-patch-2)" d="
+        M7,12 h6 v6 h-6 z
+        M5,14 h2 v3 h-2 z
+      "/>
+      <path fill="var(--col-patch-2-sh)" d="
+        M9,18 h4 v2 h-4 z
+      "/>
+
+      <!-- Torso Base Fur (Cream White) -->
+      <path fill="var(--col-white)" d="
+        M-7,10 h14 v2 h-14 z
+        M-3,12 h6 v8 h-6 z
+        M-7,17 h14 v3 h-14 z
+      "/>
+
+      <!-- Chest Fluff Tuft -->
+      <path fill="var(--col-white)" d="
+        M-2,10 h4 v4 h-4 z
+        M-1,14 h2 v2 h-2 z
+      "/>
+
+      <!-- LAYER D: FRONT PAWS -->
+      <g id="char-paw-left" class="rig-paw-l">
+        <path fill="var(--col-out)" d="M-7,21 h5 v4 h-5 z"/>
+        <path fill="var(--col-white)" d="M-6,22 h3 v2 h-3 z"/>
+        <rect x="-5" y="23" width="1" height="1" fill="var(--col-fur-sh)"/>
+      </g>
+      <g id="char-paw-right" class="rig-paw-r">
+        <path fill="var(--col-out)" d="M2,21 h5 v4 h-5 z"/>
+        <path fill="var(--col-white)" d="M3,22 h3 v2 h-3 z"/>
+        <rect x="4" y="23" width="1" height="1" fill="var(--col-fur-sh)"/>
+      </g>
+
+      <!-- LAYER E: NECKWEAR (BELL COLLAR) -->
+      <g id="acc-bell" class="slot-hidden" transform="translate(0, 11)">
+        <path fill="#FF3366" d="M-10,0 h20 v2 h-20 z"/>
+        <circle cx="0" cy="3" r="2.5" fill="#FFDC33"/>
+        <circle cx="0" cy="3" r="1.5" fill="#FFEAA7"/>
+        <rect x="-0.5" y="3.5" width="1" height="1" fill="#7A5200"/>
+      </g>
+
+      <!-- LAYER F: CRANIAL COMPLEX (HEAD) -->
+      <g class="rig-head">
+        
+        <!-- Posterior Left Ear -->
+        <g class="rig-ear-l">
+          <path fill="var(--col-out)" d="
+            M-17,-18 h6 v2 h-6 z
+            M-19,-16 h4 v4 h-4 z
+            M-21,-12 h4 v6 h-4 z
+            M-17,-8 h8 v2 h-8 z
+          "/>
+          <path fill="var(--col-patch-1)" d="
+            M-17,-16 h4 v4 h-4 z
+            M-19,-12 h4 v3 h-4 z
+          "/>
+          <path fill="var(--col-pink)" d="
+            M-15,-14 h3 v4 h-3 z
+            M-16,-12 h2 v2 h-2 z
+          "/>
+          <path fill="var(--col-white)" d="M-13,-10 h3 v2 h-3 z"/>
+        </g>
+
+        <!-- Posterior Right Ear -->
+        <g class="rig-ear-r">
+          <path fill="var(--col-out)" d="
+            M11,-18 h6 v2 h-6 z
+            M15,-16 h4 v4 h-4 z
+            M17,-12 h4 v6 h-4 z
+            M9,-8 h8 v2 h-8 z
+          "/>
+          <path fill="var(--col-patch-2)" d="
+            M13,-16 h4 v4 h-4 z
+            M15,-12 h4 v3 h-4 z
+          "/>
+          <path fill="var(--col-pink)" d="
+            M12,-14 h3 v4 h-3 z
+            M14,-12 h2 v2 h-2 z
+          "/>
+          <path fill="var(--col-white)" d="M10,-10 h3 v2 h-3 z"/>
+        </g>
+
+        <!-- Head Cranium Silhouette -->
+        <path fill="var(--col-out)" d="
+          M-12,-14 h24 v2 h-24 z
+          M-16,-12 h32 v4 h-32 z
+          M-18,-8 h36 v6 h-36 z
+          M-20,-2 h40 v8 h-40 z
+          M-18,6 h36 v3 h-36 z
+          M-14,9 h28 v2 h-28 z
+        "/>
+
+        <!-- Cranium Base Fur (White) -->
+        <path fill="var(--col-white)" d="
+          M-10,-12 h20 v2 h-20 z
+          M-14,-10 h28 v4 h-28 z
+          M-16,-6 h32 v10 h-32 z
+          M-14,4 h28 v3 h-28 z
+          M-10,7 h20 v2 h-20 z
+        "/>
+
+        <!-- Forehead Left Patch (Peach) -->
+        <path fill="var(--col-patch-1)" d="
+          M-12,-10 h8 v4 h-8 z
+          M-14,-6 h8 v4 h-8 z
+          M-16,-2 h6 v3 h-6 z
+        "/>
+
+        <!-- Forehead Right Patch (Violet) -->
+        <path fill="var(--col-patch-2)" d="
+          M4,-10 h8 v4 h-8 z
+          M6,-6 h6 v4 h-6 z
+          M8,-2 h6 v3 h-6 z
+        "/>
+
+        <!-- Cheek Shading Contours -->
+        <path fill="var(--col-fur-sh)" d="
+          M-18,0 h2 v4 h-2 z
+          M16,0 h2 v4 h-2 z
+          M-14,6 h4 v2 h-4 z
+          M10,6 h4 v2 h-4 z
+          M-10,8 h20 v1 h-20 z
+        "/>
+
+        <!-- Cheek Rosy Blush -->
+        <g id="cheeks">
+          <path fill="var(--col-blush)" d="M-14,3 h4 v2 h-4 z M-13,2 h2 v1 h-2 z"/>
+          <path fill="var(--col-blush)" d="M10,3 h4 v2 h-4 z M11,2 h2 v1 h-2 z"/>
+        </g>
+
+        <!-- Whiskers -->
+        <g fill="var(--col-out)">
+          <path d="M-24,0 h3 v1 h-3 z M-22,1 h3 v1 h-3 z M-25,3 h4 v1 h-4 z M-24,6 h4 v1 h-4 z"/>
+          <path d="M21,0 h3 v1 h-3 z M19,1 h3 v1 h-3 z M21,3 h4 v1 h-4 z M20,6 h4 v1 h-4 z"/>
+        </g>
+
+        <!-- OCULAR SYSTEM (EYES) -->
+        <g id="cat-eyes">
+          <!-- State 1: Open Eyes (Default with Glints) -->
+          <g class="eye-open rig-eye">
+            <!-- Left Eye -->
+            <path fill="var(--col-out)" d="M-9,-2 h5 v6 h-5 z M-10,-1 h7 v4 h-7 z"/>
+            <path fill="var(--col-eye)" d="M-9,-1 h5 v4 h-5 z"/>
+            <path fill="var(--col-eye-sh)" d="M-9,2 h5 v1 h-5 z"/>
+            <rect x="-8" y="-1" width="2" height="2" fill="#FFFFFF"/>
+            <rect x="-6" y="2" width="1" height="1" fill="#FFFFFF"/>
+
+            <!-- Right Eye -->
+            <path fill="var(--col-out)" d="M4,-2 h5 v6 h-5 z M3,-1 h7 v4 h-7 z"/>
+            <path fill="var(--col-eye)" d="M4,-1 h5 v4 h-5 z"/>
+            <path fill="var(--col-eye-sh)" d="M4,2 h5 v1 h-5 z"/>
+            <rect x="5" y="-1" width="2" height="2" fill="#FFFFFF"/>
+            <rect x="7" y="2" width="1" height="1" fill="#FFFFFF"/>
+          </g>
+
+          <!-- State 2: Happy Arcs (Loaf and Dance) -->
+          <g class="eye-happy" style="display: none;">
+            <path fill="var(--col-out)" d="M-9,0 h2 v1 h-2 z M-7,-1 h2 v1 h-2 z M-5,0 h2 v1 h-2 z"/>
+            <path fill="var(--col-out)" d="M4,0 h2 v1 h-2 z M6,-1 h2 v1 h-2 z M8,0 h2 v1 h-2 z"/>
+          </g>
+
+          <!-- State 3: Closed Slits (Sleep) -->
+          <g class="eye-closed" style="display: none;">
+            <path fill="var(--col-out)" d="M-9,1 h6 v1 h-6 z M4,1 h6 v1 h-6 z"/>
+          </g>
+        </g>
+
+        <!-- SNOUT AND MOUTH -->
+        <g id="cat-snout">
+          <!-- Pink Nose -->
+          <path fill="var(--col-pink)" d="M-1,3 h2 v1 h-2 z M-0.5,4 h1 v1 h-1 z"/>
+          <!-- Closed 'w' Mouth -->
+          <path class="mouth-closed" fill="var(--col-out)" d="M-3,6 h2 v1 h-2 z M-1,5 h2 v1 h-2 z M1,6 h2 v1 h-2 z"/>
+          <!-- Joyful Open Mouth (Toggled on Pet or Meow) -->
+          <g class="mouth-open" style="display: none;">
+            <path fill="var(--col-out)" d="M-2,5 h4 v3 h-4 z"/>
+            <path fill="var(--col-tongue)" d="M-1,6 h2 v2 h-2 z"/>
+          </g>
+        </g>
+
+        <!-- ACCESSORY: STRAWBERRY BERET -->
+        <g id="acc-beret" class="slot-active" transform="translate(-16, -22)">
+          <path fill="#FF4D6D" d="M2,2 h14 v4 h-14 z M0,4 h18 v3 h-18 z"/>
+          <path fill="#C9184A" d="M0,6 h18 v2 h-18 z"/>
+          <rect x="4" y="4" width="1" height="1" fill="#FFE3A8"/>
+          <rect x="8" y="3" width="1" height="1" fill="#FFE3A8"/>
+          <rect x="12" y="4" width="1" height="1" fill="#FFE3A8"/>
+          <rect x="6" y="6" width="1" height="1" fill="#FFE3A8"/>
+          <path fill="#38B000" d="M8,0 h2 v2 h-2 z M6,1 h6 v1 h-6 z"/>
+        </g>
+
+        <!-- ACCESSORY: WITCH HAT -->
+        <g id="acc-witch" class="slot-hidden" transform="translate(-16, -34)">
+          <path fill="#1A1528" d="M6,0 h4 v3 h-4 z M5,3 h6 v4 h-6 z M4,7 h8 v4 h-8 z M3,11 h10 v4 h-10 z M-2,15 h20 v2 h-20 z"/>
+          <path fill="#9D4EDD" d="M3,13 h10 v2 h-10 z"/>
+          <rect x="7" y="13" width="2" height="2" fill="#FFD166"/>
+        </g>
+
+        <!-- ACCESSORY: GAMER RGB HEADSET -->
+        <g id="acc-headset" class="slot-hidden" transform="translate(-20, -16)">
+          <path fill="#2E2344" d="M3,-2 h34 v3 h-34 z M1,1 h4 v3 h-4 z M35,1 h4 v3 h-4 z"/>
+          <!-- Glowing Earcups -->
+          <rect x="-1" y="4" width="4" height="8" rx="2" fill="#00F5D4"/>
+          <rect x="37" y="4" width="4" height="8" rx="2" fill="#FF007F"/>
+          <!-- Mic Boom -->
+          <path fill="#2E2344" d="M1,10 h3 v4 h2 v1 h5 v2 h-6 v-2 h-4 z"/>
+          <rect x="11" y="14" width="2" height="2" fill="#00F5D4"/>
+        </g>
+
+      </g> <!-- END RIG HEAD -->
+
+    </g> <!-- END RIG BODY -->
+
+    <!-- PARTICLE FX CONTAINERS -->
+    <!-- Dance Music Notes -->
+    <g class="dance-notes" style="display: none;">
+      <use href="#glyph-note" x="-26" y="-18" class="interactive-fx"/>
+      <use href="#glyph-note" x="18" y="-22" class="interactive-fx fx-delay-1"/>
+      <use href="#glyph-star" x="-14" y="-28" class="interactive-fx fx-delay-2"/>
+    </g>
+
+    <!-- Sleep Zzz Bubbles -->
+    <g class="sleep-zzz" style="display: none;">
+      <use href="#glyph-z" x="8" y="-4" style="animation: floatZzz 2.4s ease-in-out infinite;"/>
+      <use href="#glyph-z" x="14" y="-12" style="animation: floatZzz 2.4s ease-in-out infinite; animation-delay: 0.8s;"/>
+    </g>
+
+    <!-- Petting Heart Reaction -->
+    <g class="click-hearts" style="display: none;">
+      <use href="#glyph-heart" x="-4" y="-24" style="animation: particleDrift 1.2s ease-out forwards;"/>
+      <use href="#glyph-heart" x="8" y="-20" style="animation: particleDrift 1.2s ease-out forwards; animation-delay: 0.2s;"/>
+    </g>
+
+  </g> <!-- END CAT CHARACTER -->
+
+  <!-- ==========================================================================
+       SECTION 3: INTERACTIVE CONTROL DECK (TOP-TIER DASHBOARD)
+       ========================================================================== -->
+  <g transform="translate(16, 206)">
+    <!-- Control Deck Glass Container -->
+    <rect width="288" height="102" rx="8" fill="var(--ui-bg)" stroke="#4A3B69" stroke-width="1.5"/>
+
+    <!-- ROW 1: ANIMATION STATES -->
+    <text x="10" y="16" fill="var(--ui-accent)" font-size="8" font-weight="bold">ANIMATION STATE</text>
+    <g transform="translate(10, 22)">
+      <!-- Idle Button -->
+      <g id="btn-idle" class="ui-btn" transform="translate(0, 0)">
+        <rect id="bg-idle" width="36" height="18" rx="3" fill="var(--ui-accent)"/>
+        <text id="tx-idle" x="18" y="12" text-anchor="middle" fill="#120D1C" font-size="8" font-weight="bold">Idle</text>
+      </g>
+      <!-- Walk Button -->
+      <g id="btn-walk" class="ui-btn" transform="translate(39, 0)">
+        <rect id="bg-walk" width="36" height="18" rx="3" fill="var(--ui-btn-bg)"/>
+        <text id="tx-walk" x="18" y="12" text-anchor="middle" fill="var(--ui-text)" font-size="8">Walk</text>
+      </g>
+      <!-- Dance Button -->
+      <g id="btn-dance" class="ui-btn" transform="translate(78, 0)">
+        <rect id="bg-dance" width="36" height="18" rx="3" fill="var(--ui-btn-bg)"/>
+        <text id="tx-dance" x="18" y="12" text-anchor="middle" fill="var(--ui-text)" font-size="8">Dance</text>
+      </g>
+      <!-- Pounce Button -->
+      <g id="btn-pounce" class="ui-btn" transform="translate(117, 0)">
+        <rect id="bg-pounce" width="38" height="18" rx="3" fill="var(--ui-btn-bg)"/>
+        <text id="tx-pounce" x="19" y="12" text-anchor="middle" fill="var(--ui-text)" font-size="8">Pounce</text>
+      </g>
+      <!-- Loaf Button -->
+      <g id="btn-loaf" class="ui-btn" transform="translate(158, 0)">
+        <rect id="bg-loaf" width="36" height="18" rx="3" fill="var(--ui-btn-bg)"/>
+        <text id="tx-loaf" x="18" y="12" text-anchor="middle" fill="var(--ui-text)" font-size="8">Loaf</text>
+      </g>
+      <!-- Sleep Button -->
+      <g id="btn-sleep" class="ui-btn" transform="translate(197, 0)">
+        <rect id="bg-sleep" width="36" height="18" rx="3" fill="var(--ui-btn-bg)"/>
+        <text id="tx-sleep" x="18" y="12" text-anchor="middle" fill="var(--ui-text)" font-size="8">Sleep</text>
+      </g>
+      <!-- Auto Cycle Button -->
+      <g id="btn-auto" class="ui-btn" transform="translate(236, 0)">
+        <rect id="bg-auto" width="32" height="18" rx="3" fill="#6A1B9A"/>
+        <text id="tx-auto" x="16" y="12" text-anchor="middle" fill="#FFFFFF" font-size="8">Auto</text>
+      </g>
+    </g>
+
+    <!-- ROW 2: ACCESSORIES -->
+    <text x="10" y="54" fill="var(--ui-accent)" font-size="8" font-weight="bold">ACCESSORIES</text>
+    <g transform="translate(10, 60)">
+      <!-- Beret Button -->
+      <g id="btn-acc-beret" class="ui-btn" transform="translate(0, 0)">
+        <rect id="bg-acc-beret" width="56" height="16" rx="3" fill="var(--ui-accent)"/>
+        <text id="tx-acc-beret" x="28" y="11" text-anchor="middle" fill="#120D1C" font-size="7.5" font-weight="bold">Beret</text>
+      </g>
+      <!-- Witch Hat Button -->
+      <g id="btn-acc-witch" class="ui-btn" transform="translate(60, 0)">
+        <rect id="bg-acc-witch" width="56" height="16" rx="3" fill="var(--ui-btn-bg)"/>
+        <text id="tx-acc-witch" x="28" y="11" text-anchor="middle" fill="var(--ui-text)" font-size="7.5">Witch</text>
+      </g>
+      <!-- Headset Button -->
+      <g id="btn-acc-headset" class="ui-btn" transform="translate(120, 0)">
+        <rect id="bg-acc-headset" width="58" height="16" rx="3" fill="var(--ui-btn-bg)"/>
+        <text id="tx-acc-headset" x="29" y="11" text-anchor="middle" fill="var(--ui-text)" font-size="7.5">Headset</text>
+      </g>
+      <!-- Bell Collar Button -->
+      <g id="btn-acc-bell" class="ui-btn" transform="translate(182, 0)">
+        <rect id="bg-acc-bell" width="46" height="16" rx="3" fill="var(--ui-btn-bg)"/>
+        <text id="tx-acc-bell" x="23" y="11" text-anchor="middle" fill="var(--ui-text)" font-size="7.5">Bell</text>
+      </g>
+      <!-- Wings Button -->
+      <g id="btn-acc-wings" class="ui-btn" transform="translate(232, 0)">
+        <rect id="bg-acc-wings" width="46" height="16" rx="3" fill="var(--ui-btn-bg)"/>
+        <text id="tx-acc-wings" x="23" y="11" text-anchor="middle" fill="var(--ui-text)" font-size="7.5">Wings</text>
+      </g>
+    </g>
+
+    <!-- ROW 3: COAT BREED SELECTOR -->
+    <g transform="translate(10, 84)">
+      <text x="0" y="11" fill="var(--ui-accent)" font-size="8" font-weight="bold">COAT:</text>
+      <g id="btn-theme-calico" class="ui-btn" transform="translate(42, 0)">
+        <rect id="bg-theme-calico" width="48" height="14" rx="2" fill="#FFAE8A" stroke="#00F5D4" stroke-width="1.2"/>
+        <text x="24" y="10" text-anchor="middle" fill="#1E162B" font-size="7" font-weight="bold">Calico</text>
+      </g>
+      <g id="btn-theme-tuxedo" class="ui-btn" transform="translate(94, 0)">
+        <rect id="bg-theme-tuxedo" width="52" height="14" rx="2" fill="#2A2738" stroke="#FFFFFF" stroke-width="0.8"/>
+        <text x="26" y="10" text-anchor="middle" fill="#FFFFFF" font-size="7" font-weight="bold">Tuxedo</text>
+      </g>
+      <g id="btn-theme-tabby" class="ui-btn" transform="translate(150, 0)">
+        <rect id="bg-theme-tabby" width="48" height="14" rx="2" fill="#FFA834"/>
+        <text x="24" y="10" text-anchor="middle" fill="#1E162B" font-size="7" font-weight="bold">Tabby</text>
+      </g>
+      <g id="btn-theme-void" class="ui-btn" transform="translate(202, 0)">
+        <rect id="bg-theme-void" width="44" height="14" rx="2" fill="#0D0B14" stroke="#9D4EDD" stroke-width="0.8"/>
+        <text x="22" y="10" text-anchor="middle" fill="#FFEA00" font-size="7" font-weight="bold">Void</text>
+      </g>
+      <!-- Sound FX Buttons -->
+      <g id="btn-sound-meow" class="ui-btn" transform="translate(250, 0)">
+        <rect width="22" height="14" rx="2" fill="#FF4D6D"/>
+        <text x="11" y="10" text-anchor="middle" fill="#FFFFFF" font-size="6.5" font-weight="bold">Mew</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==========================================================================
+       SECTION 4: EMBEDDED JAVASCRIPT CONTROLLER AND AUDIO SYNTHESIZER
+       ========================================================================== -->
+  <script type="application/ecmascript">
+    <![CDATA[
+    (function () {
+      function startController() {
+        var cat = document.getElementById('cat-character');
+        var rootSvg = document.getElementById('master-cat-svg');
+        if (!cat || !rootSvg) return;
+
+        // Modes
+        var modes = ['idle', 'walk', 'dance', 'pounce', 'loaf', 'sleep'];
+        var currentMode = 'idle';
+        var autoTimer = null;
+
+        // Audio Context Synthesizer with strict error shielding
+        var audioCtx = null;
+        function getAudioContext() {
+          try {
+            if (!audioCtx) {
+              var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+              if (AudioContextClass) audioCtx = new AudioContextClass();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+              audioCtx.resume().catch(function () {});
+            }
+            return audioCtx;
+          } catch (e) {
+            return null;
+          }
+        }
+
+        function play8BitMeow() {
+          try {
+            var ctx = getAudioContext();
+            if (!ctx) return;
+            var now = ctx.currentTime;
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(540, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+            osc.frequency.exponentialRampToValueAtTime(500, now + 0.35);
+
+            gain.gain.setValueAtTime(0.01, now);
+            gain.gain.linearRampToValueAtTime(0.18, now + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(now);
+            osc.stop(now + 0.4);
+          } catch (e) {}
+        }
+
+        function playPurrSound() {
+          try {
+            var ctx = getAudioContext();
+            if (!ctx) return;
+            var now = ctx.currentTime;
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            var filter = ctx.createBiquadFilter();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(28, now);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(160, now);
+
+            gain.gain.setValueAtTime(0.01, now);
+            gain.gain.linearRampToValueAtTime(0.12, now + 0.1);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.8);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(now);
+            osc.stop(now + 0.85);
+          } catch (e) {}
+        }
+
+        // Switch Mode Function
+        function setMode(newMode) {
+          currentMode = newMode;
+          modes.forEach(function (m) { cat.classList.remove('mode-' + m); });
+          cat.classList.add('mode-' + newMode);
+
+          // Update Button States
+          modes.forEach(function (m) {
+            var bg = document.getElementById('bg-' + m);
+            var tx = document.getElementById('tx-' + m);
+            if (bg && tx) {
+              if (m === newMode) {
+                bg.setAttribute('fill', '#00F5D4');
+                tx.setAttribute('fill', '#120D1C');
+                tx.setAttribute('font-weight', 'bold');
+              } else {
+                bg.setAttribute('fill', '#3B2D54');
+                tx.setAttribute('fill', '#F3E8FF');
+                tx.setAttribute('font-weight', 'normal');
+              }
+            }
+          });
+
+          // Trigger Sound Effect on User Action
+          if (newMode === 'pounce' || newMode === 'dance') {
+            play8BitMeow();
+          } else if (newMode === 'loaf' || newMode === 'sleep') {
+            playPurrSound();
+          }
+        }
+
+        // Attach Mode Buttons
+        modes.forEach(function (m) {
+          var btn = document.getElementById('btn-' + m);
+          if (btn) {
+            btn.addEventListener('click', function (e) {
+              e.stopPropagation();
+              if (autoTimer) {
+                clearInterval(autoTimer);
+                autoTimer = null;
+                var bgAuto = document.getElementById('bg-auto');
+                if (bgAuto) bgAuto.setAttribute('fill', '#6A1B9A');
+              }
+              setMode(m);
+            });
+          }
+        });
+
+        // Auto Showcase Button
+        var btnAuto = document.getElementById('btn-auto');
+        if (btnAuto) {
+          btnAuto.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var bgAuto = document.getElementById('bg-auto');
+            if (autoTimer) {
+              clearInterval(autoTimer);
+              autoTimer = null;
+              if (bgAuto) bgAuto.setAttribute('fill', '#6A1B9A');
+            } else {
+              if (bgAuto) bgAuto.setAttribute('fill', '#00F5D4');
+              var idx = modes.indexOf(currentMode);
+              autoTimer = setInterval(function () {
+                idx = (idx + 1) % modes.length;
+                setMode(modes[idx]);
+              }, 3200);
+            }
+          });
+        }
+
+        // Toggle Accessories
+        var accessories = ['beret', 'witch', 'headset', 'bell', 'wings'];
+        accessories.forEach(function (acc) {
+          var btn = document.getElementById('btn-acc-' + acc);
+          var slot = document.getElementById('acc-' + acc);
+          var bg = document.getElementById('bg-acc-' + acc);
+          var tx = document.getElementById('tx-acc-' + acc);
+
+          if (btn && slot) {
+            btn.addEventListener('click', function (e) {
+              e.stopPropagation();
+              var isActive = slot.classList.contains('slot-active');
+              if (isActive) {
+                slot.classList.remove('slot-active');
+                slot.classList.add('slot-hidden');
+                if (bg) bg.setAttribute('fill', '#3B2D54');
+                if (tx) {
+                  tx.setAttribute('fill', '#F3E8FF');
+                  tx.setAttribute('font-weight', 'normal');
+                }
+              } else {
+                slot.classList.remove('slot-hidden');
+                slot.classList.add('slot-active');
+                if (bg) bg.setAttribute('fill', '#00F5D4');
+                if (tx) {
+                  tx.setAttribute('fill', '#120D1C');
+                  tx.setAttribute('font-weight', 'bold');
+                }
+              }
+            });
+          }
+        });
+
+        // Coat Themes
+        var themes = ['calico', 'tuxedo', 'tabby', 'void'];
+        themes.forEach(function (th) {
+          var btn = document.getElementById('btn-theme-' + th);
+          if (btn) {
+            btn.addEventListener('click', function (e) {
+              e.stopPropagation();
+              themes.forEach(function (t) {
+                rootSvg.classList.remove('theme-' + t);
+                var bgT = document.getElementById('bg-theme-' + t);
+                if (bgT) bgT.removeAttribute('stroke');
+              });
+              if (th !== 'calico') {
+                rootSvg.classList.add('theme-' + th);
+              }
+              var activeBg = document.getElementById('bg-theme-' + th);
+              if (activeBg) {
+                activeBg.setAttribute('stroke', '#00F5D4');
+                activeBg.setAttribute('stroke-width', '1.5');
+              }
+            });
+          }
+        });
+
+        // Sound Buttons
+        var btnMeow = document.getElementById('btn-sound-meow');
+        if (btnMeow) {
+          btnMeow.addEventListener('click', function (e) {
+            e.stopPropagation();
+            play8BitMeow();
+          });
+        }
+
+        var btnAudio = document.getElementById('btn-audio');
+        if (btnAudio) {
+          btnAudio.addEventListener('click', function (e) {
+            e.stopPropagation();
+            play8BitMeow();
+          });
+        }
+
+        // Petting Interaction on Click
+        cat.addEventListener('click', function () {
+          play8BitMeow();
+        });
+      }
+
+      // Execute immediately (since elements exist above this script)
+      // and attach fallback listeners to handle every browser load lifecycle
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startController);
+        window.addEventListener('load', startController);
+      } else {
+        startController();
+      }
+    })();
+    ]]>
+  </script>
+</svg>

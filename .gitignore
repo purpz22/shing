@@ -10,3 +10,4 @@ bedrock_server/
 *.apk
 !android/ShingCast-debug.apk
 .gradle/
+setup_server.ps1
