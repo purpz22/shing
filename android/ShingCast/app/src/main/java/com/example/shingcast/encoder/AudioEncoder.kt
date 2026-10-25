@@ -175,16 +175,7 @@ class AudioEncoder(
             Log.w(TAG, "Hardware NoiseSuppressor error: ${e.message}")
         }
 
-        try {
-            if (AcousticEchoCanceler.isAvailable()) {
-                echoCanceler = AcousticEchoCanceler.create(record.audioSessionId)?.apply {
-                    enabled = true
-                }
-                Log.d(TAG, "Hardware AcousticEchoCanceler active on session ${record.audioSessionId}")
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Hardware AcousticEchoCanceler error: ${e.message}")
-        }
+// AcousticEchoCanceler intentionally omitted to prevent voice ducking & robotic clipping
     }
 
     @SuppressLint("MissingPermission")
@@ -349,25 +340,23 @@ class AudioEncoder(
         val startTimeNs = System.nanoTime()
 
         while (isRecording) {
-            // Block waiting for a chunk from either stream
-            var internalChunk = internalQueue.poll(12, TimeUnit.MILLISECONDS)
-            var micChunk = micQueue.poll(if (internalChunk != null) 3 else 10, TimeUnit.MILLISECONDS)
+            // Short 6ms / 2ms poll ensures loop runs at exact 10ms pacing without falling behind real-time
+            var internalChunk = internalQueue.poll(6, TimeUnit.MILLISECONDS)
+            var micChunk = micQueue.poll(if (internalChunk != null) 2 else 5, TimeUnit.MILLISECONDS)
 
             if (internalChunk == null && micChunk == null) {
                 continue
             }
 
-            // If only one stream arrived, allow up to 4ms for the other to arrive so they mix together rather than interleave
             if (internalChunk != null && micChunk == null) {
-                micChunk = micQueue.poll(4, TimeUnit.MILLISECONDS)
+                micChunk = micQueue.poll(2, TimeUnit.MILLISECONDS)
             } else if (micChunk != null && internalChunk == null) {
-                internalChunk = internalQueue.poll(4, TimeUnit.MILLISECONDS)
+                internalChunk = internalQueue.poll(2, TimeUnit.MILLISECONDS)
             }
 
             val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
 
             if (micChunk != null && internalChunk != null) {
-                // Both mic voice and game sound available: mix with soft saturation into a single synchronized packet
                 for (i in 0 until SAMPLES_PER_CHUNK * 2) {
                     val idx = i * 2
                     val gameSample = (internalChunk[idx + 1].toInt() shl 8) or (internalChunk[idx].toInt() and 0xFF)
@@ -379,10 +368,8 @@ class AudioEncoder(
                 }
                 client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, mixedBuf, 0, CHUNK_SIZE_BYTES)
             } else if (micChunk != null) {
-                // Mic voice only
                 client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, micChunk, 0, CHUNK_SIZE_BYTES)
             } else if (internalChunk != null) {
-                // Game sound only
                 client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, internalChunk, 0, CHUNK_SIZE_BYTES)
             }
         }

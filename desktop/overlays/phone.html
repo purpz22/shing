@@ -899,8 +899,8 @@
       let overlayNoiseFilterEnabled = true;
       let overlayNoiseGateThreshold = 0.016;
       let overlayGateHoldUntil = 0;
-      const AUDIO_LEAD_TIME = 0.045; // 45ms lead time for smooth playback without jitter underruns
-      const MAX_AUDIO_LATENCY = 0.350; // 350ms maximum latency allowance before gently catching up
+      const AUDIO_LEAD_TIME = 0.060; // 60ms initial cushion for smooth playback without jitter underruns
+      const MAX_AUDIO_LATENCY = 0.250; // 250ms maximum latency allowance before gently catching up
 
       function playAudioChunk(pcmData) {
         try {
@@ -942,9 +942,11 @@
 
           const currentTime = audioCtx.currentTime;
 
-          // Latency Drift Self-Healing: clamp buffer lead time to prevent delay accumulation without killing active audio
+          // Latency Drift Self-Healing:
+          // If nextAudioTime fell behind currentTime (buffer underrun), schedule this packet to start immediately at currentTime.
+          // Never add artificial lead time here, which would inject audible dead-air gaps!
           if (nextAudioTime < currentTime) {
-            nextAudioTime = currentTime + AUDIO_LEAD_TIME;
+            nextAudioTime = currentTime;
           } else if (nextAudioTime > currentTime + MAX_AUDIO_LATENCY) {
             nextAudioTime = currentTime + AUDIO_LEAD_TIME;
           }
@@ -970,7 +972,9 @@
             overlayCompressorNode.connect(audioCtx.destination);
           }
 
-          if (overlayNoiseFilterEnabled && overlayGateGainNode) {
+          // Smooth per-sample noise gate: applied directly to PCM samples so voice and gate are 100% in-phase with zero timing lag
+          let targetEnvelope = 1.0;
+          if (overlayNoiseFilterEnabled) {
             const openThresh = overlayNoiseGateThreshold;
             const closeThresh = overlayNoiseGateThreshold * 0.55;
             const isVoiceOrAudio = (zeroCrossings <= 220) || (chunkRms >= 0.025);
@@ -980,13 +984,25 @@
             }
 
             const isGateOpen = (currentTime < overlayGateHoldUntil) || (chunkRms >= closeThresh && isVoiceOrAudio);
+            targetEnvelope = isGateOpen ? 1.0 : 0.0;
+          }
 
-            if (isGateOpen) {
-              overlayGateEnvelope = Math.min(1.0, overlayGateEnvelope + 0.35);
-            } else {
-              overlayGateEnvelope = Math.max(0.0, overlayGateEnvelope - 0.04);
-            }
-            overlayGateGainNode.gain.setValueAtTime(overlayGateEnvelope, currentTime);
+          const startEnvelope = overlayGateEnvelope;
+          const endEnvelope = (targetEnvelope > startEnvelope)
+            ? Math.min(1.0, startEnvelope + 0.35)
+            : Math.max(0.0, startEnvelope - 0.04);
+          overlayGateEnvelope = endEnvelope;
+
+          const envStep = (endEnvelope - startEnvelope) / numSamples;
+          let curEnv = startEnvelope;
+          for (let i = 0; i < numSamples; i++) {
+            curEnv += envStep;
+            left[i] *= curEnv;
+            right[i] *= curEnv;
+          }
+
+          if (overlayGateGainNode) {
+            overlayGateGainNode.gain.setValueAtTime(1.0, currentTime);
           }
 
           const source = audioCtx.createBufferSource();

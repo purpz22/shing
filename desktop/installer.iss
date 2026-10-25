@@ -1,6 +1,6 @@
 ; Shing Live - Inno Setup Windows Installer Script
 #define MyAppName "Shing Live"
-#define MyAppVersion "1.7.4"
+#define MyAppVersion "1.7.5"
 #define MyAppPublisher "Shing"
 #define MyAppURL "https://github.com/purpz22/shing"
 #define MyAppExeName "Shing Live.exe"

@@ -167,8 +167,8 @@ class VideoEncoder(
                         }
                         client.sendBinaryPacket(CastClient.PACKET_VIDEO_KEYFRAME, ptsMs, packet)
                     } else {
-                        // Delta frame: 98% of frames bypass all heavy CPU byte loops!
-                        if (client.getQueueSize() < 256 * 1024L) {
+                        // Keep outgoing TCP queue shallow (max 64KB) so audio packets are never delayed behind video
+                        if (client.getQueueSize() < 64 * 1024L) {
                             client.sendBinaryPacket(CastClient.PACKET_VIDEO_DELTA, ptsMs, data)
                         }
                     }

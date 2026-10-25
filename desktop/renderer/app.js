@@ -3708,8 +3708,8 @@ function updatePhoneStageOrientation(width, height) {
 let phoneScheduledAudioSources = [];
 let latestPhoneCastAudioRms = 0;
 let phoneCastAudioLastPacketTime = 0;
-const STUDIO_AUDIO_LEAD_TIME = 0.045;
-const STUDIO_MAX_AUDIO_LATENCY = 0.350;
+const STUDIO_AUDIO_LEAD_TIME = 0.060;
+const STUDIO_MAX_AUDIO_LATENCY = 0.250;
 
 function playStudioAudio(pcmData) {
   try {
@@ -3755,9 +3755,11 @@ function playStudioAudio(pcmData) {
 
     const currentTime = phoneAudioCtx.currentTime;
 
-    // Latency Drift Self-Healing: clamp buffer lead time to prevent delay accumulation without killing active audio
+    // Latency Drift Self-Healing:
+    // If nextAudioTime fell behind currentTime (buffer underrun), schedule this packet to start immediately at currentTime.
+    // Never add artificial lead time here, which would inject audible dead-air gaps!
     if (phoneNextAudioTime < currentTime) {
-      phoneNextAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
+      phoneNextAudioTime = currentTime;
     } else if (phoneNextAudioTime > currentTime + STUDIO_MAX_AUDIO_LATENCY) {
       phoneNextAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
     }
@@ -3792,8 +3794,9 @@ function playStudioAudio(pcmData) {
       }
     }
 
-    if (phoneNoiseFilterEnabled && phoneGateGainNode) {
-      // Hysteresis Noise Gate with 350ms Hold Time and Consonant Preservation: eliminates choppy stuttering and word clipping
+    // Smooth per-sample noise gate: applied directly to PCM samples so voice and gate are 100% in-phase with zero timing lag
+    let targetEnvelope = 1.0;
+    if (phoneNoiseFilterEnabled) {
       const openThresh = phoneNoiseGateThreshold;
       const closeThresh = phoneNoiseGateThreshold * 0.55;
       const isVoiceOrAudio = !phoneVoiceOnlyVadEnabled || (latestPhoneCastAudioZcr <= 220) || (latestPhoneCastAudioRms >= 0.025);
@@ -3803,14 +3806,25 @@ function playStudioAudio(pcmData) {
       }
 
       const isGateOpen = (currentTime < phoneGateHoldUntil) || (latestPhoneCastAudioRms >= closeThresh && isVoiceOrAudio);
+      targetEnvelope = isGateOpen ? 1.0 : 0.0;
+    }
 
-      if (isGateOpen) {
-        phoneGateEnvelope = Math.min(1.0, phoneGateEnvelope + 0.35);
-      } else {
-        phoneGateEnvelope = Math.max(0.0, phoneGateEnvelope - 0.04);
-      }
-      phoneGateGainNode.gain.setValueAtTime(phoneGateEnvelope, currentTime);
-    } else if (phoneGateGainNode) {
+    const startEnvelope = phoneGateEnvelope;
+    const endEnvelope = (targetEnvelope > startEnvelope)
+      ? Math.min(1.0, startEnvelope + 0.35)
+      : Math.max(0.0, startEnvelope - 0.04);
+    phoneGateEnvelope = endEnvelope;
+
+    // Linear envelope interpolation across samples prevents all audible clicks, phase mismatch, or syllable cutting
+    const envStep = (endEnvelope - startEnvelope) / numSamples;
+    let curEnv = startEnvelope;
+    for (let i = 0; i < numSamples; i++) {
+      curEnv += envStep;
+      left[i] *= curEnv;
+      right[i] *= curEnv;
+    }
+
+    if (phoneGateGainNode) {
       phoneGateGainNode.gain.setValueAtTime(1.0, currentTime);
     }
 

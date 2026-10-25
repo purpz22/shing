@@ -1,6 +1,24 @@
 {
-  "latest": "1.7.4",
+  "latest": "1.7.5",
   "releases": [
+    {
+      "version": "1.7.5",
+      "releaseName": "Shing Live v1.7.5 - Direct Sample-Accurate DSP & Zero-Gap Underrun Recovery",
+      "releaseDate": "2026-10-25",
+      "type": "improvement",
+      "summary": "Completely eliminated remaining audio glitches and choppiness by replacing node gain automation with direct per-sample linear ramping (zero phase lag), eliminating artificial silence holes on jitter recovery, keeping video queue shallow (64KB max) so audio packets never queue behind video frames, and disabling AcousticEchoCanceler on mobile.",
+      "downloadUrl": "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.7.5.zip",
+      "highlights": [
+        "Direct Per-Sample Noise Gate Ramping: Eliminated 60ms phase lag between detector and Web Audio playback, ending all syllable cutoffs",
+        "Zero-Gap Underrun Catchup: Late packets play immediately at currentTime without injecting artificial 45ms holes of dead air",
+        "Audio-Prioritized Video Queue: Reduced delta queue limit from 256KB to 64KB on Android so audio packets never get delayed behind video frames",
+        "Removed Mobile AcousticEchoCanceler: Eliminates voice ducking, robotic phase cancellation, and phone-side audio choking",
+        "Updated Mobile APK: ShingCast APK v1.7.5 with real-time audio transmission priority"
+      ],
+      "notes": "Silky-smooth, continuous, broadcast-grade wireless phone microphone audio streaming.",
+      "packageSize": "4.77 MB",
+      "checksum": "66027f8dce205e5b30be5fc9313c18eb9da00f06fcc3280741b190162e06cad5"
+    },
     {
       "version": "1.7.4",
       "releaseName": "Shing Live v1.7.4 - Non-Destructive Audio Jitter Scheduling & Synchronized Phone Mixing",
