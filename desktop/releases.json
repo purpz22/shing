@@ -1,6 +1,25 @@
 {
-    "latest":  "1.7.0",
+    "latest":  "1.7.1",
     "releases":  [
+                     {
+                         "version":  "1.7.1",
+                         "releaseName":  "Shing Live v1.7.1 - AI Hardware Noise Suppressor, Soft-Knee Gate \u0026 Voice Isolation",
+                         "releaseDate":  "2026-10-25",
+                         "type":  "feature",
+                         "summary":  "Dual-stage studio noise filter: Android hardware DSP NoiseSuppressor \u0026 AcousticEchoCanceler, 85Hz high-pass rumble filter cutting phone handling vibrations and electric fan hum, real-time soft-knee noise gate with sensitivity presets (Low/Med/High), and dynamics compressor.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.7.1.zip",
+                         "highlights":  [
+                                            "Hardware Noise Suppression: Qualcomm/MediaTek DSP voice isolation cutting steady-state fan and room noise at the phone HAL level",
+                                            "85Hz Low-Cut Rumble Filter: Removes phone handling vibrations, screen taps, and low-frequency AC rumble without affecting vocal clarity",
+                                            "Soft-Knee Noise Gate: Real-time envelope follower that silences background room hiss during quiet pauses with adjustable thresholds (-45dB, -36dB, -28dB)",
+                                            "Dynamics Compressor: Smooths vocal peaks and prevents loud yell distortion during intense gaming streams",
+                                            "Studio UI Controls: Quick Noise Filter toggle and sensitivity selector in the Phone Cast control bar with persistent local storage",
+                                            "Updated Mobile APK: ShingCast APK v1.7.1 with Hardware Noise Suppressor switch"
+                                        ],
+                         "notes":  "Recommended for all mobile streamers seeking broadcast-quality vocal isolation free from fan noise and phone tapping.",
+                         "packageSize":  "4.76 MB",
+                         "checksum":  "5210e23220787428d9ff3f0c722392015394a6f63f9844ff16c7db3b5a7b2c2b"
+                     },
                      {
                          "version":  "1.7.0",
                          "releaseName":  "Shing Live v1.7.0 - Wireless Phone Microphone Streaming \u0026 Live Audio VU Meter",

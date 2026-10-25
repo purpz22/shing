@@ -3054,9 +3054,13 @@ async function startPngTuberAudioEngine() {
     runAudioAnalysisLoop();
     return;
   }
-  const audioConstraints = (deviceId && deviceId !== 'default')
-    ? { audio: { deviceId: { exact: deviceId } } }
-    : { audio: true };
+  const audioConstraints = {
+    audio: Object.assign({
+      noiseSuppression: true,
+      echoCancellation: true,
+      autoGainControl: true
+    }, (deviceId && deviceId !== 'default') ? { deviceId: { exact: deviceId } } : {})
+  };
 
   try {
     if (pngtuberMicStream) {
@@ -3565,6 +3569,12 @@ let phoneNextAudioTime = 0;
 let phoneAudioMuted = false;
 let phoneAudioVolume = 1.0;
 let phoneGainNode = null;
+let phoneNoiseFilterEnabled = true;
+let phoneNoiseGateThreshold = 0.016; // approx -36 dB RMS
+let phoneHighpassNode = null;
+let phoneGateGainNode = null;
+let phoneCompressorNode = null;
+let phoneGateEnvelope = 1.0;
 
 function setPhoneCastUiConnected(name, width, height, fps) {
   if (typeof document === 'undefined') return;
@@ -3748,11 +3758,45 @@ function playStudioAudio(pcmData) {
     }
 
     if (!phoneGainNode && phoneAudioCtx) {
+      phoneHighpassNode = phoneAudioCtx.createBiquadFilter();
+      phoneHighpassNode.type = 'highpass';
+      phoneHighpassNode.frequency.value = phoneNoiseFilterEnabled ? 85 : 10;
+      phoneHighpassNode.Q.value = 0.707;
+
+      phoneGateGainNode = phoneAudioCtx.createGain();
+      phoneGateGainNode.gain.value = 1.0;
+
+      phoneCompressorNode = phoneAudioCtx.createDynamicsCompressor();
+      phoneCompressorNode.threshold.value = -24;
+      phoneCompressorNode.knee.value = 10;
+      phoneCompressorNode.ratio.value = 3.5;
+      phoneCompressorNode.attack.value = 0.003;
+      phoneCompressorNode.release.value = 0.25;
+
       phoneGainNode = phoneAudioCtx.createGain();
       phoneGainNode.gain.value = phoneAudioMuted ? 0 : phoneAudioVolume;
+
+      phoneHighpassNode.connect(phoneGateGainNode);
+      phoneGateGainNode.connect(phoneCompressorNode);
+      phoneCompressorNode.connect(phoneGainNode);
       phoneGainNode.connect(phoneAudioCtx.destination);
     } else if (phoneGainNode) {
       phoneGainNode.gain.value = phoneAudioMuted ? 0 : phoneAudioVolume;
+      if (phoneHighpassNode) {
+        phoneHighpassNode.frequency.value = phoneNoiseFilterEnabled ? 85 : 10;
+      }
+    }
+
+    if (phoneNoiseFilterEnabled && phoneGateGainNode) {
+      const isVoiceActive = latestPhoneCastAudioRms >= phoneNoiseGateThreshold;
+      if (isVoiceActive) {
+        phoneGateEnvelope = Math.min(1.0, phoneGateEnvelope + 0.35);
+      } else {
+        phoneGateEnvelope = Math.max(0.0, phoneGateEnvelope - 0.12);
+      }
+      phoneGateGainNode.gain.setValueAtTime(phoneGateEnvelope, currentTime);
+    } else if (phoneGateGainNode) {
+      phoneGateGainNode.gain.setValueAtTime(1.0, currentTime);
     }
 
     // Live VU meter update in dashboard
@@ -3764,7 +3808,7 @@ function playStudioAudio(pcmData) {
 
     const source = phoneAudioCtx.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(phoneGainNode || phoneAudioCtx.destination);
+    source.connect(phoneHighpassNode || phoneGainNode || phoneAudioCtx.destination);
     source.start(phoneNextAudioTime);
     phoneNextAudioTime += audioBuffer.duration;
 
@@ -4161,6 +4205,49 @@ function initPhoneCastStudio() {
     appSettings.phone = cfg;
     saveSettingsDebounced();
   });
+
+  // Noise Filter Toggle & Gate Sensitivity Controls
+  const noiseFilterBtn = $('phone-noise-filter-btn');
+  const noiseGateSelect = $('phone-noise-gate-select');
+
+  // Restore saved preferences
+  try {
+    const savedFilter = localStorage.getItem('shing_phone_noise_filter');
+    if (savedFilter !== null) {
+      phoneNoiseFilterEnabled = savedFilter === 'true';
+    }
+    const savedGate = localStorage.getItem('shing_phone_noise_gate');
+    if (savedGate) {
+      if (noiseGateSelect) noiseGateSelect.value = savedGate;
+      if (savedGate === 'low') phoneNoiseGateThreshold = 0.008;
+      else if (savedGate === 'high') phoneNoiseGateThreshold = 0.035;
+      else phoneNoiseGateThreshold = 0.016;
+    }
+  } catch (e) {}
+
+  if (noiseFilterBtn) {
+    noiseFilterBtn.textContent = phoneNoiseFilterEnabled ? 'Noise Filter: ON' : 'Noise Filter: OFF';
+    noiseFilterBtn.style.color = phoneNoiseFilterEnabled ? '#c084fc' : '#94a3b8';
+    noiseFilterBtn.addEventListener('click', () => {
+      phoneNoiseFilterEnabled = !phoneNoiseFilterEnabled;
+      noiseFilterBtn.textContent = phoneNoiseFilterEnabled ? 'Noise Filter: ON' : 'Noise Filter: OFF';
+      noiseFilterBtn.style.color = phoneNoiseFilterEnabled ? '#c084fc' : '#94a3b8';
+      if (phoneHighpassNode) {
+        phoneHighpassNode.frequency.value = phoneNoiseFilterEnabled ? 85 : 10;
+      }
+      try { localStorage.setItem('shing_phone_noise_filter', phoneNoiseFilterEnabled); } catch (e) {}
+    });
+  }
+
+  if (noiseGateSelect) {
+    noiseGateSelect.addEventListener('change', () => {
+      const val = noiseGateSelect.value;
+      if (val === 'low') phoneNoiseGateThreshold = 0.008; // -42 dB
+      else if (val === 'high') phoneNoiseGateThreshold = 0.035; // -29 dB
+      else phoneNoiseGateThreshold = 0.016; // -36 dB
+      try { localStorage.setItem('shing_phone_noise_gate', val); } catch (e) {}
+    });
+  }
 
   $('phone-toggle-audio-btn')?.addEventListener('click', () => {
     phoneAudioMuted = !phoneAudioMuted;

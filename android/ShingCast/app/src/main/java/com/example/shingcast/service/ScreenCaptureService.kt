@@ -46,6 +46,7 @@ class ScreenCaptureService : Service() {
         const val EXTRA_AUDIO = "EXTRA_AUDIO"
         const val EXTRA_AUDIO_MODE = "EXTRA_AUDIO_MODE"
         const val EXTRA_MIC_BOOST = "EXTRA_MIC_BOOST"
+        const val EXTRA_NOISE_FILTER = "EXTRA_NOISE_FILTER"
         const val EXTRA_ORIENTATION_MODE = "EXTRA_ORIENTATION_MODE"
 
         private const val NOTIFICATION_CHANNEL_ID = "shing_cast_streaming_channel"
@@ -101,6 +102,7 @@ class ScreenCaptureService : Service() {
         val legacyEnableAudio = intent.getBooleanExtra(EXTRA_AUDIO, true)
         val audioMode = intent.getStringExtra(EXTRA_AUDIO_MODE) ?: if (legacyEnableAudio) "mixed" else "off"
         val micBoost = intent.getFloatExtra(EXTRA_MIC_BOOST, 1.25f)
+        val noiseFilter = intent.getBooleanExtra(EXTRA_NOISE_FILTER, true)
         val mode = intent.getStringExtra(EXTRA_ORIENTATION_MODE) ?: "auto"
 
         if (resultData == null) {
@@ -185,7 +187,7 @@ class ScreenCaptureService : Service() {
 
         // 7. Start Audio Capture (Mic, Game Audio, or Mixed)
         if (hasAudio) {
-            val aEncoder = AudioEncoder(mp, client, audioMode, micBoost)
+            val aEncoder = AudioEncoder(mp, client, audioMode, micBoost, noiseFilter)
             audioEncoder = aEncoder
             aEncoder.start()
         }

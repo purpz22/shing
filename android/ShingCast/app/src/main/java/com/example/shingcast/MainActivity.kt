@@ -37,6 +37,7 @@ class MainActivity : ComponentActivity() {
     private var targetEnableAudio by mutableStateOf(true)
     private var targetAudioMode by mutableStateOf("mixed")
     private var targetMicBoost by mutableStateOf(1.25f)
+    private var targetNoiseFilter by mutableStateOf(true)
     private var targetOrientationMode by mutableStateOf("landscape")
     private var isCurrentlyStreaming by mutableStateOf(false)
 
@@ -72,6 +73,7 @@ class MainActivity : ComponentActivity() {
         targetOrientationMode = prefs.getString("last_orientation_mode", "landscape") ?: "landscape"
         targetAudioMode = prefs.getString("last_audio_mode", "mixed") ?: "mixed"
         targetMicBoost = prefs.getFloat("last_mic_boost", 1.25f)
+        targetNoiseFilter = prefs.getBoolean("last_noise_filter", true)
         targetEnableAudio = targetAudioMode != "off"
 
         // Parse pairing URI if launched from QR code: shingcast://connect?ip=<IP>&port=<PORT>
@@ -91,12 +93,14 @@ class MainActivity : ComponentActivity() {
                         initialOrientationMode = targetOrientationMode,
                         initialAudioMode = targetAudioMode,
                         initialMicBoost = targetMicBoost,
-                        onStartCast = { host, port, is1080p, audioMode, micBoost, orientationMode ->
+                        initialNoiseFilter = targetNoiseFilter,
+                        onStartCast = { host, port, is1080p, audioMode, micBoost, noiseFilter, orientationMode ->
                             targetHost = host
                             targetPort = port
                             targetIs1080p = is1080p
                             targetAudioMode = audioMode
                             targetMicBoost = micBoost
+                            targetNoiseFilter = noiseFilter
                             targetEnableAudio = audioMode != "off"
                             targetOrientationMode = orientationMode
 
@@ -105,6 +109,7 @@ class MainActivity : ComponentActivity() {
                                 .putInt("last_port", port)
                                 .putString("last_audio_mode", audioMode)
                                 .putFloat("last_mic_boost", micBoost)
+                                .putBoolean("last_noise_filter", noiseFilter)
                                 .putString("last_orientation_mode", orientationMode)
                                 .apply()
 
@@ -224,6 +229,7 @@ class MainActivity : ComponentActivity() {
             putExtra(ScreenCaptureService.EXTRA_AUDIO, targetAudioMode != "off")
             putExtra(ScreenCaptureService.EXTRA_AUDIO_MODE, targetAudioMode)
             putExtra(ScreenCaptureService.EXTRA_MIC_BOOST, targetMicBoost)
+            putExtra(ScreenCaptureService.EXTRA_NOISE_FILTER, targetNoiseFilter)
             putExtra(ScreenCaptureService.EXTRA_ORIENTATION_MODE, targetOrientationMode)
         }
 

@@ -1901,8 +1901,14 @@
           </div>
 
           <div class="phone-stage-controls" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <button class="btn btn-secondary btn-sm" id="phone-toggle-audio-btn">Mute Preview Audio</button>
+              <button class="btn btn-secondary btn-sm" id="phone-noise-filter-btn" title="Toggle AI Noise Filter & Voice Isolation" style="color: #c084fc;">Noise Filter: ON</button>
+              <select id="phone-noise-gate-select" class="form-select form-select-sm" style="font-size: 11px; padding: 4px 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #e2e8f0; cursor: pointer;" title="Noise Gate Sensitivity">
+                <option value="low">Gate: Low (-45 dB)</option>
+                <option value="med" selected>Gate: Med (-36 dB)</option>
+                <option value="high">Gate: High (-28 dB)</option>
+              </select>
               <button class="btn btn-secondary btn-sm" id="phone-fit-btn">Toggle Scale</button>
               <button class="btn btn-secondary btn-sm" id="phone-snapshot-btn">Capture Snapshot</button>
             </div>
@@ -1954,9 +1960,9 @@
             </div>
 
             <div class="phone-apk-download-box" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-              <a href="http://localhost:3333/shingcast.apk" id="phone-apk-download-btn" class="btn btn-secondary btn-sm" download="ShingCast-v1.7.0.apk" style="width: 100%; justify-content: center; gap: 6px;">
+              <a href="http://localhost:3333/shingcast.apk" id="phone-apk-download-btn" class="btn btn-secondary btn-sm" download="ShingCast-v1.7.1.apk" style="width: 100%; justify-content: center; gap: 6px;">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                <span>Download ShingCast APK (v1.7.0)</span>
+                <span>Download ShingCast APK (v1.7.1)</span>
               </a>
             </div>
           </div>

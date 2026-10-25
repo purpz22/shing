@@ -6,6 +6,8 @@ import android.media.AudioFormat
 import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.media.audiofx.AcousticEchoCanceler
+import android.media.audiofx.NoiseSuppressor
 import android.media.projection.MediaProjection
 import android.os.Build
 import android.os.Process
@@ -18,7 +20,8 @@ class AudioEncoder(
     private val mediaProjection: MediaProjection?,
     private val client: CastClient,
     private val audioMode: String = MODE_MIXED,
-    private val micBoost: Float = 1.25f
+    private val micBoost: Float = 1.25f,
+    private val noiseFilterEnabled: Boolean = true
 ) {
     companion object {
         private const val TAG = "AudioEncoder"
@@ -42,6 +45,12 @@ class AudioEncoder(
 
     private var internalAudioRecord: AudioRecord? = null
     private var micAudioRecord: AudioRecord? = null
+    private var noiseSuppressor: NoiseSuppressor? = null
+    private var echoCanceler: AcousticEchoCanceler? = null
+
+    // 85Hz High-Pass Filter state for mic handling noise & AC rumble cut
+    private var hpPrevX = 0f
+    private var hpPrevY = 0f
 
     @Volatile
     private var isRecording = false
@@ -117,7 +126,8 @@ class AudioEncoder(
                 )
                 if (record.state == AudioRecord.STATE_INITIALIZED) {
                     micAudioRecord = record
-                    Log.d(TAG, "Microphone initialized in MONO mode at 48kHz (hardware buffer: $bufSize bytes)")
+                    attachHardwareAudioEffects(record)
+                    Log.d(TAG, "Microphone initialized in MONO mode at 48kHz (hardware buffer: $bufSize bytes, noiseFilter=$noiseFilterEnabled)")
                     return
                 }
                 record.release()
@@ -140,13 +150,39 @@ class AudioEncoder(
                 )
                 if (record.state == AudioRecord.STATE_INITIALIZED) {
                     micAudioRecord = record
-                    Log.d(TAG, "Microphone initialized with VOICE_COMMUNICATION at 48kHz")
+                    attachHardwareAudioEffects(record)
+                    Log.d(TAG, "Microphone initialized with VOICE_COMMUNICATION at 48kHz (noiseFilter=$noiseFilterEnabled)")
                     return
                 }
                 record.release()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Voice communication mic init failed: ${e.message}")
+        }
+    }
+
+    private fun attachHardwareAudioEffects(record: AudioRecord) {
+        if (!noiseFilterEnabled) return
+        try {
+            if (NoiseSuppressor.isAvailable()) {
+                noiseSuppressor = NoiseSuppressor.create(record.audioSessionId)?.apply {
+                    enabled = true
+                }
+                Log.d(TAG, "Hardware NoiseSuppressor active on session ${record.audioSessionId}")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Hardware NoiseSuppressor error: ${e.message}")
+        }
+
+        try {
+            if (AcousticEchoCanceler.isAvailable()) {
+                echoCanceler = AcousticEchoCanceler.create(record.audioSessionId)?.apply {
+                    enabled = true
+                }
+                Log.d(TAG, "Hardware AcousticEchoCanceler active on session ${record.audioSessionId}")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Hardware AcousticEchoCanceler error: ${e.message}")
         }
     }
 
@@ -220,12 +256,25 @@ class AudioEncoder(
             // Convert 16-bit Mono PCM to 16-bit Stereo PCM (L = R = Mono * boost)
             val boost = micBoost
             val numSamples = bytesReadTotal / 2
+            val useFilter = noiseFilterEnabled
             for (i in 0 until numSamples) {
                 val sampleMono = (rawMonoBuf[i * 2 + 1].toInt() shl 8) or (rawMonoBuf[i * 2].toInt() and 0xFF)
-                val boosted = if (boost != 1.0f) {
-                    (sampleMono * boost).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+
+                // 85Hz High-pass IIR filter (alpha = 0.9890f at 48kHz): removes phone vibrations and AC hum
+                val filteredSample = if (useFilter) {
+                    val x = sampleMono.toFloat()
+                    val y = 0.9890f * (hpPrevY + x - hpPrevX)
+                    hpPrevX = x
+                    hpPrevY = y
+                    y.roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
                 } else {
                     sampleMono
+                }
+
+                val boosted = if (boost != 1.0f) {
+                    (filteredSample * boost).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                } else {
+                    filteredSample
                 }
                 val low = (boosted and 0xFF).toByte()
                 val high = ((boosted shr 8) and 0xFF).toByte()
@@ -342,6 +391,11 @@ class AudioEncoder(
 
         micQueue.clear()
         internalQueue.clear()
+
+        try { noiseSuppressor?.release() } catch (ignored: Exception) {}
+        noiseSuppressor = null
+        try { echoCanceler?.release() } catch (ignored: Exception) {}
+        echoCanceler = null
 
         try { micAudioRecord?.stop() } catch (ignored: Exception) {}
         try { micAudioRecord?.release() } catch (ignored: Exception) {}

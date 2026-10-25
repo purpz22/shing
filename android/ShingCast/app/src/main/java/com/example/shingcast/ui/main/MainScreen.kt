@@ -30,6 +30,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -59,7 +60,8 @@ fun MainCastScreen(
     initialOrientationMode: String = "landscape",
     initialAudioMode: String = "mixed",
     initialMicBoost: Float = 1.25f,
-    onStartCast: (host: String, port: Int, is1080p: Boolean, audioMode: String, micBoost: Float, orientationMode: String) -> Unit,
+    initialNoiseFilter: Boolean = true,
+    onStartCast: (host: String, port: Int, is1080p: Boolean, audioMode: String, micBoost: Float, noiseFilter: Boolean, orientationMode: String) -> Unit,
     onStopCast: () -> Unit
 ) {
     val context = LocalContext.current
@@ -71,6 +73,7 @@ fun MainCastScreen(
     var audioEnabled by remember { mutableStateOf(initialAudioMode != "off") }
     var audioMode by remember { mutableStateOf(if (initialAudioMode == "off") "mixed" else initialAudioMode) }
     var micBoost by remember { mutableStateOf(initialMicBoost) }
+    var noiseFilter by remember { mutableStateOf(initialNoiseFilter) }
     var orientationMode by remember { mutableStateOf(initialOrientationMode) }
     var isDiscovering by remember { mutableStateOf(false) }
     var discoveryStatus by remember { mutableStateOf<String?>(null) }
@@ -403,6 +406,38 @@ fun MainCastScreen(
                                 fontSize = 11.sp,
                                 color = Color(0xFF64748B)
                             )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                                    Text(
+                                        text = "Hardware Noise Suppressor",
+                                        fontSize = 12.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFFF8FAFC)
+                                    )
+                                    Text(
+                                        text = "Filters electric fans, room hum, and screen tap vibrations using phone DSP",
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF64748B)
+                                    )
+                                }
+                                Switch(
+                                    checked = noiseFilter,
+                                    onCheckedChange = { noiseFilter = it },
+                                    enabled = !isStreaming,
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color(0xFFFFFFFF),
+                                        checkedTrackColor = Color(0xFFA855F7),
+                                        uncheckedThumbColor = Color(0xFF94A3B8),
+                                        uncheckedTrackColor = Color(0xFF262338)
+                                    )
+                                )
+                            }
                         }
                     }
                 }
@@ -468,7 +503,7 @@ fun MainCastScreen(
                 } else {
                     val port = portText.toIntOrNull() ?: 3333
                     val effectiveAudioMode = if (audioEnabled) audioMode else "off"
-                    onStartCast(host, port, is1080p, effectiveAudioMode, micBoost, orientationMode)
+                    onStartCast(host, port, is1080p, effectiveAudioMode, micBoost, noiseFilter, orientationMode)
                 }
             },
             modifier = Modifier
