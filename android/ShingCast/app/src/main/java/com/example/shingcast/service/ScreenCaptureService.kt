@@ -102,7 +102,7 @@ class ScreenCaptureService : Service() {
         val legacyEnableAudio = intent.getBooleanExtra(EXTRA_AUDIO, true)
         val audioMode = intent.getStringExtra(EXTRA_AUDIO_MODE) ?: if (legacyEnableAudio) "mixed" else "off"
         val micBoost = intent.getFloatExtra(EXTRA_MIC_BOOST, 1.25f)
-        val noiseFilter = intent.getBooleanExtra(EXTRA_NOISE_FILTER, true)
+        val noiseFilter = intent.getBooleanExtra(EXTRA_NOISE_FILTER, false)
         val mode = intent.getStringExtra(EXTRA_ORIENTATION_MODE) ?: "auto"
 
         if (resultData == null) {
