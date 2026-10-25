@@ -14,6 +14,7 @@ import android.os.Process
 import android.util.Log
 import com.example.shingcast.net.CastClient
 import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
 class AudioEncoder(
@@ -40,7 +41,7 @@ class AudioEncoder(
         const val MONO_CHUNK_SIZE_BYTES = 960
         const val SAMPLES_PER_CHUNK = 480
 
-        private const val MAX_QUEUE_CHUNKS = 4
+        private const val MAX_QUEUE_CHUNKS = 6
     }
 
     private var internalAudioRecord: AudioRecord? = null
@@ -348,11 +349,25 @@ class AudioEncoder(
         val startTimeNs = System.nanoTime()
 
         while (isRecording) {
-            val micChunk = micQueue.poll()
-            val internalChunk = internalQueue.poll()
+            // Block waiting for a chunk from either stream
+            var internalChunk = internalQueue.poll(12, TimeUnit.MILLISECONDS)
+            var micChunk = micQueue.poll(if (internalChunk != null) 3 else 10, TimeUnit.MILLISECONDS)
+
+            if (internalChunk == null && micChunk == null) {
+                continue
+            }
+
+            // If only one stream arrived, allow up to 4ms for the other to arrive so they mix together rather than interleave
+            if (internalChunk != null && micChunk == null) {
+                micChunk = micQueue.poll(4, TimeUnit.MILLISECONDS)
+            } else if (micChunk != null && internalChunk == null) {
+                internalChunk = internalQueue.poll(4, TimeUnit.MILLISECONDS)
+            }
+
+            val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
 
             if (micChunk != null && internalChunk != null) {
-                // Both mic voice and game sound available: mix with soft saturation
+                // Both mic voice and game sound available: mix with soft saturation into a single synchronized packet
                 for (i in 0 until SAMPLES_PER_CHUNK * 2) {
                     val idx = i * 2
                     val gameSample = (internalChunk[idx + 1].toInt() shl 8) or (internalChunk[idx].toInt() and 0xFF)
@@ -362,18 +377,13 @@ class AudioEncoder(
                     mixedBuf[idx] = (sum and 0xFF).toByte()
                     mixedBuf[idx + 1] = ((sum shr 8) and 0xFF).toByte()
                 }
-                val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
                 client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, mixedBuf, 0, CHUNK_SIZE_BYTES)
             } else if (micChunk != null) {
-                // Mic voice only (e.g. game is quiet or loading): transmit mic immediately!
-                val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
+                // Mic voice only
                 client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, micChunk, 0, CHUNK_SIZE_BYTES)
             } else if (internalChunk != null) {
                 // Game sound only
-                val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
                 client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, internalChunk, 0, CHUNK_SIZE_BYTES)
-            } else {
-                try { Thread.sleep(5) } catch (ignored: Exception) {}
             }
         }
     }

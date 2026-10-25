@@ -3708,8 +3708,8 @@ function updatePhoneStageOrientation(width, height) {
 let phoneScheduledAudioSources = [];
 let latestPhoneCastAudioRms = 0;
 let phoneCastAudioLastPacketTime = 0;
-const STUDIO_AUDIO_LEAD_TIME = 0.020;
-const STUDIO_MAX_AUDIO_LATENCY = 0.060;
+const STUDIO_AUDIO_LEAD_TIME = 0.045;
+const STUDIO_MAX_AUDIO_LATENCY = 0.350;
 
 function playStudioAudio(pcmData) {
   try {
@@ -3755,17 +3755,10 @@ function playStudioAudio(pcmData) {
 
     const currentTime = phoneAudioCtx.currentTime;
 
-    // Latency Drift Self-Healing: clamp buffer lead time to prevent delay accumulation
-    if (phoneNextAudioTime < currentTime || phoneNextAudioTime > currentTime + STUDIO_MAX_AUDIO_LATENCY) {
-      if (phoneScheduledAudioSources.length > 0) {
-        for (let i = 0; i < phoneScheduledAudioSources.length; i++) {
-          try {
-            phoneScheduledAudioSources[i].stop();
-            phoneScheduledAudioSources[i].disconnect();
-          } catch (e) {}
-        }
-        phoneScheduledAudioSources = [];
-      }
+    // Latency Drift Self-Healing: clamp buffer lead time to prevent delay accumulation without killing active audio
+    if (phoneNextAudioTime < currentTime) {
+      phoneNextAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
+    } else if (phoneNextAudioTime > currentTime + STUDIO_MAX_AUDIO_LATENCY) {
       phoneNextAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
     }
 
@@ -3800,21 +3793,21 @@ function playStudioAudio(pcmData) {
     }
 
     if (phoneNoiseFilterEnabled && phoneGateGainNode) {
-      // Hysteresis Noise Gate with 300ms Hold Time: completely eliminates choppy stuttering and word clipping!
+      // Hysteresis Noise Gate with 350ms Hold Time and Consonant Preservation: eliminates choppy stuttering and word clipping
       const openThresh = phoneNoiseGateThreshold;
       const closeThresh = phoneNoiseGateThreshold * 0.55;
-      const isVoiceFormant = !phoneVoiceOnlyVadEnabled || (latestPhoneCastAudioZcr <= 130);
+      const isVoiceOrAudio = !phoneVoiceOnlyVadEnabled || (latestPhoneCastAudioZcr <= 220) || (latestPhoneCastAudioRms >= 0.025);
 
-      if (latestPhoneCastAudioRms >= openThresh && isVoiceFormant) {
-        phoneGateHoldUntil = currentTime + 0.300; // Hold open for 300ms across syllables
+      if (latestPhoneCastAudioRms >= openThresh && isVoiceOrAudio) {
+        phoneGateHoldUntil = currentTime + 0.350; // Hold open for 350ms across words and pauses
       }
 
-      const isGateOpen = (currentTime < phoneGateHoldUntil) || (latestPhoneCastAudioRms >= closeThresh && isVoiceFormant);
+      const isGateOpen = (currentTime < phoneGateHoldUntil) || (latestPhoneCastAudioRms >= closeThresh && isVoiceOrAudio);
 
       if (isGateOpen) {
         phoneGateEnvelope = Math.min(1.0, phoneGateEnvelope + 0.35);
       } else {
-        phoneGateEnvelope = Math.max(0.0, phoneGateEnvelope - 0.06);
+        phoneGateEnvelope = Math.max(0.0, phoneGateEnvelope - 0.04);
       }
       phoneGateGainNode.gain.setValueAtTime(phoneGateEnvelope, currentTime);
     } else if (phoneGateGainNode) {

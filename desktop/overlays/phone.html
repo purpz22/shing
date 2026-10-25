@@ -899,8 +899,8 @@
       let overlayNoiseFilterEnabled = true;
       let overlayNoiseGateThreshold = 0.016;
       let overlayGateHoldUntil = 0;
-      const AUDIO_LEAD_TIME = 0.020; // 20ms lead time for smooth playback
-      const MAX_AUDIO_LATENCY = 0.060; // 60ms maximum latency allowance
+      const AUDIO_LEAD_TIME = 0.045; // 45ms lead time for smooth playback without jitter underruns
+      const MAX_AUDIO_LATENCY = 0.350; // 350ms maximum latency allowance before gently catching up
 
       function playAudioChunk(pcmData) {
         try {
@@ -942,18 +942,10 @@
 
           const currentTime = audioCtx.currentTime;
 
-          // Latency Drift Self-Healing:
-          // If nextAudioTime fell behind (underrun) OR has drifted more than 60ms ahead (lag accumulation)
-          if (nextAudioTime < currentTime || nextAudioTime > currentTime + MAX_AUDIO_LATENCY) {
-            if (scheduledAudioSources.length > 0) {
-              for (let i = 0; i < scheduledAudioSources.length; i++) {
-                try {
-                  scheduledAudioSources[i].stop();
-                  scheduledAudioSources[i].disconnect();
-                } catch (e) {}
-              }
-              scheduledAudioSources = [];
-            }
+          // Latency Drift Self-Healing: clamp buffer lead time to prevent delay accumulation without killing active audio
+          if (nextAudioTime < currentTime) {
+            nextAudioTime = currentTime + AUDIO_LEAD_TIME;
+          } else if (nextAudioTime > currentTime + MAX_AUDIO_LATENCY) {
             nextAudioTime = currentTime + AUDIO_LEAD_TIME;
           }
 
@@ -981,18 +973,18 @@
           if (overlayNoiseFilterEnabled && overlayGateGainNode) {
             const openThresh = overlayNoiseGateThreshold;
             const closeThresh = overlayNoiseGateThreshold * 0.55;
-            const isVoiceFormant = zeroCrossings <= 130;
+            const isVoiceOrAudio = (zeroCrossings <= 220) || (chunkRms >= 0.025);
 
-            if (chunkRms >= openThresh && isVoiceFormant) {
-              overlayGateHoldUntil = currentTime + 0.300;
+            if (chunkRms >= openThresh && isVoiceOrAudio) {
+              overlayGateHoldUntil = currentTime + 0.350;
             }
 
-            const isGateOpen = (currentTime < overlayGateHoldUntil) || (chunkRms >= closeThresh && isVoiceFormant);
+            const isGateOpen = (currentTime < overlayGateHoldUntil) || (chunkRms >= closeThresh && isVoiceOrAudio);
 
             if (isGateOpen) {
               overlayGateEnvelope = Math.min(1.0, overlayGateEnvelope + 0.35);
             } else {
-              overlayGateEnvelope = Math.max(0.0, overlayGateEnvelope - 0.06);
+              overlayGateEnvelope = Math.max(0.0, overlayGateEnvelope - 0.04);
             }
             overlayGateGainNode.gain.setValueAtTime(overlayGateEnvelope, currentTime);
           }
