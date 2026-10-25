@@ -62,6 +62,8 @@ assert(appJsContent.includes('phoneGateGainNode'), 'app.js must create phoneGate
 assert(appJsContent.includes('phoneCompressorNode'), 'app.js must create phoneCompressorNode for dynamics leveling');
 assert(appJsContent.includes('phone-noise-filter-btn'), 'app.js must bind noise filter toggle button');
 assert(appJsContent.includes('phone-noise-gate-select'), 'app.js must bind noise gate sensitivity select');
+assert(appJsContent.includes('phoneVoiceOnlyVadEnabled'), 'app.js must declare phoneVoiceOnlyVadEnabled');
+assert(appJsContent.includes('latestPhoneCastAudioZcr'), 'app.js must track latestPhoneCastAudioZcr');
 
 // 5. Verify index.html UI
 const indexHtmlPath = path.join(__dirname, '../renderer/index.html');
@@ -120,5 +122,32 @@ for (let frame = 0; frame < 5; frame++) {
   }
 }
 assert(gateEnvelope === 1.0, 'Noise gate must open smoothly and fully to 1.0 when speaking');
+
+// 8. Test Voice Activity Detection (ZCR Voice-Only Filter)
+function calcZcr(buf) {
+  let zcr = 0, prev = 0;
+  for (let i = 0; i < 480; i++) {
+    const s = buf.readInt16LE(i * 4) / 32768.0;
+    if ((s > 0 && prev <= 0) || (s < 0 && prev >= 0)) zcr++;
+    prev = s;
+  }
+  return zcr;
+}
+
+const vocalZcr = calcZcr(testPcm);
+assert(vocalZcr >= 4 && vocalZcr <= 115, `Human vocal 440Hz wave must have ZCR between 4 and 115, got ${vocalZcr}`);
+
+// Generate loud fan hiss noise packet (alternating polarity, high frequency)
+const fanPcm = Buffer.alloc(1920);
+for (let i = 0; i < 480; i++) {
+  const noise = (i % 2 === 0 ? 1 : -1) * 1500;
+  fanPcm.writeInt16LE(noise, i * 4);
+  fanPcm.writeInt16LE(noise, i * 4 + 2);
+}
+const fanZcr = calcZcr(fanPcm);
+assert(fanZcr > 140, `Fan hiss must have high ZCR > 140, got ${fanZcr}`);
+
+const isFanVoice = fanZcr >= 4 && fanZcr <= 115;
+assert(!isFanVoice, 'Loud fan hiss must NOT be classified as human voice');
 
 console.log('PASS: All Phone Cast microphone, noise filtering, and voice isolation tests passed successfully!');

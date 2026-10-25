@@ -3108,7 +3108,8 @@ function runAudioAnalysisLoop() {
     const cfg = ensurePngTuberSettings();
     if (cfg.inputDeviceId === 'phone-cast') {
       if (Date.now() - phoneCastAudioLastPacketTime < 350 && !pngtuberMicMuted) {
-        rawVol = Math.min(100, latestPhoneCastAudioRms * 160);
+        const effectiveRms = phoneNoiseFilterEnabled ? (latestPhoneCastAudioRms * phoneGateEnvelope) : latestPhoneCastAudioRms;
+        rawVol = Math.min(100, effectiveRms * 160);
       } else {
         rawVol = 0;
       }
@@ -3575,6 +3576,8 @@ let phoneHighpassNode = null;
 let phoneGateGainNode = null;
 let phoneCompressorNode = null;
 let phoneGateEnvelope = 1.0;
+let phoneVoiceOnlyVadEnabled = true;
+let latestPhoneCastAudioZcr = 0;
 
 function setPhoneCastUiConnected(name, width, height, fps) {
   if (typeof document === 'undefined') return;
@@ -3731,14 +3734,22 @@ function playStudioAudio(pcmData) {
     const right = audioBuffer.getChannelData(1);
 
     let sumSq = 0;
+    let zeroCrossings = 0;
+    let prevMono = 0;
     for (let i = 0; i < numSamples; i++) {
       const l = view.getInt16(i * 4, true) / 32768.0;
       const r = view.getInt16(i * 4 + 2, true) / 32768.0;
       left[i] = l;
       right[i] = r;
+      const mono = (l + r) * 0.5;
+      if ((mono > 0 && prevMono <= 0) || (mono < 0 && prevMono >= 0)) {
+        zeroCrossings++;
+      }
+      prevMono = mono;
       sumSq += (l * l + r * r) * 0.5;
     }
     latestPhoneCastAudioRms = Math.sqrt(sumSq / numSamples);
+    latestPhoneCastAudioZcr = zeroCrossings;
     phoneCastAudioLastPacketTime = Date.now();
 
     const currentTime = phoneAudioCtx.currentTime;
@@ -3788,7 +3799,9 @@ function playStudioAudio(pcmData) {
     }
 
     if (phoneNoiseFilterEnabled && phoneGateGainNode) {
-      const isVoiceActive = latestPhoneCastAudioRms >= phoneNoiseGateThreshold;
+      // Acoustic Voice Activity Detection: human speech zero-crossing rate is 4-110 per 10ms; fan hiss > 140; sub-bass < 3
+      const isVoiceFormant = !phoneVoiceOnlyVadEnabled || (latestPhoneCastAudioZcr >= 4 && latestPhoneCastAudioZcr <= 115);
+      const isVoiceActive = (latestPhoneCastAudioRms >= phoneNoiseGateThreshold) && isVoiceFormant;
       if (isVoiceActive) {
         phoneGateEnvelope = Math.min(1.0, phoneGateEnvelope + 0.35);
       } else {
