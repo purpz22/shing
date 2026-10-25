@@ -1,6 +1,24 @@
 {
-    "latest":  "1.7.1",
+    "latest":  "1.7.2",
     "releases":  [
+                     {
+                         "version":  "1.7.2",
+                         "releaseName":  "Shing Live v1.7.2 - Dual-Mic Beamforming, Phone Voice Gate \u0026 OBS Filter",
+                         "releaseDate":  "2026-10-25",
+                         "type":  "feature",
+                         "summary":  "Switched primary mobile capture to VOICE_COMMUNICATION with dual-mic hardware beamforming, integrated phone-side soft-knee voice gate silencing background noise before WiFi transmission, and added 85Hz highpass \u0026 noise gate DSP to phone.html for OBS.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.7.2.zip",
+                         "highlights":  [
+                                            "Dual-Mic Hardware Beamforming: Uses phone top microphone to actively cancel electric fan and room noise at the driver level",
+                                            "Phone-Side Voice Gate: Silences non-vocal background sounds to 0 at the phone level so no background noise is sent over WiFi",
+                                            "OBS Overlay Filtering: Added 85Hz High-Pass and Noise Gate DSP to phone.html browser source",
+                                            "85Hz Touch Tap Killer: Eliminates screen-tap thuds while playing Mobile Legends or COD Mobile",
+                                            "Updated Mobile APK: ShingCast APK v1.7.2 with dual-mic beamforming active"
+                                        ],
+                         "notes":  "Essential update for complete vocal isolation from fans, room acoustics, and screen tapping.",
+                         "packageSize":  "4.77 MB",
+                         "checksum":  "0d901b821972d88779292200648a2773d072b14d47763a91a43e6e4fb461a8ce"
+                     },
                      {
                          "version":  "1.7.1",
                          "releaseName":  "Shing Live v1.7.1 - AI Hardware Noise Suppressor, Soft-Knee Gate \u0026 Voice Isolation",
