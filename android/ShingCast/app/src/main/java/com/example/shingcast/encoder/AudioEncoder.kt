@@ -163,19 +163,9 @@ class AudioEncoder(
     }
 
     private fun attachHardwareAudioEffects(record: AudioRecord) {
-        if (!noiseFilterEnabled) return
-        try {
-            if (NoiseSuppressor.isAvailable()) {
-                noiseSuppressor = NoiseSuppressor.create(record.audioSessionId)?.apply {
-                    enabled = true
-                }
-                Log.d(TAG, "Hardware NoiseSuppressor active on session ${record.audioSessionId}")
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Hardware NoiseSuppressor error: ${e.message}")
-        }
-
-// AcousticEchoCanceler intentionally omitted to prevent voice ducking & robotic clipping
+        // Hardware NoiseSuppressor & AcousticEchoCanceler intentionally disabled to prevent
+        // robotic clipping, voice ducking, and double-filtering distortion.
+        // PC desktop app performs deep-learning AI voice isolation (RNNoise) on clean 48kHz PCM.
     }
 
     @SuppressLint("MissingPermission")

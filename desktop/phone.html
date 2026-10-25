@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shing Cast - Phone Mirror Overlay</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: transparent;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+      color: #fff;
+    }
+
+    #phone-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: width 0.3s ease, height 0.3s ease;
+    }
+
+    /* Orientation Modes */
+    #phone-stage.orientation-portrait {
+      height: min(92vh, 880px);
+      aspect-ratio: 9 / 16;
+      width: auto;
+      max-width: 92vw;
+    }
+
+    #phone-stage.orientation-landscape {
+      width: min(94vw, 1280px);
+      aspect-ratio: 16 / 9;
+      height: auto;
+      max-height: 94vh;
+    }
+
+    /* Fullscreen Borderless Mode */
+    #phone-stage.phone-frame-none {
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      aspect-ratio: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+
+    #phone-stage.phone-frame-none .phone-container {
+      width: 100%;
+      height: 100%;
+      border-radius: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      background: #000;
+    }
+
+    /* Frame Styles */
+    .phone-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .phone-frame-rounded .phone-container {
+      border-radius: 28px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      background: #000;
+    }
+
+    .phone-frame-bezel .phone-container {
+      border-radius: 42px;
+      border: 10px solid #201a30;
+      box-shadow: 0 16px 48px rgba(123, 63, 228, 0.25), 0 0 0 2px rgba(192, 132, 252, 0.4);
+      background: #0d0a14;
+    }
+
+    /* Screen Canvas & Object Fit */
+    #cast-canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      background: #000;
+    }
+
+    #phone-stage.fit-cover #cast-canvas {
+      object-fit: cover !important;
+    }
+
+    #phone-stage.fit-fill #cast-canvas {
+      object-fit: fill !important;
+    }
+
+    /* Bezel Camera Notch */
+    #phone-bezel-notch {
+      display: none;
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 18px;
+      background: #120e1e;
+      border-radius: 12px;
+      z-index: 10;
+    }
+
+    .phone-frame-bezel.orientation-portrait #phone-bezel-notch {
+      display: block;
+    }
+
+    .phone-frame-bezel.orientation-landscape #phone-bezel-notch {
+      display: block;
+      top: 50%;
+      left: 8px;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 80px;
+    }
+
+    /* Waiting State Card */
+    #phone-waiting-card {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(145deg, rgba(26, 20, 42, 0.94), rgba(15, 11, 24, 0.96));
+      backdrop-filter: blur(8px);
+      border: 1.5px dashed rgba(168, 85, 247, 0.4);
+      border-radius: inherit;
+      padding: 24px;
+      text-align: center;
+      z-index: 5;
+      transition: opacity 0.3s ease;
+    }
+
+    #phone-waiting-card.hidden {
+      opacity: 0;
+      pointer-events: none;
+      display: none !important;
+    }
+
+    .waiting-icon-wrap {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(123, 63, 228, 0.2);
+      border: 1.5px solid rgba(192, 132, 252, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      animation: pulseGlow 2.5s infinite ease-in-out;
+    }
+
+    .waiting-icon-svg {
+      width: 32px;
+      height: 32px;
+      fill: #e9d5ff;
+    }
+
+    .waiting-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #f3e8ff;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .waiting-sub {
+      font-size: 13px;
+      font-weight: 600;
+      color: #c084fc;
+      line-height: 1.4;
+      max-width: 240px;
+    }
+
+    .waiting-pulse-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #eab308;
+      animation: blinkDot 1.4s infinite;
+    }
+
+    .pulse-dot.active {
+      background: #10b981;
+    }
+
+    /* Floating Quick Controls Bar */
+    .quick-controls-bar {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(18, 14, 28, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      border-radius: 999px;
+      padding: 5px 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      opacity: 0.15;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      user-select: none;
+    }
+
+    .quick-controls-bar:hover,
+    .quick-controls-bar:focus-within,
+    .quick-controls-bar.active-touch {
+      opacity: 1;
+      transform: translateX(-50%) translateY(2px);
+    }
+
+    .quick-controls-bar.hidden {
+      display: none !important;
+    }
+
+    .quick-badge {
+      font-size: 11px;
+      font-weight: 800;
+      color: #c084fc;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding-right: 6px;
+      border-right: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .quick-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #f3e8ff;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .quick-btn:hover {
+      background: rgba(168, 85, 247, 0.35);
+      border-color: rgba(192, 132, 252, 0.6);
+      color: #fff;
+    }
+
+    .quick-btn.active {
+      background: #7b3fe4;
+      border-color: #a855f7;
+      color: #fff;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 16px rgba(123, 63, 228, 0.3); }
+      50% { transform: scale(1.05); box-shadow: 0 0 28px rgba(168, 85, 247, 0.6); }
+    }
+
+    @keyframes blinkDot {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating Quick Controls Bar -->
+  <div id="phone-quick-controls" class="quick-controls-bar" aria-label="Phone Cast Controls">
+    <span class="quick-badge">Shing Cast</span>
+    <button type="button" id="btn-toggle-frame" class="quick-btn" title="Toggle Frame Style">Borderless</button>
+    <button type="button" id="btn-toggle-orientation" class="quick-btn" title="Toggle Orientation">Landscape</button>
+    <button type="button" id="btn-toggle-fit" class="quick-btn" title="Toggle Aspect Fit">Fit: Contain</button>
+    <button type="button" id="btn-toggle-audio" class="quick-btn" title="Unmute/Mute Audio">Unmute Audio</button>
+    <button type="button" id="btn-toggle-fullscreen" class="quick-btn" title="Toggle Fullscreen">Fullscreen</button>
+  </div>
+
+  <div id="phone-stage" class="phone-frame-none orientation-landscape">
+    <div class="phone-container" id="phone-bezel">
+      <div id="phone-bezel-notch"></div>
+      <canvas id="cast-canvas" width="1920" height="1080"></canvas>
+
+      <div id="phone-waiting-card">
+        <div class="waiting-icon-wrap">
+          <svg class="waiting-icon-svg" viewBox="0 0 24 24">
+            <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
+          </svg>
+        </div>
+        <div class="waiting-title">Waiting for Shing Cast</div>
+        <div class="waiting-sub">Open Shing Cast on your phone and tap Start Streaming</div>
+        <div class="waiting-pulse-badge">
+          <span class="pulse-dot" id="status-dot"></span>
+          <span id="cast-status-text">Ready to Connect</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/rnnoise/shing-rnnoise.js"></script>
+  <script>
+    (function() {
+      'use strict';
+
+      const stage = document.getElementById('phone-stage');
+      const canvas = document.getElementById('cast-canvas');
+      const ctx = canvas.getContext('2d');
+      const waitingCard = document.getElementById('phone-waiting-card');
+      const statusText = document.getElementById('cast-status-text');
+      const statusDot = document.getElementById('status-dot');
+      const quickControls = document.getElementById('phone-quick-controls');
+
+      const btnToggleFrame = document.getElementById('btn-toggle-frame');
+      const btnToggleOrientation = document.getElementById('btn-toggle-orientation');
+      const btnToggleFit = document.getElementById('btn-toggle-fit');
+      const btnToggleAudio = document.getElementById('btn-toggle-audio');
+      const btnToggleFullscreen = document.getElementById('btn-toggle-fullscreen');
+
+      let currentFrameStyle = 'none';
+      let currentOrientation = 'landscape';
+      let currentFitMode = 'contain';
+      let isAudioMuted = false;
+
+      let decoder = null;
+      let isDecoderConfigured = false;
+      let decoderMode = 'annexb';
+      let cachedConfig = null;
+      let cachedSpsInfo = null;
+      let ws = null;
+      let isStreaming = false;
+      let audioCtx = null;
+      let nextAudioTime = 0;
+
+      // Parse URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryFrame = urlParams.get('frame');
+      const queryOrientation = urlParams.get('orientation');
+      const queryFit = urlParams.get('fit');
+      const queryControls = urlParams.get('controls');
+      const queryBg = urlParams.get('bg');
+      const queryMuted = urlParams.get('muted');
+      if (queryMuted === '1' || queryMuted === 'true') {
+        isAudioMuted = true;
+      }
+
+      function extractSpsInfo(nalData) {
+        if (!nalData || nalData.length < 8) return null;
+        let sps = null;
+        let pps = null;
+        let i = 0;
+        const nals = [];
+        while (i < nalData.length - 2) {
+          let startLen = 0;
+          if (nalData[i] === 0 && nalData[i + 1] === 0) {
+            if (nalData[i + 2] === 1) startLen = 3;
+            else if (nalData[i + 2] === 0 && nalData[i + 3] === 1) startLen = 4;
+          }
+          if (startLen > 0) {
+            nals.push({ startPos: i, nalStart: i + startLen });
+            i += startLen;
+          } else {
+            i++;
+          }
+        }
+        for (let idx = 0; idx < nals.length; idx++) {
+          const start = nals[idx].nalStart;
+          const end = (idx + 1 < nals.length) ? nals[idx + 1].startPos : nalData.length;
+          const nalUnit = nalData.subarray(start, end);
+          const type = nalUnit[0] & 0x1F;
+          if (type === 7 && !sps) sps = nalUnit;
+          if (type === 8 && !pps) pps = nalUnit;
+        }
+
+        let codec = 'avc1.42002A';
+        if (sps && sps.length >= 4) {
+          const p = sps[1].toString(16).padStart(2, '0');
+          const c = sps[2].toString(16).padStart(2, '0');
+          const l = sps[3].toString(16).padStart(2, '0');
+          codec = `avc1.${p}${c}${l}`;
+        }
+
+        return { sps, pps, codec };
+      }
+
+      function buildAvccRecord(sps, pps) {
+        if (!sps || !pps) return null;
+        const buffer = new Uint8Array(11 + sps.length + pps.length);
+        buffer[0] = 1;
+        buffer[1] = sps[1];
+        buffer[2] = sps[2];
+        buffer[3] = sps[3];
+        buffer[4] = 0xFF;
+        buffer[5] = 0xE1;
+        buffer[6] = (sps.length >> 8) & 0xFF;
+        buffer[7] = sps.length & 0xFF;
+        buffer.set(sps, 8);
+        const ppsOffset = 8 + sps.length;
+        buffer[ppsOffset] = 1;
+        buffer[ppsOffset + 1] = (pps.length >> 8) & 0xFF;
+        buffer[ppsOffset + 2] = pps.length & 0xFF;
+        buffer.set(pps, ppsOffset + 3);
+        return buffer;
+      }
+
+      function annexbToAvccChunk(data) {
+        const nals = [];
+        let i = 0;
+        while (i < data.length - 2) {
+          let startLen = 0;
+          if (data[i] === 0 && data[i + 1] === 0) {
+            if (data[i + 2] === 1) startLen = 3;
+            else if (data[i + 2] === 0 && data[i + 3] === 1) startLen = 4;
+          }
+          if (startLen > 0) {
+            nals.push({ startPos: i, nalStart: i + startLen });
+            i += startLen;
+          } else {
+            i++;
+          }
+        }
+        if (nals.length === 0) return data;
+        let totalLen = 0;
+        const slices = [];
+        for (let idx = 0; idx < nals.length; idx++) {
+          const start = nals[idx].nalStart;
+          const end = (idx + 1 < nals.length) ? nals[idx + 1].startPos : data.length;
+          const len = end - start;
+          if (len > 0) {
+            slices.push({ start, end, len });
+            totalLen += 4 + len;
+          }
+        }
+        const avcc = new Uint8Array(totalLen);
+        let offset = 0;
+        for (const slice of slices) {
+          avcc[offset] = (slice.len >> 24) & 0xFF;
+          avcc[offset + 1] = (slice.len >> 16) & 0xFF;
+          avcc[offset + 2] = (slice.len >> 8) & 0xFF;
+          avcc[offset + 3] = slice.len & 0xFF;
+          avcc.set(data.subarray(slice.start, slice.end), offset + 4);
+          offset += 4 + slice.len;
+        }
+        return avcc;
+      }
+
+      function initVideoDecoder() {
+        if (typeof VideoDecoder === 'undefined') {
+          console.warn('WebCodecs VideoDecoder not supported in this browser source.');
+          statusText.textContent = 'Hardware Decoder Unsupported';
+          return;
+        }
+
+        try {
+          if (decoder && decoder.state !== 'closed') {
+            try { decoder.close(); } catch (e) {}
+          }
+
+          decoder = new VideoDecoder({
+            output: (videoFrame) => {
+              if (canvas.width !== videoFrame.displayWidth || canvas.height !== videoFrame.displayHeight) {
+                canvas.width = videoFrame.displayWidth;
+                canvas.height = videoFrame.displayHeight;
+                updateOrientation(canvas.width, canvas.height);
+              }
+
+              ctx.drawImage(videoFrame, 0, 0, canvas.width, canvas.height);
+              videoFrame.close();
+
+              if (!isStreaming) {
+                isStreaming = true;
+              }
+              if (waitingCard && !waitingCard.classList.contains('hidden')) {
+                waitingCard.classList.add('hidden');
+                waitingCard.style.display = 'none';
+              }
+              if (statusDot) statusDot.classList.add('active');
+              if (statusText) statusText.textContent = 'Live Mirroring';
+            },
+            error: (err) => {
+              console.warn(`VideoDecoder decode error in mode ${decoderMode}:`, err);
+              if (decoderMode === 'annexb' && cachedSpsInfo && cachedSpsInfo.sps && cachedSpsInfo.pps) {
+                decoderMode = 'avcc';
+                isDecoderConfigured = false;
+                initVideoDecoder();
+                const avccRecord = buildAvccRecord(cachedSpsInfo.sps, cachedSpsInfo.pps);
+                if (avccRecord && decoder) {
+                  try {
+                    decoder.configure({
+                      codec: cachedSpsInfo.codec || 'avc1.42002A',
+                      description: avccRecord,
+                      optimizeForLatency: true
+                    });
+                    isDecoderConfigured = true;
+                  } catch (e) {}
+                }
+                return;
+              }
+              if (decoder && decoder.state === 'closed') {
+                isDecoderConfigured = false;
+                initVideoDecoder();
+              }
+            }
+          });
+          isDecoderConfigured = false;
+        } catch (e) {
+          console.error('Failed to construct VideoDecoder:', e);
+        }
+      }
+
+      function setupDecoder(spsInfo) {
+        if (!decoder || decoder.state === 'closed') {
+          initVideoDecoder();
+        }
+        if (!decoder) return;
+
+        const codec = (spsInfo && spsInfo.codec) || 'avc1.42002A';
+
+        // 1. Try native Annex B mode (Chromium 94+)
+        try {
+          decoder.configure({
+            codec: codec,
+            avc: { format: 'annexb' },
+            optimizeForLatency: true
+          });
+          decoderMode = 'annexb';
+          isDecoderConfigured = true;
+          return;
+        } catch (e) {
+          console.warn('Annex B configure failed, trying AVCC fallback:', e);
+        }
+
+        // 2. Try AVCC mode with valid AVCDecoderConfigurationRecord
+        if (spsInfo && spsInfo.sps && spsInfo.pps) {
+          const avccRecord = buildAvccRecord(spsInfo.sps, spsInfo.pps);
+          if (avccRecord) {
+            try {
+              decoder.configure({
+                codec: codec,
+                description: avccRecord,
+                optimizeForLatency: true
+              });
+              decoderMode = 'avcc';
+              isDecoderConfigured = true;
+              return;
+            } catch (e2) {
+              console.warn('AVCC configure failed:', e2);
+            }
+          }
+        }
+
+        // 3. Baseline fallback
+        try {
+          decoder.configure({
+            codec: 'avc1.42002A',
+            optimizeForLatency: true
+          });
+          decoderMode = 'annexb';
+          isDecoderConfigured = true;
+        } catch (e3) {
+          console.warn('Baseline fallback configure failed:', e3);
+        }
+      }
+
+      function applyOrientation(orient) {
+        currentOrientation = orient;
+        stage.classList.remove('orientation-portrait', 'orientation-landscape');
+        stage.classList.add(`orientation-${orient}`);
+        if (btnToggleOrientation) {
+          btnToggleOrientation.textContent = orient === 'landscape' ? 'Landscape' : 'Portrait';
+        }
+      }
+
+      function updateOrientation(width, height) {
+        if (stage.dataset.lockOrientation === 'true') return;
+        if (width > height) {
+          applyOrientation('landscape');
+        } else {
+          applyOrientation('portrait');
+        }
+      }
+
+      function applyFrameStyle(style) {
+        currentFrameStyle = style;
+        stage.classList.remove('phone-frame-none', 'phone-frame-rounded', 'phone-frame-bezel');
+        if (style === 'none') {
+          stage.classList.add('phone-frame-none');
+          if (btnToggleFrame) btnToggleFrame.textContent = 'Borderless';
+        } else if (style === 'bezel') {
+          stage.classList.add('phone-frame-bezel');
+          if (btnToggleFrame) btnToggleFrame.textContent = 'Phone Bezel';
+        } else {
+          stage.classList.add('phone-frame-rounded');
+          if (btnToggleFrame) btnToggleFrame.textContent = 'Rounded Frame';
+        }
+      }
+
+      function applyFitMode(fit) {
+        currentFitMode = fit;
+        stage.classList.remove('fit-cover', 'fit-fill');
+        if (fit === 'cover') {
+          stage.classList.add('fit-cover');
+          if (btnToggleFit) btnToggleFit.textContent = 'Fit: Cover';
+        } else if (fit === 'fill') {
+          stage.classList.add('fit-fill');
+          if (btnToggleFit) btnToggleFit.textContent = 'Fit: Fill';
+        } else {
+          if (btnToggleFit) btnToggleFit.textContent = 'Fit: Contain';
+        }
+      }
+
+      // Quick Controls Interactivity
+      if (btnToggleFrame) {
+        btnToggleFrame.addEventListener('click', () => {
+          if (currentFrameStyle === 'none') applyFrameStyle('rounded');
+          else if (currentFrameStyle === 'rounded') applyFrameStyle('bezel');
+          else applyFrameStyle('none');
+        });
+      }
+
+      if (btnToggleOrientation) {
+        btnToggleOrientation.addEventListener('click', () => {
+          stage.dataset.lockOrientation = 'true';
+          applyOrientation(currentOrientation === 'landscape' ? 'portrait' : 'landscape');
+        });
+      }
+
+      if (btnToggleFit) {
+        btnToggleFit.addEventListener('click', () => {
+          if (currentFitMode === 'contain') applyFitMode('cover');
+          else if (currentFitMode === 'cover') applyFitMode('fill');
+          else applyFitMode('contain');
+        });
+      }
+
+      if (btnToggleAudio) {
+        btnToggleAudio.textContent = isAudioMuted ? 'Muted' : 'Mute Audio';
+        btnToggleAudio.addEventListener('click', () => {
+          isAudioMuted = !isAudioMuted;
+          btnToggleAudio.textContent = isAudioMuted ? 'Muted' : 'Mute Audio';
+          if (isAudioMuted) {
+            if (scheduledAudioSources.length > 0) {
+              for (let i = 0; i < scheduledAudioSources.length; i++) {
+                try {
+                  scheduledAudioSources[i].stop();
+                  scheduledAudioSources[i].disconnect();
+                } catch (e) {}
+              }
+              scheduledAudioSources = [];
+            }
+          } else if (audioCtx) {
+            if (audioCtx.state === 'suspended') {
+              audioCtx.resume().catch(() => {});
+            }
+            nextAudioTime = audioCtx.currentTime;
+          }
+        });
+      }
+
+      if (btnToggleFullscreen) {
+        btnToggleFullscreen.addEventListener('click', () => {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+            btnToggleFullscreen.textContent = 'Exit Fullscreen';
+          } else {
+            document.exitFullscreen().catch(() => {});
+            btnToggleFullscreen.textContent = 'Fullscreen';
+          }
+        });
+      }
+
+      // Mobile Touch Toolbar Persistence
+      if (quickControls) {
+        let touchTimeout = null;
+        window.addEventListener('touchstart', () => {
+          quickControls.classList.add('active-touch');
+          clearTimeout(touchTimeout);
+          touchTimeout = setTimeout(() => {
+            quickControls.classList.remove('active-touch');
+          }, 4000);
+        }, { passive: true });
+      }
+
+      // Apply Initial Parameters
+      applyFrameStyle(queryFrame || 'none');
+      if (queryOrientation && queryOrientation !== 'auto') {
+        stage.dataset.lockOrientation = 'true';
+        applyOrientation(queryOrientation);
+      } else {
+        applyOrientation('landscape');
+      }
+      applyFitMode(queryFit || 'contain');
+
+      if (queryBg) {
+        document.body.style.background = queryBg;
+      }
+
+      if (queryControls === '0' || queryControls === 'false' || urlParams.has('nocontrols')) {
+        if (quickControls) quickControls.classList.add('hidden');
+      }
+
+      function connectWebSocket() {
+        const host = window.location.host || 'localhost:3333';
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${host}/ws/cast`;
+
+        ws = new WebSocket(wsUrl);
+        ws.binaryType = 'arraybuffer';
+
+        ws.onopen = () => {
+          ws.send(JSON.stringify({ type: 'cast:register', role: 'receiver' }));
+          statusText.textContent = 'Waiting for Phone Stream';
+        };
+
+        ws.onmessage = (event) => {
+          if (event.data instanceof ArrayBuffer) {
+            handleBinaryPacket(event.data);
+            return;
+          } else if (typeof Blob !== 'undefined' && event.data instanceof Blob) {
+            event.data.arrayBuffer().then(handleBinaryPacket).catch(() => {});
+            return;
+          }
+
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'cast:state') {
+              if (data.active) {
+                if (data.width && data.height) {
+                  updateOrientation(data.width, data.height);
+                }
+                statusText.textContent = `Streaming (${data.deviceName || 'Android'})`;
+              } else {
+                isStreaming = false;
+                waitingCard.classList.remove('hidden');
+                waitingCard.style.display = '';
+                statusDot.classList.remove('active');
+                statusText.textContent = 'Stream Paused';
+              }
+            } else if (data.type === 'init' || data.type === 'settings:update') {
+              const cfg = (data.settings && data.settings.phone) || {};
+              if (cfg.frameStyle && !urlParams.has('frame')) applyFrameStyle(cfg.frameStyle);
+              if (cfg.orientation && !urlParams.has('orientation')) {
+                if (cfg.orientation === 'auto') {
+                  stage.dataset.lockOrientation = 'false';
+                } else {
+                  stage.dataset.lockOrientation = 'true';
+                  applyOrientation(cfg.orientation);
+                }
+              }
+            }
+          } catch (e) {}
+        };
+
+        ws.onclose = () => {
+          statusText.textContent = 'Reconnecting...';
+          statusDot.classList.remove('active');
+          setTimeout(connectWebSocket, 1500);
+        };
+
+        ws.onerror = () => {
+          ws.close();
+        };
+      }
+
+      function handleBinaryPacket(buffer) {
+        if (!decoder) return;
+        const buf = new Uint8Array(buffer);
+        if (buf.length < 5) return;
+
+        const packetType = buf[0];
+        const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+        const ptsMs = view.getUint32(1, false);
+        const ptsUs = ptsMs * 1000;
+        const nalData = buf.subarray(5);
+        if (nalData.length === 0) return;
+
+        // 0x01 = Video Config packet (SPS/PPS NAL units from MediaCodec)
+        if (packetType === 0x01) {
+          cachedConfig = nalData;
+          const spsInfo = extractSpsInfo(nalData);
+          if (spsInfo) {
+            cachedSpsInfo = spsInfo;
+            setupDecoder(spsInfo);
+          }
+          return;
+        }
+
+        // 0x02 = Video Keyframe, 0x03 = Video Delta frame
+        if (packetType === 0x02 || packetType === 0x03) {
+          const isKey = packetType === 0x02;
+
+          if (!isDecoderConfigured) {
+            if (cachedConfig) {
+              const spsInfo = extractSpsInfo(cachedConfig);
+              if (spsInfo) {
+                cachedSpsInfo = spsInfo;
+                setupDecoder(spsInfo);
+              }
+            } else {
+              const spsInfo = extractSpsInfo(nalData);
+              if (spsInfo && spsInfo.sps) {
+                cachedConfig = nalData;
+                cachedSpsInfo = spsInfo;
+                setupDecoder(spsInfo);
+              }
+            }
+          }
+
+          if (!decoder || decoder.state !== 'configured') return;
+
+          let frameBytes = nalData;
+          if (isKey && cachedConfig && !startsWithSps(nalData)) {
+            const existingSps = extractSpsInfo(nalData);
+            if (!existingSps || !existingSps.sps) {
+              const combined = new Uint8Array(cachedConfig.length + nalData.length);
+              combined.set(cachedConfig, 0);
+              combined.set(nalData, cachedConfig.length);
+              frameBytes = combined;
+            }
+          }
+
+          let chunkData = frameBytes;
+          if (decoderMode === 'avcc') {
+            chunkData = annexbToAvccChunk(frameBytes);
+          }
+
+          try {
+            const chunk = new EncodedVideoChunk({
+              type: isKey ? 'key' : 'delta',
+              timestamp: ptsUs || Math.round(performance.now() * 1000),
+              data: chunkData
+            });
+            decoder.decode(chunk);
+          } catch (e) {
+            console.warn('Decode chunk failed:', e);
+          }
+          return;
+        }
+
+        // 0x04 = Internal game audio (PCM 16-bit 48kHz stereo)
+        if (packetType === 0x04) {
+          if (!isAudioMuted) {
+            playAudioChunk(nalData);
+          }
+        }
+      }
+
+      function startsWithSps(data) {
+        if (data.length < 5) return false;
+        if (data[0] === 0 && data[1] === 0) {
+          if (data[2] === 1 && (data[3] & 0x1F) === 7) return true;
+          if (data[2] === 0 && data[3] === 1 && (data[4] & 0x1F) === 7) return true;
+        }
+        return false;
+      }
+
+      let scheduledAudioSources = [];
+      let overlayStudioBus = null;
+      let overlayRnnoiseNode = null;
+      let overlayRnnoiseActiveGain = null;
+      let overlayRnnoiseBypassGain = null;
+      let overlayRnnoiseReady = false;
+      let overlayRnnoiseInitializing = false;
+      let overlayHighpassNode = null;
+      let overlayGateGainNode = null;
+      let overlayCompressorNode = null;
+      let overlayGateEnvelope = 1.0;
+      let overlayNoiseFilterEnabled = true;
+      let overlayNoiseGateThreshold = 0.016;
+      let overlayGateHoldUntil = 0;
+      const AUDIO_LEAD_TIME = 0.060; // 60ms initial cushion for smooth playback without jitter underruns
+      const MAX_AUDIO_LATENCY = 0.250; // 250ms maximum latency allowance before gently catching up
+
+      async function initOverlayAudioAi() {
+        if (!audioCtx || overlayRnnoiseReady || overlayRnnoiseInitializing) return;
+        overlayRnnoiseInitializing = true;
+        try {
+          if (typeof window !== 'undefined' && window.ShingRnnoise) {
+            const node = await window.ShingRnnoise.createRnnoiseNode(audioCtx, {
+              maxChannels: 2,
+              basePath: '/assets/rnnoise/'
+            });
+            overlayRnnoiseNode = node;
+            overlayRnnoiseReady = true;
+
+            if (overlayStudioBus && overlayRnnoiseActiveGain) {
+              overlayStudioBus.connect(overlayRnnoiseNode);
+              overlayRnnoiseNode.connect(overlayRnnoiseActiveGain);
+              updateOverlayAudioRouting();
+            }
+            console.log('RNNoise AI Noise Cancellation loaded on OBS stream overlay.');
+          }
+        } catch (err) {
+          console.warn('RNNoise worklet skipped on overlay:', err);
+          overlayRnnoiseReady = false;
+        } finally {
+          overlayRnnoiseInitializing = false;
+        }
+      }
+
+      function updateOverlayAudioRouting() {
+        if (!audioCtx) return;
+        const currentTime = audioCtx.currentTime;
+        const useAi = overlayNoiseFilterEnabled && overlayRnnoiseReady && overlayRnnoiseNode;
+        if (overlayRnnoiseActiveGain && overlayRnnoiseBypassGain) {
+          if (useAi) {
+            overlayRnnoiseActiveGain.gain.setValueAtTime(1.0, currentTime);
+            overlayRnnoiseBypassGain.gain.setValueAtTime(0.0, currentTime);
+            if (overlayHighpassNode) overlayHighpassNode.frequency.setValueAtTime(80, currentTime);
+          } else {
+            overlayRnnoiseActiveGain.gain.setValueAtTime(0.0, currentTime);
+            overlayRnnoiseBypassGain.gain.setValueAtTime(1.0, currentTime);
+            if (overlayHighpassNode) overlayHighpassNode.frequency.setValueAtTime(overlayNoiseFilterEnabled ? 85 : 10, currentTime);
+          }
+        }
+      }
+
+      function playAudioChunk(pcmData) {
+        try {
+          if (!audioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+            audioCtx = new AudioContextClass({ sampleRate: 48000 });
+            nextAudioTime = audioCtx.currentTime;
+          }
+          if (audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(() => {});
+            nextAudioTime = audioCtx.currentTime;
+            return;
+          }
+
+          // Use DataView to safely read 16-bit PCM at unaligned byte offsets
+          const numSamples = Math.floor(pcmData.byteLength / 4);
+          if (numSamples <= 0) return;
+
+          const view = new DataView(pcmData.buffer, pcmData.byteOffset, pcmData.byteLength);
+          const audioBuffer = audioCtx.createBuffer(2, numSamples, 48000);
+          const left = audioBuffer.getChannelData(0);
+          const right = audioBuffer.getChannelData(1);
+
+          let sumSq = 0;
+          let zeroCrossings = 0;
+          let prevMono = 0;
+          for (let i = 0; i < numSamples; i++) {
+            const l = view.getInt16(i * 4, true) / 32768.0;
+            const r = view.getInt16(i * 4 + 2, true) / 32768.0;
+            left[i] = l;
+            right[i] = r;
+            const mono = (l + r) * 0.5;
+            if ((mono > 0 && prevMono <= 0) || (mono < 0 && prevMono >= 0)) zeroCrossings++;
+            prevMono = mono;
+            sumSq += (l * l + r * r) * 0.5;
+          }
+          const chunkRms = Math.sqrt(sumSq / numSamples);
+
+          const currentTime = audioCtx.currentTime;
+
+          // Latency Drift Self-Healing:
+          // If nextAudioTime fell behind currentTime (buffer underrun), schedule this packet to start immediately at currentTime.
+          // Never add artificial lead time here, which would inject audible dead-air gaps!
+          if (nextAudioTime < currentTime) {
+            nextAudioTime = currentTime;
+          } else if (nextAudioTime > currentTime + MAX_AUDIO_LATENCY) {
+            nextAudioTime = currentTime + AUDIO_LEAD_TIME;
+          }
+
+          if (!overlayCompressorNode && audioCtx) {
+            overlayStudioBus = audioCtx.createGain();
+            overlayStudioBus.gain.value = 1.0;
+
+            overlayRnnoiseActiveGain = audioCtx.createGain();
+            overlayRnnoiseActiveGain.gain.value = 0.0;
+
+            overlayRnnoiseBypassGain = audioCtx.createGain();
+            overlayRnnoiseBypassGain.gain.value = 1.0;
+
+            overlayHighpassNode = audioCtx.createBiquadFilter();
+            overlayHighpassNode.type = 'highpass';
+            overlayHighpassNode.frequency.value = overlayNoiseFilterEnabled ? 80 : 10;
+            overlayHighpassNode.Q.value = 0.707;
+
+            overlayGateGainNode = audioCtx.createGain();
+            overlayGateGainNode.gain.value = 1.0;
+
+            overlayCompressorNode = audioCtx.createDynamicsCompressor();
+            overlayCompressorNode.threshold.value = -24;
+            overlayCompressorNode.knee.value = 10;
+            overlayCompressorNode.ratio.value = 3.5;
+            overlayCompressorNode.attack.value = 0.003;
+            overlayCompressorNode.release.value = 0.25;
+
+            // Audio Graph Topology:
+            // Bus -> Bypass -> Highpass
+            // Bus -> [RNNoise Worklet -> Active] -> Highpass
+            overlayStudioBus.connect(overlayRnnoiseBypassGain);
+            overlayRnnoiseBypassGain.connect(overlayHighpassNode);
+            overlayRnnoiseActiveGain.connect(overlayHighpassNode);
+
+            overlayHighpassNode.connect(overlayGateGainNode);
+            overlayGateGainNode.connect(overlayCompressorNode);
+            overlayCompressorNode.connect(audioCtx.destination);
+
+            initOverlayAudioAi();
+          } else if (overlayCompressorNode) {
+            updateOverlayAudioRouting();
+          }
+
+          // AI Voice Isolation Mode: When RNNoise neural network is active, human speech flows
+          // through with zero robotic distortion and zero syllable cutting.
+          // Legacy software gate only engages as a fallback when AI is disabled or unavailable.
+          if (overlayNoiseFilterEnabled && !overlayRnnoiseReady) {
+            const openThresh = overlayNoiseGateThreshold;
+            const closeThresh = overlayNoiseGateThreshold * 0.55;
+            const isVoiceOrAudio = (zeroCrossings <= 220) || (chunkRms >= 0.025);
+
+            if (chunkRms >= openThresh && isVoiceOrAudio) {
+              overlayGateHoldUntil = currentTime + 0.350;
+            }
+
+            const isGateOpen = (currentTime < overlayGateHoldUntil) || (chunkRms >= closeThresh && isVoiceOrAudio);
+            targetEnvelope = isGateOpen ? 1.0 : 0.0;
+
+            const startEnvelope = overlayGateEnvelope;
+            const endEnvelope = (targetEnvelope > startEnvelope)
+              ? Math.min(1.0, startEnvelope + 0.35)
+              : Math.max(0.0, startEnvelope - 0.04);
+            overlayGateEnvelope = endEnvelope;
+
+            const envStep = (endEnvelope - startEnvelope) / numSamples;
+            let curEnv = startEnvelope;
+            for (let i = 0; i < numSamples; i++) {
+              curEnv += envStep;
+              left[i] *= curEnv;
+              right[i] *= curEnv;
+            }
+          } else {
+            overlayGateEnvelope = 1.0;
+          }
+
+          if (overlayGateGainNode) {
+            overlayGateGainNode.gain.setValueAtTime(1.0, currentTime);
+          }
+
+          const source = audioCtx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(overlayStudioBus || overlayHighpassNode || audioCtx.destination);
+          source.start(nextAudioTime);
+          nextAudioTime += audioBuffer.duration;
+
+          scheduledAudioSources.push(source);
+          source.onended = () => {
+            const idx = scheduledAudioSources.indexOf(source);
+            if (idx !== -1) scheduledAudioSources.splice(idx, 1);
+          };
+        } catch (e) {
+          console.warn('Audio playback error:', e);
+        }
+      }
+
+      // Unlock AudioContext on user interaction for Chrome autoplay policy
+      window.addEventListener('click', () => {
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().then(() => {
+            nextAudioTime = audioCtx.currentTime;
+          }).catch(() => {});
+        }
+      });
+      window.addEventListener('keydown', () => {
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().then(() => {
+            nextAudioTime = audioCtx.currentTime;
+          }).catch(() => {});
+        }
+      });
+
+      initVideoDecoder();
+      connectWebSocket();
+    })();
+  </script>
+</body>
+</html>

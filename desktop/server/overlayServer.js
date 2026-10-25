@@ -1820,6 +1820,7 @@ class OverlayServer {
       '.webp': 'image/webp',
       '.svg': 'image/svg+xml',
       '.ico': 'image/x-icon',
+      '.wasm': 'application/wasm',
       '.wav': 'audio/wav',
       '.mp3': 'audio/mpeg',
       '.ogg': 'audio/ogg',

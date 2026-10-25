@@ -57,6 +57,9 @@ assert(appJsContent.includes('latestPhoneCastAudioRms'), 'app.js must calculate 
 assert(appJsContent.includes("'phone-cast'"), 'app.js must have phone-cast microphone option');
 assert(appJsContent.includes('Wireless Phone Microphone'), 'app.js must display Wireless Phone Microphone status');
 assert(appJsContent.includes('phoneNoiseFilterEnabled'), 'app.js must declare phoneNoiseFilterEnabled');
+assert(appJsContent.includes('phoneRnnoiseNode'), 'app.js must declare phoneRnnoiseNode');
+assert(appJsContent.includes('initPhoneAudioAi'), 'app.js must define initPhoneAudioAi');
+assert(appJsContent.includes('updatePhoneAudioRouting'), 'app.js must define updatePhoneAudioRouting');
 assert(appJsContent.includes('phoneHighpassNode'), 'app.js must create phoneHighpassNode BiquadFilter');
 assert(appJsContent.includes('phoneGateGainNode'), 'app.js must create phoneGateGainNode for noise gating');
 assert(appJsContent.includes('phoneCompressorNode'), 'app.js must create phoneCompressorNode for dynamics leveling');
@@ -65,12 +68,26 @@ assert(appJsContent.includes('phone-noise-gate-select'), 'app.js must bind noise
 assert(appJsContent.includes('phoneVoiceOnlyVadEnabled'), 'app.js must declare phoneVoiceOnlyVadEnabled');
 assert(appJsContent.includes('latestPhoneCastAudioZcr'), 'app.js must track latestPhoneCastAudioZcr');
 
-// 5. Verify index.html UI
+// 5. Verify RNNoise assets exist
+assert(fs.existsSync(path.join(__dirname, '../assets/rnnoise/rnnoise.wasm')), 'rnnoise.wasm must exist');
+assert(fs.existsSync(path.join(__dirname, '../assets/rnnoise/rnnoise_simd.wasm')), 'rnnoise_simd.wasm must exist');
+assert(fs.existsSync(path.join(__dirname, '../assets/rnnoise/workletProcessor.js')), 'workletProcessor.js must exist');
+assert(fs.existsSync(path.join(__dirname, '../assets/rnnoise/shing-rnnoise.js')), 'shing-rnnoise.js must exist');
+
+// 6. Verify index.html UI & Script
 const indexHtmlPath = path.join(__dirname, '../renderer/index.html');
 const indexHtmlContent = fs.readFileSync(indexHtmlPath, 'utf8');
+assert(indexHtmlContent.includes('shing-rnnoise.js'), 'index.html must include shing-rnnoise.js');
 assert(indexHtmlContent.includes('id="phone-noise-filter-btn"'), 'index.html must have noise filter button');
 assert(indexHtmlContent.includes('id="phone-noise-gate-select"'), 'index.html must have noise gate sensitivity selector');
 assert(indexHtmlContent.includes('id="phone-audio-vu-fill"'), 'index.html must have live VU meter fill bar');
+
+// 7. Verify phone.html overlay audio integration
+const phoneHtmlPath = path.join(__dirname, '../overlays/phone.html');
+const phoneHtmlContent = fs.readFileSync(phoneHtmlPath, 'utf8');
+assert(phoneHtmlContent.includes('shing-rnnoise.js'), 'phone.html must load shing-rnnoise.js');
+assert(phoneHtmlContent.includes('overlayRnnoiseNode'), 'phone.html must declare overlayRnnoiseNode');
+assert(phoneHtmlContent.includes('initOverlayAudioAi'), 'phone.html must define initOverlayAudioAi');
 
 // 6. Test Audio PCM 16-bit Stereo Volume Calculation Logic
 function calculatePcmRms(pcmBuffer) {

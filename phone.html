@@ -336,6 +336,7 @@
     </div>
   </div>
 
+  <script src="/assets/rnnoise/shing-rnnoise.js"></script>
   <script>
     (function() {
       'use strict';
@@ -892,6 +893,12 @@
       }
 
       let scheduledAudioSources = [];
+      let overlayStudioBus = null;
+      let overlayRnnoiseNode = null;
+      let overlayRnnoiseActiveGain = null;
+      let overlayRnnoiseBypassGain = null;
+      let overlayRnnoiseReady = false;
+      let overlayRnnoiseInitializing = false;
       let overlayHighpassNode = null;
       let overlayGateGainNode = null;
       let overlayCompressorNode = null;
@@ -901,6 +908,50 @@
       let overlayGateHoldUntil = 0;
       const AUDIO_LEAD_TIME = 0.060; // 60ms initial cushion for smooth playback without jitter underruns
       const MAX_AUDIO_LATENCY = 0.250; // 250ms maximum latency allowance before gently catching up
+
+      async function initOverlayAudioAi() {
+        if (!audioCtx || overlayRnnoiseReady || overlayRnnoiseInitializing) return;
+        overlayRnnoiseInitializing = true;
+        try {
+          if (typeof window !== 'undefined' && window.ShingRnnoise) {
+            const node = await window.ShingRnnoise.createRnnoiseNode(audioCtx, {
+              maxChannels: 2,
+              basePath: '/assets/rnnoise/'
+            });
+            overlayRnnoiseNode = node;
+            overlayRnnoiseReady = true;
+
+            if (overlayStudioBus && overlayRnnoiseActiveGain) {
+              overlayStudioBus.connect(overlayRnnoiseNode);
+              overlayRnnoiseNode.connect(overlayRnnoiseActiveGain);
+              updateOverlayAudioRouting();
+            }
+            console.log('RNNoise AI Noise Cancellation loaded on OBS stream overlay.');
+          }
+        } catch (err) {
+          console.warn('RNNoise worklet skipped on overlay:', err);
+          overlayRnnoiseReady = false;
+        } finally {
+          overlayRnnoiseInitializing = false;
+        }
+      }
+
+      function updateOverlayAudioRouting() {
+        if (!audioCtx) return;
+        const currentTime = audioCtx.currentTime;
+        const useAi = overlayNoiseFilterEnabled && overlayRnnoiseReady && overlayRnnoiseNode;
+        if (overlayRnnoiseActiveGain && overlayRnnoiseBypassGain) {
+          if (useAi) {
+            overlayRnnoiseActiveGain.gain.setValueAtTime(1.0, currentTime);
+            overlayRnnoiseBypassGain.gain.setValueAtTime(0.0, currentTime);
+            if (overlayHighpassNode) overlayHighpassNode.frequency.setValueAtTime(80, currentTime);
+          } else {
+            overlayRnnoiseActiveGain.gain.setValueAtTime(0.0, currentTime);
+            overlayRnnoiseBypassGain.gain.setValueAtTime(1.0, currentTime);
+            if (overlayHighpassNode) overlayHighpassNode.frequency.setValueAtTime(overlayNoiseFilterEnabled ? 85 : 10, currentTime);
+          }
+        }
+      }
 
       function playAudioChunk(pcmData) {
         try {
@@ -951,10 +1002,19 @@
             nextAudioTime = currentTime + AUDIO_LEAD_TIME;
           }
 
-          if (!overlayHighpassNode && audioCtx) {
+          if (!overlayCompressorNode && audioCtx) {
+            overlayStudioBus = audioCtx.createGain();
+            overlayStudioBus.gain.value = 1.0;
+
+            overlayRnnoiseActiveGain = audioCtx.createGain();
+            overlayRnnoiseActiveGain.gain.value = 0.0;
+
+            overlayRnnoiseBypassGain = audioCtx.createGain();
+            overlayRnnoiseBypassGain.gain.value = 1.0;
+
             overlayHighpassNode = audioCtx.createBiquadFilter();
             overlayHighpassNode.type = 'highpass';
-            overlayHighpassNode.frequency.value = 85;
+            overlayHighpassNode.frequency.value = overlayNoiseFilterEnabled ? 80 : 10;
             overlayHighpassNode.Q.value = 0.707;
 
             overlayGateGainNode = audioCtx.createGain();
@@ -967,14 +1027,26 @@
             overlayCompressorNode.attack.value = 0.003;
             overlayCompressorNode.release.value = 0.25;
 
+            // Audio Graph Topology:
+            // Bus -> Bypass -> Highpass
+            // Bus -> [RNNoise Worklet -> Active] -> Highpass
+            overlayStudioBus.connect(overlayRnnoiseBypassGain);
+            overlayRnnoiseBypassGain.connect(overlayHighpassNode);
+            overlayRnnoiseActiveGain.connect(overlayHighpassNode);
+
             overlayHighpassNode.connect(overlayGateGainNode);
             overlayGateGainNode.connect(overlayCompressorNode);
             overlayCompressorNode.connect(audioCtx.destination);
+
+            initOverlayAudioAi();
+          } else if (overlayCompressorNode) {
+            updateOverlayAudioRouting();
           }
 
-          // Smooth per-sample noise gate: applied directly to PCM samples so voice and gate are 100% in-phase with zero timing lag
-          let targetEnvelope = 1.0;
-          if (overlayNoiseFilterEnabled) {
+          // AI Voice Isolation Mode: When RNNoise neural network is active, human speech flows
+          // through with zero robotic distortion and zero syllable cutting.
+          // Legacy software gate only engages as a fallback when AI is disabled or unavailable.
+          if (overlayNoiseFilterEnabled && !overlayRnnoiseReady) {
             const openThresh = overlayNoiseGateThreshold;
             const closeThresh = overlayNoiseGateThreshold * 0.55;
             const isVoiceOrAudio = (zeroCrossings <= 220) || (chunkRms >= 0.025);
@@ -985,20 +1057,22 @@
 
             const isGateOpen = (currentTime < overlayGateHoldUntil) || (chunkRms >= closeThresh && isVoiceOrAudio);
             targetEnvelope = isGateOpen ? 1.0 : 0.0;
-          }
 
-          const startEnvelope = overlayGateEnvelope;
-          const endEnvelope = (targetEnvelope > startEnvelope)
-            ? Math.min(1.0, startEnvelope + 0.35)
-            : Math.max(0.0, startEnvelope - 0.04);
-          overlayGateEnvelope = endEnvelope;
+            const startEnvelope = overlayGateEnvelope;
+            const endEnvelope = (targetEnvelope > startEnvelope)
+              ? Math.min(1.0, startEnvelope + 0.35)
+              : Math.max(0.0, startEnvelope - 0.04);
+            overlayGateEnvelope = endEnvelope;
 
-          const envStep = (endEnvelope - startEnvelope) / numSamples;
-          let curEnv = startEnvelope;
-          for (let i = 0; i < numSamples; i++) {
-            curEnv += envStep;
-            left[i] *= curEnv;
-            right[i] *= curEnv;
+            const envStep = (endEnvelope - startEnvelope) / numSamples;
+            let curEnv = startEnvelope;
+            for (let i = 0; i < numSamples; i++) {
+              curEnv += envStep;
+              left[i] *= curEnv;
+              right[i] *= curEnv;
+            }
+          } else {
+            overlayGateEnvelope = 1.0;
           }
 
           if (overlayGateGainNode) {
@@ -1007,7 +1081,7 @@
 
           const source = audioCtx.createBufferSource();
           source.buffer = audioBuffer;
-          source.connect(overlayHighpassNode || audioCtx.destination);
+          source.connect(overlayStudioBus || overlayHighpassNode || audioCtx.destination);
           source.start(nextAudioTime);
           nextAudioTime += audioBuffer.duration;
 

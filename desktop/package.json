@@ -1,7 +1,7 @@
 {
     "name": "shing-live",
     "productName": "Shing Live",
-    "version": "1.7.5",
+    "version": "1.7.6",
     "description": "Cute pastel streaming companion and OBS overlays for TikTok Live streamers",
     "main": "main.js",
     "scripts": {
@@ -24,6 +24,7 @@
     "author": "Shing",
     "license": "MIT",
     "dependencies": {
+        "@sapphi-red/web-noise-suppressor": "^0.4.1",
         "matter-js": "^0.19.0",
         "tiktok-live-connector": "^2.5.0",
         "ws": "^8.18.0"
