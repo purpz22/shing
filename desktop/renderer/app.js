@@ -3562,7 +3562,9 @@ let phoneFpsCount = 0;
 let phoneLastFpsTime = 0;
 let phoneAudioCtx = null;
 let phoneNextAudioTime = 0;
-let phoneAudioMuted = true;
+let phoneAudioMuted = false;
+let phoneAudioVolume = 1.0;
+let phoneGainNode = null;
 
 function setPhoneCastUiConnected(name, width, height, fps) {
   if (typeof document === 'undefined') return;
@@ -3745,9 +3747,24 @@ function playStudioAudio(pcmData) {
       phoneNextAudioTime = currentTime + STUDIO_AUDIO_LEAD_TIME;
     }
 
+    if (!phoneGainNode && phoneAudioCtx) {
+      phoneGainNode = phoneAudioCtx.createGain();
+      phoneGainNode.gain.value = phoneAudioMuted ? 0 : phoneAudioVolume;
+      phoneGainNode.connect(phoneAudioCtx.destination);
+    } else if (phoneGainNode) {
+      phoneGainNode.gain.value = phoneAudioMuted ? 0 : phoneAudioVolume;
+    }
+
+    // Live VU meter update in dashboard
+    const vuPct = Math.min(100, Math.round(latestPhoneCastAudioRms * 220));
+    const phoneVuFill = typeof document !== 'undefined' ? document.getElementById('phone-audio-vu-fill') : null;
+    const phoneVuVal = typeof document !== 'undefined' ? document.getElementById('phone-audio-vu-val') : null;
+    if (phoneVuFill) phoneVuFill.style.width = vuPct + '%';
+    if (phoneVuVal) phoneVuVal.textContent = vuPct + '%';
+
     const source = phoneAudioCtx.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(phoneAudioCtx.destination);
+    source.connect(phoneGainNode || phoneAudioCtx.destination);
     source.start(phoneNextAudioTime);
     phoneNextAudioTime += audioBuffer.duration;
 
@@ -4041,7 +4058,7 @@ function handlePhoneVideoPacket(packetType, buf) {
     return;
   }
 
-  if (packetType === 0x04 && !phoneAudioMuted) {
+  if (packetType === 0x04) {
     playStudioAudio(nalData);
   }
 }
@@ -4094,10 +4111,8 @@ function connectPhoneCastPreviewWs() {
     ws.onclose = () => {
       setPhoneCastUiDisconnected();
       setTimeout(() => {
-        if (typeof document !== 'undefined' && document.querySelector('.tab-pane#tab-phone')?.classList.contains('active')) {
-          connectPhoneCastPreviewWs();
-        }
-      }, 3000);
+        connectPhoneCastPreviewWs();
+      }, 2500);
     };
   } catch (e) {}
 }
@@ -4149,6 +4164,9 @@ function initPhoneCastStudio() {
 
   $('phone-toggle-audio-btn')?.addEventListener('click', () => {
     phoneAudioMuted = !phoneAudioMuted;
+    if (phoneGainNode) {
+      phoneGainNode.gain.value = phoneAudioMuted ? 0 : phoneAudioVolume;
+    }
     if ($('phone-toggle-audio-btn')) {
       $('phone-toggle-audio-btn').textContent = phoneAudioMuted ? 'Unmute Preview Audio' : 'Mute Preview Audio';
     }

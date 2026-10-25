@@ -122,7 +122,7 @@ class ScreenCaptureService : Service() {
         val notification = buildOngoingNotification(host, port, audioMode)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             var serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-            if (hasAudio && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (hasAudio) {
                 serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
             }
             startForeground(NOTIFICATION_ID, notification, serviceType)

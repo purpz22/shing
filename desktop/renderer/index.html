@@ -1900,10 +1900,19 @@
             </div>
           </div>
 
-          <div class="phone-stage-controls">
-            <button class="btn btn-secondary btn-sm" id="phone-toggle-audio-btn">Unmute Preview Audio</button>
-            <button class="btn btn-secondary btn-sm" id="phone-fit-btn">Toggle Scale</button>
-            <button class="btn btn-secondary btn-sm" id="phone-snapshot-btn">Capture Snapshot</button>
+          <div class="phone-stage-controls" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button class="btn btn-secondary btn-sm" id="phone-toggle-audio-btn">Mute Preview Audio</button>
+              <button class="btn btn-secondary btn-sm" id="phone-fit-btn">Toggle Scale</button>
+              <button class="btn btn-secondary btn-sm" id="phone-snapshot-btn">Capture Snapshot</button>
+            </div>
+            <div class="phone-audio-meter-bar" style="display: flex; align-items: center; gap: 8px; min-width: 180px;">
+              <span style="font-size: 11.5px; color: #94a3b8;">Phone Mic:</span>
+              <div style="flex: 1; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; position: relative;">
+                <div id="phone-audio-vu-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #a855f7); transition: width 0.08s ease;"></div>
+              </div>
+              <span id="phone-audio-vu-val" class="mono" style="font-size: 11px; font-weight: bold; color: #c084fc; min-width: 32px;">0%</span>
+            </div>
           </div>
         </div>
 

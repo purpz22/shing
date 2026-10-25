@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Process
 import android.util.Log
 import com.example.shingcast.net.CastClient
+import java.util.concurrent.ArrayBlockingQueue
 import kotlin.math.roundToInt
 
 class AudioEncoder(
@@ -32,28 +33,37 @@ class AudioEncoder(
 
         // 10ms of 48kHz 16-bit stereo PCM = 480 samples * 4 bytes = 1920 bytes
         const val CHUNK_SIZE_BYTES = 1920
+        // 10ms of 48kHz 16-bit mono PCM = 480 samples * 2 bytes = 960 bytes
+        const val MONO_CHUNK_SIZE_BYTES = 960
         const val SAMPLES_PER_CHUNK = 480
+
+        private const val MAX_QUEUE_CHUNKS = 4
     }
 
     private var internalAudioRecord: AudioRecord? = null
     private var micAudioRecord: AudioRecord? = null
-    private var isMicMono = false
 
     @Volatile
     private var isRecording = false
-    private var recordingThread: Thread? = null
+
+    private var micThread: Thread? = null
+    private var internalThread: Thread? = null
+    private var mixThread: Thread? = null
+
+    private val micQueue = ArrayBlockingQueue<ByteArray>(MAX_QUEUE_CHUNKS)
+    private val internalQueue = ArrayBlockingQueue<ByteArray>(MAX_QUEUE_CHUNKS)
 
     @SuppressLint("MissingPermission")
     fun start() {
         val wantsInternal = (audioMode == MODE_INTERNAL || audioMode == MODE_MIXED) && mediaProjection != null
         val wantsMic = (audioMode == MODE_MIC || audioMode == MODE_MIXED)
 
-        if (wantsInternal) {
-            setupInternalAudioRecord()
-        }
-
         if (wantsMic) {
             setupMicAudioRecord()
+        }
+
+        if (wantsInternal) {
+            setupInternalAudioRecord()
         }
 
         if (internalAudioRecord == null && micAudioRecord == null) {
@@ -62,19 +72,81 @@ class AudioEncoder(
         }
 
         try {
-            internalAudioRecord?.startRecording()
-            micAudioRecord?.startRecording()
             isRecording = true
 
-            recordingThread = Thread({
-                readAudioLoop()
-            }, "ShingAudioRecordThread").apply {
-                start()
+            if (micAudioRecord != null) {
+                micAudioRecord?.startRecording()
+                micThread = Thread({
+                    readMicLoop()
+                }, "ShingMicRecordThread").apply { start() }
             }
-            Log.d(TAG, "Audio capture started successfully in mode=$audioMode (internal=${internalAudioRecord != null}, mic=${micAudioRecord != null}, boost=${micBoost}x)")
+
+            if (internalAudioRecord != null) {
+                internalAudioRecord?.startRecording()
+                internalThread = Thread({
+                    readInternalLoop()
+                }, "ShingInternalAudioThread").apply { start() }
+            }
+
+            if (audioMode == MODE_MIXED && micAudioRecord != null && internalAudioRecord != null) {
+                mixThread = Thread({
+                    mixingLoop()
+                }, "ShingAudioMixerThread").apply { start() }
+            }
+
+            Log.d(TAG, "AudioEncoder started: mode=$audioMode, mic=${micAudioRecord != null}, internal=${internalAudioRecord != null}, boost=${micBoost}x")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start audio capture: ${e.message}", e)
             stop()
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun setupMicAudioRecord() {
+        // Universal mono microphone capture (supported on 100% of Android phones)
+        try {
+            val minBufMono = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG_MONO, AUDIO_FORMAT)
+            if (minBufMono > 0) {
+                val bufSize = (minBufMono * 4).coerceAtLeast(16384)
+                val record = AudioRecord(
+                    MediaRecorder.AudioSource.MIC,
+                    SAMPLE_RATE,
+                    CHANNEL_CONFIG_MONO,
+                    AUDIO_FORMAT,
+                    bufSize
+                )
+                if (record.state == AudioRecord.STATE_INITIALIZED) {
+                    micAudioRecord = record
+                    Log.d(TAG, "Microphone initialized in MONO mode at 48kHz (hardware buffer: $bufSize bytes)")
+                    return
+                }
+                record.release()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to initialize microphone in MONO: ${e.message}")
+        }
+
+        // Voice Communication fallback (with automatic hardware AEC / NS)
+        try {
+            val minBuf = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG_MONO, AUDIO_FORMAT)
+            if (minBuf > 0) {
+                val bufSize = (minBuf * 4).coerceAtLeast(16384)
+                val record = AudioRecord(
+                    MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                    SAMPLE_RATE,
+                    CHANNEL_CONFIG_MONO,
+                    AUDIO_FORMAT,
+                    bufSize
+                )
+                if (record.state == AudioRecord.STATE_INITIALIZED) {
+                    micAudioRecord = record
+                    Log.d(TAG, "Microphone initialized with VOICE_COMMUNICATION at 48kHz")
+                    return
+                }
+                record.release()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Voice communication mic init failed: ${e.message}")
         }
     }
 
@@ -119,145 +191,137 @@ class AudioEncoder(
         }
     }
 
-    @SuppressLint("MissingPermission")
-    private fun setupMicAudioRecord() {
-        // Try stereo mic first for highest fidelity
-        try {
-            val minBufStereo = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG_STEREO, AUDIO_FORMAT)
-            if (minBufStereo > 0) {
-                val bufSize = (minBufStereo * 4).coerceAtLeast(16384)
-                val record = AudioRecord(
-                    MediaRecorder.AudioSource.MIC,
-                    SAMPLE_RATE,
-                    CHANNEL_CONFIG_STEREO,
-                    AUDIO_FORMAT,
-                    bufSize
-                )
-                if (record.state == AudioRecord.STATE_INITIALIZED) {
-                    micAudioRecord = record
-                    isMicMono = false
-                    Log.d(TAG, "Microphone initialized in STEREO mode at 48kHz")
-                    return
-                }
-                record.release()
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Stereo mic init failed, falling back to mono: ${e.message}")
-        }
-
-        // Fallback to universal mono mic and expand to stereo
-        try {
-            val minBufMono = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG_MONO, AUDIO_FORMAT)
-            if (minBufMono > 0) {
-                val bufSize = (minBufMono * 4).coerceAtLeast(16384)
-                val record = AudioRecord(
-                    MediaRecorder.AudioSource.MIC,
-                    SAMPLE_RATE,
-                    CHANNEL_CONFIG_MONO,
-                    AUDIO_FORMAT,
-                    bufSize
-                )
-                if (record.state == AudioRecord.STATE_INITIALIZED) {
-                    micAudioRecord = record
-                    isMicMono = true
-                    Log.d(TAG, "Microphone initialized in MONO mode (auto-expanded to stereo) at 48kHz")
-                    return
-                }
-                record.release()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize microphone in mono: ${e.message}")
-        }
-    }
-
-    private fun readAudioLoop() {
+    private fun readMicLoop() {
         try {
             Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
         } catch (ignored: Exception) {}
 
-        val internal = internalAudioRecord
-        val mic = micAudioRecord
-
-        val outBuffer = ByteArray(CHUNK_SIZE_BYTES)
-        val internalBuffer = if (internal != null) ByteArray(CHUNK_SIZE_BYTES) else null
-        val micRawBuffer = if (mic != null) ByteArray(if (isMicMono) CHUNK_SIZE_BYTES / 2 else CHUNK_SIZE_BYTES) else null
-        val micStereoBuffer = if (mic != null) ByteArray(CHUNK_SIZE_BYTES) else null
-
+        val record = micAudioRecord ?: return
+        val rawMonoBuf = ByteArray(MONO_CHUNK_SIZE_BYTES)
+        val stereoBuf = ByteArray(CHUNK_SIZE_BYTES)
         val startTimeNs = System.nanoTime()
 
         while (isRecording) {
-            var hasInternal = false
-            var hasMic = false
-
-            if (internal != null && internalBuffer != null) {
-                val readInternal = internal.read(internalBuffer, 0, internalBuffer.size)
-                if (readInternal > 0) {
-                    hasInternal = true
+            // Fill exact 10ms mono chunk (480 samples = 960 bytes)
+            var bytesReadTotal = 0
+            while (bytesReadTotal < MONO_CHUNK_SIZE_BYTES && isRecording) {
+                val read = record.read(rawMonoBuf, bytesReadTotal, MONO_CHUNK_SIZE_BYTES - bytesReadTotal)
+                if (read > 0) {
+                    bytesReadTotal += read
+                } else if (read < 0) {
+                    Log.w(TAG, "Mic read error: $read")
+                    try { Thread.sleep(5) } catch (ignored: Exception) {}
+                    break
                 }
             }
 
-            if (mic != null && micRawBuffer != null && micStereoBuffer != null) {
-                val readMic = mic.read(micRawBuffer, 0, micRawBuffer.size)
-                if (readMic > 0) {
-                    hasMic = true
-                    if (isMicMono) {
-                        // Expand 16-bit mono PCM into 16-bit stereo PCM (L = R = Mono)
-                        val numMonoSamples = readMic / 2
-                        for (i in 0 until numMonoSamples) {
-                            val byteLow = micRawBuffer[i * 2]
-                            val byteHigh = micRawBuffer[i * 2 + 1]
+            if (bytesReadTotal < MONO_CHUNK_SIZE_BYTES) continue
 
-                            // Left channel
-                            micStereoBuffer[i * 4] = byteLow
-                            micStereoBuffer[i * 4 + 1] = byteHigh
-                            // Right channel
-                            micStereoBuffer[i * 4 + 2] = byteLow
-                            micStereoBuffer[i * 4 + 3] = byteHigh
-                        }
-                    } else {
-                        System.arraycopy(micRawBuffer, 0, micStereoBuffer, 0, readMic)
-                    }
+            // Convert 16-bit Mono PCM to 16-bit Stereo PCM (L = R = Mono * boost)
+            val boost = micBoost
+            val numSamples = bytesReadTotal / 2
+            for (i in 0 until numSamples) {
+                val sampleMono = (rawMonoBuf[i * 2 + 1].toInt() shl 8) or (rawMonoBuf[i * 2].toInt() and 0xFF)
+                val boosted = if (boost != 1.0f) {
+                    (sampleMono * boost).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                } else {
+                    sampleMono
+                }
+                val low = (boosted and 0xFF).toByte()
+                val high = ((boosted shr 8) and 0xFF).toByte()
+
+                // Left Channel
+                stereoBuf[i * 4] = low
+                stereoBuf[i * 4 + 1] = high
+                // Right Channel
+                stereoBuf[i * 4 + 2] = low
+                stereoBuf[i * 4 + 3] = high
+            }
+
+            if (audioMode == MODE_MIC || internalAudioRecord == null) {
+                // Direct mic streaming: zero latency, zero queue overhead
+                val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
+                client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, stereoBuf, 0, CHUNK_SIZE_BYTES)
+            } else {
+                // Push to mix queue, dropping oldest if full to maintain real-time sync
+                if (micQueue.remainingCapacity() == 0) {
+                    micQueue.poll()
+                }
+                micQueue.offer(stereoBuf.clone())
+            }
+        }
+    }
+
+    private fun readInternalLoop() {
+        try {
+            Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
+        } catch (ignored: Exception) {}
+
+        val record = internalAudioRecord ?: return
+        val internalBuf = ByteArray(CHUNK_SIZE_BYTES)
+        val startTimeNs = System.nanoTime()
+
+        while (isRecording) {
+            var bytesReadTotal = 0
+            while (bytesReadTotal < CHUNK_SIZE_BYTES && isRecording) {
+                val read = record.read(internalBuf, bytesReadTotal, CHUNK_SIZE_BYTES - bytesReadTotal)
+                if (read > 0) {
+                    bytesReadTotal += read
+                } else if (read < 0) {
+                    try { Thread.sleep(5) } catch (ignored: Exception) {}
+                    break
                 }
             }
 
-            // Route audio according to available data and active mode
-            if (hasInternal && hasMic && internalBuffer != null && micStereoBuffer != null) {
-                // MIXED MODE: combine game audio and streamer voice with soft-clipping saturation
-                val boost = micBoost
+            if (bytesReadTotal < CHUNK_SIZE_BYTES) continue
+
+            if (audioMode == MODE_INTERNAL || micAudioRecord == null) {
+                // Direct internal audio streaming
+                val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
+                client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, internalBuf, 0, CHUNK_SIZE_BYTES)
+            } else {
+                // Push to internal mix queue, dropping oldest if full
+                if (internalQueue.remainingCapacity() == 0) {
+                    internalQueue.poll()
+                }
+                internalQueue.offer(internalBuf.clone())
+            }
+        }
+    }
+
+    private fun mixingLoop() {
+        try {
+            Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
+        } catch (ignored: Exception) {}
+
+        val mixedBuf = ByteArray(CHUNK_SIZE_BYTES)
+        val startTimeNs = System.nanoTime()
+
+        while (isRecording) {
+            val micChunk = micQueue.poll()
+            val internalChunk = internalQueue.poll()
+
+            if (micChunk != null && internalChunk != null) {
+                // Both mic voice and game sound available: mix with soft saturation
                 for (i in 0 until SAMPLES_PER_CHUNK * 2) {
                     val idx = i * 2
-                    val gameSample = (internalBuffer[idx + 1].toInt() shl 8) or (internalBuffer[idx].toInt() and 0xFF)
-                    val micSample = (micStereoBuffer[idx + 1].toInt() shl 8) or (micStereoBuffer[idx].toInt() and 0xFF)
+                    val gameSample = (internalChunk[idx + 1].toInt() shl 8) or (internalChunk[idx].toInt() and 0xFF)
+                    val micSample = (micChunk[idx + 1].toInt() shl 8) or (micChunk[idx].toInt() and 0xFF)
 
-                    val boostedMic = (micSample * boost).roundToInt()
-                    val mixed = (gameSample + boostedMic).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-
-                    outBuffer[idx] = (mixed and 0xFF).toByte()
-                    outBuffer[idx + 1] = ((mixed shr 8) and 0xFF).toByte()
+                    val sum = (gameSample + micSample).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                    mixedBuf[idx] = (sum and 0xFF).toByte()
+                    mixedBuf[idx + 1] = ((sum shr 8) and 0xFF).toByte()
                 }
                 val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
-                client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, outBuffer, 0, CHUNK_SIZE_BYTES)
-            } else if (hasMic && micStereoBuffer != null) {
-                // MIC ONLY or fallback when game audio is silent/unavailable
-                if (micBoost != 1.0f) {
-                    val boost = micBoost
-                    for (i in 0 until SAMPLES_PER_CHUNK * 2) {
-                        val idx = i * 2
-                        val micSample = (micStereoBuffer[idx + 1].toInt() shl 8) or (micStereoBuffer[idx].toInt() and 0xFF)
-                        val boosted = (micSample * boost).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-                        outBuffer[idx] = (boosted and 0xFF).toByte()
-                        outBuffer[idx + 1] = ((boosted shr 8) and 0xFF).toByte()
-                    }
-                    val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
-                    client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, outBuffer, 0, CHUNK_SIZE_BYTES)
-                } else {
-                    val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
-                    client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, micStereoBuffer, 0, CHUNK_SIZE_BYTES)
-                }
-            } else if (hasInternal && internalBuffer != null) {
-                // INTERNAL ONLY
+                client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, mixedBuf, 0, CHUNK_SIZE_BYTES)
+            } else if (micChunk != null) {
+                // Mic voice only (e.g. game is quiet or loading): transmit mic immediately!
                 val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
-                client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, internalBuffer, 0, CHUNK_SIZE_BYTES)
+                client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, micChunk, 0, CHUNK_SIZE_BYTES)
+            } else if (internalChunk != null) {
+                // Game sound only
+                val ptsMs = (System.nanoTime() - startTimeNs) / 1_000_000L
+                client.sendBinaryPacket(CastClient.PACKET_AUDIO, ptsMs, internalChunk, 0, CHUNK_SIZE_BYTES)
             } else {
                 try { Thread.sleep(5) } catch (ignored: Exception) {}
             }
@@ -266,27 +330,27 @@ class AudioEncoder(
 
     fun stop() {
         isRecording = false
-        try {
-            recordingThread?.join(1000)
-        } catch (ignored: Exception) {}
-        recordingThread = null
 
-        try {
-            internalAudioRecord?.stop()
-        } catch (ignored: Exception) {}
-        try {
-            internalAudioRecord?.release()
-        } catch (ignored: Exception) {}
-        internalAudioRecord = null
+        try { micThread?.join(500) } catch (ignored: Exception) {}
+        micThread = null
 
-        try {
-            micAudioRecord?.stop()
-        } catch (ignored: Exception) {}
-        try {
-            micAudioRecord?.release()
-        } catch (ignored: Exception) {}
+        try { internalThread?.join(500) } catch (ignored: Exception) {}
+        internalThread = null
+
+        try { mixThread?.join(500) } catch (ignored: Exception) {}
+        mixThread = null
+
+        micQueue.clear()
+        internalQueue.clear()
+
+        try { micAudioRecord?.stop() } catch (ignored: Exception) {}
+        try { micAudioRecord?.release() } catch (ignored: Exception) {}
         micAudioRecord = null
 
-        Log.d(TAG, "Audio capture stopped cleanly")
+        try { internalAudioRecord?.stop() } catch (ignored: Exception) {}
+        try { internalAudioRecord?.release() } catch (ignored: Exception) {}
+        internalAudioRecord = null
+
+        Log.d(TAG, "AudioEncoder stopped cleanly")
     }
 }
