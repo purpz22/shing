@@ -3119,8 +3119,7 @@ function runAudioAnalysisLoop() {
           const rms = Math.sqrt(sumSq / timeData.length);
           rawVol = Math.min(100, rms * 280);
         } else {
-          const effectiveRms = phoneNoiseFilterEnabled ? (latestPhoneCastAudioRms * phoneGateEnvelope) : latestPhoneCastAudioRms;
-          rawVol = Math.min(100, effectiveRms * 160);
+          rawVol = Math.min(100, latestPhoneCastAudioRms * 160);
         }
       } else {
         rawVol = 0;
@@ -3730,64 +3729,20 @@ let phoneCastAudioLastPacketTime = 0;
 const STUDIO_AUDIO_LEAD_TIME = 0.060;
 const STUDIO_MAX_AUDIO_LATENCY = 0.250;
 
-async function initPhoneAudioAi() {
-  if (!phoneAudioCtx || phoneRnnoiseReady || phoneRnnoiseInitializing) return;
-  phoneRnnoiseInitializing = true;
-  try {
-    if (typeof window !== 'undefined' && window.ShingRnnoise) {
-      const basePath = (typeof window !== 'undefined' && window.location && window.location.origin)
-        ? (window.location.origin + '/assets/rnnoise/')
-        : '../assets/rnnoise/';
-      const node = await window.ShingRnnoise.createRnnoiseNode(phoneAudioCtx, {
-        maxChannels: 2,
-        basePath: basePath
-      });
-      phoneRnnoiseNode = node;
-      phoneRnnoiseReady = true;
-
-      if (phoneStudioBus && phoneRnnoiseActiveGain) {
-        phoneStudioBus.connect(phoneRnnoiseNode);
-        phoneRnnoiseNode.connect(phoneRnnoiseActiveGain);
-        updatePhoneAudioRouting();
-      }
-      console.log('RNNoise AI Noise Cancellation loaded successfully on desktop preview.');
-      updateNoiseFilterButtonState();
-    }
-  } catch (err) {
-    console.warn('RNNoise AI worklet init skipped or failed:', err);
-    phoneRnnoiseReady = false;
-  } finally {
-    phoneRnnoiseInitializing = false;
-  }
-}
-
-function updatePhoneAudioRouting() {
-  if (!phoneAudioCtx) return;
-  const currentTime = phoneAudioCtx.currentTime;
-  const useAi = phoneNoiseFilterEnabled && phoneRnnoiseReady && phoneRnnoiseNode;
-  if (phoneRnnoiseActiveGain && phoneRnnoiseBypassGain) {
-    if (useAi) {
-      phoneRnnoiseActiveGain.gain.setValueAtTime(1.0, currentTime);
-      phoneRnnoiseBypassGain.gain.setValueAtTime(0.0, currentTime);
-      if (phoneHighpassNode) phoneHighpassNode.frequency.setValueAtTime(80, currentTime);
-    } else {
-      phoneRnnoiseActiveGain.gain.setValueAtTime(0.0, currentTime);
-      phoneRnnoiseBypassGain.gain.setValueAtTime(1.0, currentTime);
-      if (phoneHighpassNode) phoneHighpassNode.frequency.setValueAtTime(phoneNoiseFilterEnabled ? 85 : 10, currentTime);
-    }
-  }
-}
+// Filter & Suppression Disabled: All filters and DSP nodes are stripped from the audio graph.
+// Audio routes 100% direct from raw PCM buffer to output with zero processing.
+let phoneHighpassNode = null;
+let phoneGateGainNode = null;
+let phoneCompressorNode = null;
+let phoneRnnoiseNode = null;
+function initPhoneAudioAi() {}
+function updatePhoneAudioRouting() {}
 
 function updateNoiseFilterButtonState() {
   const btn = $('phone-noise-filter-btn') || $('phone-toggle-noise-filter-btn');
   if (!btn) return;
-  if (phoneNoiseFilterEnabled) {
-    btn.textContent = phoneRnnoiseReady ? 'AI Voice Isolation: ON' : 'Noise Filter: ON';
-    btn.style.color = '#c084fc';
-  } else {
-    btn.textContent = 'Noise Filter: OFF';
-    btn.style.color = '#94a3b8';
-  }
+  btn.textContent = 'Raw Audio: Direct (No Filters)';
+  btn.style.color = '#38bdf8';
 }
 
 function playStudioAudio(pcmData) {
@@ -3843,76 +3798,25 @@ function playStudioAudio(pcmData) {
     }
 
     if (!phoneGainNode && phoneAudioCtx) {
-      phoneStudioBus = phoneAudioCtx.createGain();
-      phoneStudioBus.gain.value = 1.0;
-
-      phoneRnnoiseActiveGain = phoneAudioCtx.createGain();
-      phoneRnnoiseActiveGain.gain.value = 0.0;
-
-      phoneRnnoiseBypassGain = phoneAudioCtx.createGain();
-      phoneRnnoiseBypassGain.gain.value = 1.0;
-
-      phoneHighpassNode = phoneAudioCtx.createBiquadFilter();
-      phoneHighpassNode.type = 'highpass';
-      phoneHighpassNode.frequency.value = phoneNoiseFilterEnabled ? 80 : 10;
-      phoneHighpassNode.Q.value = 0.707;
-
-      phoneGateGainNode = phoneAudioCtx.createGain();
-      phoneGateGainNode.gain.value = 1.0;
-
-      phoneCompressorNode = phoneAudioCtx.createDynamicsCompressor();
-      phoneCompressorNode.threshold.value = -6;
-      phoneCompressorNode.knee.value = 6;
-      phoneCompressorNode.ratio.value = 8;
-      phoneCompressorNode.attack.value = 0.003;
-      phoneCompressorNode.release.value = 0.10;
-
       phoneGainNode = phoneAudioCtx.createGain();
       phoneGainNode.gain.value = phoneAudioMuted ? 0 : phoneAudioVolume;
 
       phoneAnalyserNode = phoneAudioCtx.createAnalyser();
       phoneAnalyserNode.fftSize = 256;
 
-      // Audio Graph Topology:
-      // Bus -> Bypass -> Highpass
-      // Bus -> [RNNoise Worklet -> Active] -> Highpass
-      phoneStudioBus.connect(phoneRnnoiseBypassGain);
-      phoneRnnoiseBypassGain.connect(phoneHighpassNode);
-      phoneRnnoiseActiveGain.connect(phoneHighpassNode);
-
-      phoneHighpassNode.connect(phoneGateGainNode);
-      phoneGateGainNode.connect(phoneCompressorNode);
-      phoneCompressorNode.connect(phoneGainNode);
+      // Pure Direct Raw Audio Graph (Zero Filters / Zero Suppression):
+      // Source -> Gain (Volume/Mute) -> Analyser (VU Meter) -> Audio Destination
       phoneGainNode.connect(phoneAnalyserNode);
       phoneAnalyserNode.connect(phoneAudioCtx.destination);
-
-      initPhoneAudioAi();
+      updateNoiseFilterButtonState();
     } else if (phoneGainNode) {
       phoneGainNode.gain.value = phoneAudioMuted ? 0 : phoneAudioVolume;
-      updatePhoneAudioRouting();
     }
 
-    // Pure Continuous Audio: Samples are never multiplied by a threshold gate, preventing all syllable cutting and "putol-putol" glitches.
-    // Background noise is eliminated naturally in frequency domain by RNNoise AI on the WebAudio worklet graph.
     phoneGateEnvelope = 1.0;
 
-    if (phoneGateGainNode) {
-      phoneGateGainNode.gain.setValueAtTime(1.0, currentTime);
-    }
-
-    // Live VU meter update in dashboard (monitors post-AI denoised signal for true voice levels)
-    let effectiveVuRms = latestPhoneCastAudioRms;
-    if (phoneAnalyserNode && phoneNoiseFilterEnabled) {
-      const timeData = new Uint8Array(64);
-      phoneAnalyserNode.getByteTimeDomainData(timeData);
-      let sumSq = 0;
-      for (let i = 0; i < timeData.length; i++) {
-        const v = (timeData[i] - 128) / 128.0;
-        sumSq += v * v;
-      }
-      effectiveVuRms = Math.sqrt(sumSq / timeData.length);
-    }
-    const vuPct = Math.min(100, Math.round(effectiveVuRms * 220));
+    // Live VU meter update in dashboard (monitors direct raw microphone signal)
+    const vuPct = Math.min(100, Math.round(latestPhoneCastAudioRms * 220));
     const phoneVuFill = typeof document !== 'undefined' ? document.getElementById('phone-audio-vu-fill') : null;
     const phoneVuVal = typeof document !== 'undefined' ? document.getElementById('phone-audio-vu-val') : null;
     if (phoneVuFill) phoneVuFill.style.width = vuPct + '%';
@@ -3920,7 +3824,7 @@ function playStudioAudio(pcmData) {
 
     const source = phoneAudioCtx.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(phoneStudioBus || phoneHighpassNode || phoneGainNode || phoneAudioCtx.destination);
+    source.connect(phoneGainNode || phoneAudioCtx.destination);
     source.start(phoneNextAudioTime);
     phoneNextAudioTime += audioBuffer.duration;
 
@@ -4340,11 +4244,7 @@ function initPhoneCastStudio() {
   if (noiseFilterBtn) {
     updateNoiseFilterButtonState();
     noiseFilterBtn.addEventListener('click', () => {
-      phoneNoiseFilterEnabled = !phoneNoiseFilterEnabled;
-      updatePhoneAudioRouting();
-      updateNoiseFilterButtonState();
-      try { localStorage.setItem('shing_phone_noise_filter', phoneNoiseFilterEnabled); } catch (e) {}
-      showToast(phoneNoiseFilterEnabled ? (phoneRnnoiseReady ? 'AI Voice Isolation active (RNNoise 48kHz)' : 'Noise Filter enabled') : 'Noise Filter disabled (raw mic audio)', 'info', 'Audio Engine');
+      showToast('Raw Audio Mode: All filters and noise suppression are completely disabled for 100% natural mic sound', 'info', 'Audio Engine');
     });
   }
 

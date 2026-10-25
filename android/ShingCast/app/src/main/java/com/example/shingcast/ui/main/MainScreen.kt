@@ -418,13 +418,13 @@ fun MainCastScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "Clean Raw Capture (48kHz)",
+                                        text = "Clean Raw Capture (48kHz - Direct Audio)",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFFC084FC)
+                                        color = Color(0xFF38BDF8)
                                     )
                                     Text(
-                                        text = "Pure uncompressed PCM. AI voice isolation runs on PC with zero lag and zero cutoff.",
+                                        text = "Pure uncompressed 48kHz audio. All filters and suppression disabled for 100% natural sound.",
                                         fontSize = 10.5.sp,
                                         color = Color(0xFF94A3B8)
                                     )

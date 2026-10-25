@@ -1,6 +1,24 @@
 {
-    "latest":  "1.7.8",
+    "latest":  "1.7.9",
     "releases":  [
+                     {
+                         "version":  "1.7.9",
+                         "releaseName":  "Shing Live v1.7.9 - 100% Pure Direct Raw Audio (Zero Filters & Zero Noise Suppression)",
+                         "releaseDate":  "2026-10-25",
+                         "type":  "feature",
+                         "summary":  "Completely removed all audio filters, neural worklets, highpass biquad filters, noise gates, and dynamics compressors across the entire pipeline. Audio now streams 100% direct and unaltered from the phone microphone straight to the PC soundcard and OBS overlay with zero DSP latency, zero phase shifting, and maximum natural acoustic fidelity.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.7.9.zip",
+                         "highlights":  [
+                                            "100% Direct Raw Audio: Eradicated all audio filtering, neural noise suppression, biquad highpass filters, gates, and compressors from both desktop preview and OBS overlay graphs",
+                                            "Zero Processing Latency: PCM audio feeds directly from buffer source to output destination without any intermediate DSP hops or sample alteration",
+                                            "Natural Microphone Fidelity: Voice sounds completely natural, full-bodied, and transparent with zero robotic artifacts, ducking, or pumping",
+                                            "Hardware Clock Runway: Maintained rock-solid 60ms jitter buffer cushion for uninterrupted, pop-free streaming over Wi-Fi",
+                                            "Direct Raw Capture Badge: Android APK indicates Direct Raw Microphone mode at 48kHz with zero mobile filters"
+                                        ],
+                         "notes":  "Pristine, 100% raw, studio-direct audio streaming from phone to PC.",
+                         "packageSize":  "5 MB",
+                         "checksum":  "a70499f3908680389c4e0bc2275bedfcf9fb44f4e48a41e447d6378758274f6c"
+                     },
                      {
                          "version":  "1.7.8",
                          "releaseName":  "Shing Live v1.7.8 - Jitter Buffer Cushion Restoration & Transparent Safety Limiting",
