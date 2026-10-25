@@ -898,6 +898,7 @@
       let overlayGateEnvelope = 1.0;
       let overlayNoiseFilterEnabled = true;
       let overlayNoiseGateThreshold = 0.016;
+      let overlayGateHoldUntil = 0;
       const AUDIO_LEAD_TIME = 0.020; // 20ms lead time for smooth playback
       const MAX_AUDIO_LATENCY = 0.060; // 60ms maximum latency allowance
 
@@ -978,12 +979,20 @@
           }
 
           if (overlayNoiseFilterEnabled && overlayGateGainNode) {
-            const isVocal = (zeroCrossings >= 4 && zeroCrossings <= 115);
-            const isSpeech = (chunkRms >= overlayNoiseGateThreshold) && isVocal;
-            if (isSpeech) {
+            const openThresh = overlayNoiseGateThreshold;
+            const closeThresh = overlayNoiseGateThreshold * 0.55;
+            const isVoiceFormant = zeroCrossings <= 130;
+
+            if (chunkRms >= openThresh && isVoiceFormant) {
+              overlayGateHoldUntil = currentTime + 0.300;
+            }
+
+            const isGateOpen = (currentTime < overlayGateHoldUntil) || (chunkRms >= closeThresh && isVoiceFormant);
+
+            if (isGateOpen) {
               overlayGateEnvelope = Math.min(1.0, overlayGateEnvelope + 0.35);
             } else {
-              overlayGateEnvelope = Math.max(0.0, overlayGateEnvelope - 0.12);
+              overlayGateEnvelope = Math.max(0.0, overlayGateEnvelope - 0.06);
             }
             overlayGateGainNode.gain.setValueAtTime(overlayGateEnvelope, currentTime);
           }

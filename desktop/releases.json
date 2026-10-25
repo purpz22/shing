@@ -1,6 +1,24 @@
 {
-    "latest":  "1.7.2",
+    "latest":  "1.7.3",
     "releases":  [
+                     {
+                         "version":  "1.7.3",
+                         "releaseName":  "Shing Live v1.7.3 - Broadcast Hysteresis Gate \u0026 Smooth Continuous Voice Stream",
+                         "releaseDate":  "2026-10-25",
+                         "type":  "improvement",
+                         "summary":  "Completely eliminated audio choppiness, robotic stuttering, and glitchy clipping by adding a 300ms Hold Time with Hysteresis gating to desktop and OBS overlays, and reverting mobile capture to unthrottled 48kHz high-fidelity media mode with zero VoIP ducking.",
+                         "downloadUrl":  "https://raw.githubusercontent.com/purpz22/shing/main/desktop/updates/shing-live-v1.7.3.zip",
+                         "highlights":  [
+                                            "300ms Vocal Hold Time: Gate stays 100% open across syllables, micro-pauses, and consonants, eliminating glitchy chopping",
+                                            "Unthrottled 48kHz High-Fidelity Mobile Stream: Clean media capture without telephony VoIP ducking or buffer underruns",
+                                            "Gate Hysteresis: Separate open and close thresholds prevent rapid chattering on vocal edges",
+                                            "Synchronized OBS Overlay: phone.html browser source matches studio preview with smooth hold-time gating",
+                                            "Updated Mobile APK: ShingCast APK v1.7.3 with smooth continuous audio transmission"
+                                        ],
+                         "notes":  "Major audio quality upgrade eliminating choppy and glitchy voice streaming.",
+                         "packageSize":  "4.77 MB",
+                         "checksum":  "d23d1ea465a874db003a7c1645d6574af06fd6a260795e25721a5dfdb8c7a2d2"
+                     },
                      {
                          "version":  "1.7.2",
                          "releaseName":  "Shing Live v1.7.2 - Dual-Mic Beamforming, Phone Voice Gate \u0026 OBS Filter",

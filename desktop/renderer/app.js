@@ -3577,6 +3577,7 @@ let phoneGateGainNode = null;
 let phoneCompressorNode = null;
 let phoneGateEnvelope = 1.0;
 let phoneVoiceOnlyVadEnabled = true;
+let phoneGateHoldUntil = 0;
 let latestPhoneCastAudioZcr = 0;
 
 function setPhoneCastUiConnected(name, width, height, fps) {
@@ -3799,13 +3800,21 @@ function playStudioAudio(pcmData) {
     }
 
     if (phoneNoiseFilterEnabled && phoneGateGainNode) {
-      // Acoustic Voice Activity Detection: human speech zero-crossing rate is 4-110 per 10ms; fan hiss > 140; sub-bass < 3
-      const isVoiceFormant = !phoneVoiceOnlyVadEnabled || (latestPhoneCastAudioZcr >= 4 && latestPhoneCastAudioZcr <= 115);
-      const isVoiceActive = (latestPhoneCastAudioRms >= phoneNoiseGateThreshold) && isVoiceFormant;
-      if (isVoiceActive) {
+      // Hysteresis Noise Gate with 300ms Hold Time: completely eliminates choppy stuttering and word clipping!
+      const openThresh = phoneNoiseGateThreshold;
+      const closeThresh = phoneNoiseGateThreshold * 0.55;
+      const isVoiceFormant = !phoneVoiceOnlyVadEnabled || (latestPhoneCastAudioZcr <= 130);
+
+      if (latestPhoneCastAudioRms >= openThresh && isVoiceFormant) {
+        phoneGateHoldUntil = currentTime + 0.300; // Hold open for 300ms across syllables
+      }
+
+      const isGateOpen = (currentTime < phoneGateHoldUntil) || (latestPhoneCastAudioRms >= closeThresh && isVoiceFormant);
+
+      if (isGateOpen) {
         phoneGateEnvelope = Math.min(1.0, phoneGateEnvelope + 0.35);
       } else {
-        phoneGateEnvelope = Math.max(0.0, phoneGateEnvelope - 0.12);
+        phoneGateEnvelope = Math.max(0.0, phoneGateEnvelope - 0.06);
       }
       phoneGateGainNode.gain.setValueAtTime(phoneGateEnvelope, currentTime);
     } else if (phoneGateGainNode) {

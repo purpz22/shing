@@ -112,31 +112,7 @@ class AudioEncoder(
 
     @SuppressLint("MissingPermission")
     private fun setupMicAudioRecord() {
-        // 1. Try Voice Communication first (activates Android OS dual-mic beamforming and hardware noise cancellation)
-        try {
-            val minBuf = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG_MONO, AUDIO_FORMAT)
-            if (minBuf > 0) {
-                val bufSize = (minBuf * 4).coerceAtLeast(16384)
-                val record = AudioRecord(
-                    MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-                    SAMPLE_RATE,
-                    CHANNEL_CONFIG_MONO,
-                    AUDIO_FORMAT,
-                    bufSize
-                )
-                if (record.state == AudioRecord.STATE_INITIALIZED) {
-                    micAudioRecord = record
-                    attachHardwareAudioEffects(record)
-                    Log.d(TAG, "Microphone initialized with VOICE_COMMUNICATION at 48kHz (noiseFilter=$noiseFilterEnabled, dual-mic beamforming active)")
-                    return
-                }
-                record.release()
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Voice communication mic init failed, falling back to standard MIC: ${e.message}")
-        }
-
-        // 2. Standard mono microphone fallback
+        // Universal mono microphone capture in standard media mode (48kHz clean capture, zero VoIP ducking)
         try {
             val minBufMono = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG_MONO, AUDIO_FORMAT)
             if (minBufMono > 0) {
@@ -157,7 +133,31 @@ class AudioEncoder(
                 record.release()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize microphone in standard MIC mode: ${e.message}")
+            Log.w(TAG, "Standard MIC init error: ${e.message}")
+        }
+
+        // Voice Communication fallback
+        try {
+            val minBuf = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG_MONO, AUDIO_FORMAT)
+            if (minBuf > 0) {
+                val bufSize = (minBuf * 4).coerceAtLeast(16384)
+                val record = AudioRecord(
+                    MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                    SAMPLE_RATE,
+                    CHANNEL_CONFIG_MONO,
+                    AUDIO_FORMAT,
+                    bufSize
+                )
+                if (record.state == AudioRecord.STATE_INITIALIZED) {
+                    micAudioRecord = record
+                    attachHardwareAudioEffects(record)
+                    Log.d(TAG, "Microphone initialized with VOICE_COMMUNICATION at 48kHz (noiseFilter=$noiseFilterEnabled)")
+                    return
+                }
+                record.release()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Voice communication mic init failed: ${e.message}")
         }
     }
 
@@ -236,7 +236,6 @@ class AudioEncoder(
         val rawMonoBuf = ByteArray(MONO_CHUNK_SIZE_BYTES)
         val stereoBuf = ByteArray(CHUNK_SIZE_BYTES)
         val startTimeNs = System.nanoTime()
-        var micGateEnvelope = 0.0f
 
         while (isRecording) {
             // Fill exact 10ms mono chunk (480 samples = 960 bytes)
@@ -259,44 +258,16 @@ class AudioEncoder(
             val numSamples = bytesReadTotal / 2
             val useFilter = noiseFilterEnabled
 
-            if (useFilter) {
-                // Measure energy and zero-crossing rate of current 10ms frame
-                var sumSq = 0L
-                var zcr = 0
-                var prevVal = 0
-                for (i in 0 until numSamples) {
-                    val s = (rawMonoBuf[i * 2 + 1].toInt() shl 8) or (rawMonoBuf[i * 2].toInt() and 0xFF)
-                    sumSq += (s.toLong() * s.toLong())
-                    if ((s > 0 && prevVal <= 0) || (s < 0 && prevVal >= 0)) zcr++
-                    prevVal = s
-                }
-                val frameRms = kotlin.math.sqrt(sumSq.toDouble() / numSamples).toFloat()
-
-                // Human speech has RMS >= 420 and ZCR in vocal range (4 to 120 crossings)
-                // Fan hiss has ZCR > 140; silence/AC hum has ZCR < 3
-                val isSpeechActive = (frameRms >= 420f) && (zcr in 4..120)
-
-                if (isSpeechActive) {
-                    micGateEnvelope = (micGateEnvelope + 0.35f).coerceAtMost(1.0f)
-                } else {
-                    micGateEnvelope = (micGateEnvelope - 0.12f).coerceAtLeast(0.0f)
-                }
-            } else {
-                micGateEnvelope = 1.0f
-            }
-
             for (i in 0 until numSamples) {
                 val sampleMono = (rawMonoBuf[i * 2 + 1].toInt() shl 8) or (rawMonoBuf[i * 2].toInt() and 0xFF)
 
-                // 85Hz High-pass IIR filter (alpha = 0.9890f at 48kHz): removes phone vibrations and AC hum
+                // 85Hz High-pass IIR filter (alpha = 0.9890f at 48kHz): removes phone vibrations and AC hum cleanly
                 val filteredSample = if (useFilter) {
                     val x = sampleMono.toFloat()
                     val y = 0.9890f * (hpPrevY + x - hpPrevX)
                     hpPrevX = x
                     hpPrevY = y
-                    val clean = y.roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-                    // Apply voice gate envelope so non-voice background noise is silenced to 0
-                    (clean * micGateEnvelope).roundToInt()
+                    y.roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
                 } else {
                     sampleMono
                 }
