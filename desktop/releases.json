@@ -17,8 +17,8 @@
         "Hardware Jitter Buffer Cushion: Maintained 60ms runway for uninterrupted playback over Wi-Fi"
       ],
       "notes": "Crystal-clear voice with zero background noise running entirely on your PC CPU.",
-      "packageSize": "17.31 MB",
-      "checksum": "229fcbeaca6a4707f5f38ae16ac5f6ffe70c5bc86cecebfe013b1822d19fbdf9"
+      "packageSize": "17.16 MB",
+      "checksum": "23edfd0631cb9828f731f43b011ae5325c5dfa6c9f1878c6796a3bead6c7857b"
     },
     {
       "version": "1.7.9",

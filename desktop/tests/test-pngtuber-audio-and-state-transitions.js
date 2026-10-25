@@ -140,10 +140,11 @@ class VoiceActivationCalibrator {
   processSample(volume, timeAdvanceMs = 0) {
     if (volume >= this.threshold) {
       this.holdTimer = null;
+      const wasPaused = this.isPaused;
       this.isPaused = false;
-      if (!this.isTalking) {
+      if (!this.isTalking || wasPaused) {
         this.isTalking = true;
-        this.stateTransitions.push({ talking: true, paused: false, reason: 'speech_onset' });
+        this.stateTransitions.push({ talking: true, paused: false, reason: wasPaused ? 'speech_resumed' : 'speech_onset' });
       }
     } else {
       if (this.isTalking) {
@@ -188,6 +189,8 @@ assert.strictEqual(calibrator.stateTransitions[1].reason, 'pause_settle');
 
 // Streamer speaks again -> hold timer reset, resumes talking
 assert.deepStrictEqual(calibrator.processSample(50, 20), { talking: true, paused: false });
+assert.strictEqual(calibrator.stateTransitions.length, 3);
+assert.strictEqual(calibrator.stateTransitions[2].reason, 'speech_resumed');
 
 // Streamer stops talking for 100ms -> still in hold window (100 < 150)
 assert.deepStrictEqual(calibrator.processSample(5, 100), { talking: true, paused: true });

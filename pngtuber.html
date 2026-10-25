@@ -38,10 +38,10 @@
     position: absolute;
     left: var(--avatar-x, 50%);
     top: var(--avatar-y, 85%);
-    transform: translate(-50%, -100%) scale(var(--avatar-scale, 1.0));
+    transform: translate3d(-50%, -100%, 0) scale(var(--avatar-scale, 1.0));
     transform-origin: center bottom;
     will-change: transform;
-    transition: transform 140ms cubic-bezier(0.2, 0.8, 0.4, 1);
+    transition: transform 90ms cubic-bezier(0.2, 0.8, 0.4, 1);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -67,13 +67,13 @@
 
   /* Veadotube Bounce Physics */
   #pngtuber-avatar-container.bounce-veadotube.is-talking {
-    transform: translate(-50%, calc(-100% - var(--bounce-height, 16px))) scale(calc(var(--avatar-scale, 1.0) * 1.02), calc(var(--avatar-scale, 1.0) * 0.98));
-    transition: transform 60ms cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    transform: translate3d(-50%, calc(-100% - var(--bounce-height, 16px)), 0) scale(calc(var(--avatar-scale, 1.0) * 1.02), calc(var(--avatar-scale, 1.0) * 0.98));
+    transition: transform 45ms cubic-bezier(0.18, 0.89, 0.32, 1.28);
   }
 
   #pngtuber-avatar-container.bounce-veadotube:not(.is-talking) {
-    transform: translate(-50%, -100%) scale(var(--avatar-scale, 1.0));
-    transition: transform 120ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform: translate3d(-50%, -100%, 0) scale(var(--avatar-scale, 1.0));
+    transition: transform 80ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
   /* Squish & Pop Physics */
@@ -221,6 +221,7 @@
   let celebrateTimer = null;
   let happyTimer = null;
   let bubbleTimer = null;
+  const TALK_FLAP_INTERVAL = 90;
 
   function scheduleNextFlap() {
     if (!isTalking || isPaused) {
@@ -252,13 +253,13 @@
 
     updateDisplay();
 
-    let dwellMs = 125;
+    let dwellMs = TALK_FLAP_INTERVAL;
     if (mouthPhase === 1) {
-      dwellMs = isLoud ? (155 + Math.floor(Math.random() * 35)) : (135 + Math.floor(Math.random() * 25));
+      dwellMs = isLoud ? (105 + Math.floor(Math.random() * 20)) : (90 + Math.floor(Math.random() * 15));
     } else if (mouthPhase === 2) {
-      dwellMs = 70 + Math.floor(Math.random() * 20);
+      dwellMs = 55 + Math.floor(Math.random() * 15);
     } else {
-      dwellMs = 110 + Math.floor(Math.random() * 25);
+      dwellMs = 75 + Math.floor(Math.random() * 15);
     }
 
     flapTimeoutTimer = setTimeout(scheduleNextFlap, dwellMs);

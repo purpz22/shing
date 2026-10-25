@@ -2662,6 +2662,7 @@ let pngtuberIsTalking = false;
 let pngtuberIsPaused = false;
 let pngtuberIsBlinking = false;
 let pngtuberIsHappy = false;
+let pngtuberLastBroadcastPct = 0;
 let pngtuberMouthPhase = 0; // 0 = talk_half / parted, 1 = talk / wide open
 let pngtuberMicMuted = false;
 let pngtuberSmoothedVol = 0;
@@ -2702,13 +2703,13 @@ function scheduleNextStageFlap() {
 
   updateLiveStageAvatar();
 
-  let dwellMs = 125;
+  let dwellMs = 90;
   if (pngtuberMouthPhase === 1) {
-    dwellMs = isLoud ? (155 + Math.floor(Math.random() * 35)) : (135 + Math.floor(Math.random() * 25));
+    dwellMs = isLoud ? (105 + Math.floor(Math.random() * 20)) : (90 + Math.floor(Math.random() * 15));
   } else if (pngtuberMouthPhase === 2) {
-    dwellMs = 70 + Math.floor(Math.random() * 20);
+    dwellMs = 55 + Math.floor(Math.random() * 15);
   } else {
-    dwellMs = 110 + Math.floor(Math.random() * 25);
+    dwellMs = 75 + Math.floor(Math.random() * 15);
   }
 
   pngtuberStageFlapTimer = setTimeout(scheduleNextStageFlap, dwellMs);
@@ -3136,10 +3137,11 @@ function runAudioAnalysisLoop() {
     const sens = Number(cfg.sensitivity) || 1.2;
     const currentVol = Math.min(100, rawVol * sens);
 
+    // Instant attack for zero vocal latency; smooth decay for clean natural transitions
     if (currentVol > pngtuberSmoothedVol) {
       pngtuberSmoothedVol = currentVol;
     } else {
-      pngtuberSmoothedVol = pngtuberSmoothedVol * 0.80 + currentVol * 0.20;
+      pngtuberSmoothedVol = pngtuberSmoothedVol * 0.82 + currentVol * 0.18;
     }
 
     if (pngtuberSmoothedVol < 0.5) pngtuberSmoothedVol = 0;
@@ -3165,14 +3167,20 @@ function runAudioAnalysisLoop() {
         clearTimeout(pngtuberHoldTimer);
         pngtuberHoldTimer = null;
       }
+      const wasPaused = pngtuberIsPaused;
       pngtuberIsPaused = false;
-      if (!pngtuberIsTalking) {
+      if (!pngtuberIsTalking || wasPaused) {
         pngtuberIsTalking = true;
         startPngTuberStageFlap();
         updateLiveStageAvatar();
         broadcastPngTuberState(true, pct, 'talk', false);
+        pngtuberLastBroadcastPct = pct;
       } else {
         startPngTuberStageFlap();
+        if (Math.abs(pct - pngtuberLastBroadcastPct) >= 8) {
+          pngtuberLastBroadcastPct = pct;
+          broadcastPngTuberState(true, pct, 'talk', false);
+        }
       }
     } else {
       if (pngtuberIsTalking && !pngtuberHoldTimer) {
@@ -3180,21 +3188,23 @@ function runAudioAnalysisLoop() {
         stopPngTuberStageFlap();
         updateLiveStageAvatar();
         broadcastPngTuberState(true, pct, 'paused', true);
+        pngtuberLastBroadcastPct = pct;
 
         pngtuberHoldTimer = setTimeout(() => {
           pngtuberIsTalking = false;
           pngtuberIsPaused = false;
           pngtuberHoldTimer = null;
+          pngtuberLastBroadcastPct = 0;
           stopPngTuberStageFlap();
           updateLiveStageAvatar();
-          broadcastPngTuberState(false, pct, 'idle', false);
+          broadcastPngTuberState(false, 0, 'idle', false);
         }, holdMs);
       }
     }
   }
 
-  // Lightweight 25Hz polling loop (40ms) instead of 60-144Hz rAF for low-end laptop efficiency
-  pngtuberAnimFrame = setInterval(analyze, 40);
+  // High-responsiveness 60Hz loop (16ms) for zero-lag mouth tracking on low-end PCs
+  pngtuberAnimFrame = setInterval(analyze, 16);
   analyze();
 }
 
